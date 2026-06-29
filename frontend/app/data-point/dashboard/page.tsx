@@ -101,6 +101,7 @@ export default function Dashboard() {
   const [clock, setClock] = useState("");
   const [staffName, setStaffName] = useState("");
   const [staffRole, setStaffRole] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn()) { router.replace("/data-point/login?redirect=/data-point/dashboard"); return; }
@@ -117,13 +118,23 @@ export default function Dashboard() {
     router.replace("/data-point/login");
   }
 
-  // Group nav items by section
+  function navigate(id: string) {
+    setView(id);
+    setSidebarOpen(false);
+  }
+
   const sections = [...new Set(NAV.map((n) => n.section))];
 
   return (
     <div className="dash-wrap">
+      {/* Mobile sidebar backdrop */}
+      <div
+        className={`dash-sidebar-backdrop${sidebarOpen ? " is-open" : ""}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
       {/* ── SIDEBAR ── */}
-      <aside className="dash-sidebar">
+      <aside className={`dash-sidebar${sidebarOpen ? " is-open" : ""}`}>
         <div className="sb-brand">
           <div className="sb-seal"><CoatOfArms size={28} /></div>
           <div>
@@ -139,7 +150,7 @@ export default function Dashboard() {
               <button
                 key={item.id}
                 className={`sb-link${view === item.id ? " active" : ""}`}
-                onClick={() => !item.soon && setView(item.id)}
+                onClick={() => !item.soon && navigate(item.id)}
                 style={item.soon ? { opacity: 0.45, cursor: "not-allowed" } : undefined}
               >
                 <span className="sb-label">{item.label}</span>
@@ -183,12 +194,18 @@ export default function Dashboard() {
       <div className="dash-main">
         {/* Topbar */}
         <div className="dash-topbar">
-          <div style={{ flex: 1 }}>
+          {/* Mobile hamburger — opens sidebar */}
+          <button className="mob-sidebar-toggle" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--ink)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               {NAV.find((n) => n.id === view)?.label ?? "Overview"}
             </span>
-            <span style={{ marginLeft: 12, fontSize: "0.72rem", color: "var(--ink-4)" }}>
-              NEDB Intelligence Suite &nbsp;·&nbsp; Energy Commission of Nigeria
+            <span style={{ marginLeft: 12, fontSize: "0.72rem", color: "var(--ink-4)", display: "inline" }} className="topbar-subtitle">
+              NEDB &nbsp;·&nbsp; ECN
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>

@@ -121,7 +121,7 @@ export default function AdminPage() {
             <div className="panel-header"><span className="panel-title">Create New Account</span></div>
             <div className="panel-body">
               <form onSubmit={createUser}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem 1.5rem" }}>
+                <div className="admin-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem 1.5rem" }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">Full Name</label>
                     <input className="form-input" placeholder="e.g. Adeola Okafor" required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />

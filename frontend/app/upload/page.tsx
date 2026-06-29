@@ -131,7 +131,7 @@ export default function UploadPage() {
 
       <main style={{ background: "var(--surface)", padding: "2.5rem 0 5rem" }}>
         <div className="page-wrap">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: "2rem", alignItems: "start" }}>
+          <div className="upload-grid">
 
             {/* ── LEFT: UPLOAD FORM ── */}
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>

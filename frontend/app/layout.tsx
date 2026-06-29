@@ -8,6 +8,12 @@ export const metadata: Metadata = {
   title: "NEDB — National Energy Data Bank",
   description:
     "Nigeria's authoritative repository of energy statistics. Official platform of the Energy Commission of Nigeria.",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    viewportFit: "cover",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
