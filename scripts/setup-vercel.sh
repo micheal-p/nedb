@@ -1,6 +1,5 @@
 #!/bin/bash
-# Run once after: npm i -g vercel && vercel login
-# Usage: bash scripts/setup-vercel.sh
+# Run once: npm i -g vercel && vercel login && bash scripts/setup-vercel.sh
 set -e
 
 PROJECT_NAME="nedb"
@@ -9,57 +8,49 @@ FRONTEND="$(dirname "$0")/../frontend"
 
 cd "$FRONTEND"
 
-echo "==> Creating / linking Vercel project as \"$PROJECT_NAME\"..."
-vercel link --project "$PROJECT_NAME" --yes 2>/dev/null || \
-  vercel link --yes
+# Read service role key from .env.local so it never touches git
+SUPA_KEY=$(grep SUPABASE_SERVICE_ROLE_KEY .env.local | cut -d= -f2-)
+if [[ -z "$SUPA_KEY" || "$SUPA_KEY" == "your-service-role-key" ]]; then
+  echo "ERROR: SUPABASE_SERVICE_ROLE_KEY not set in frontend/.env.local"
+  exit 1
+fi
 
-echo ""
-echo "==> Adding environment variables..."
-
-# ── Supabase URL (not secret) ──────────────────────────────────────────────
-for env in production preview development; do
-  vercel env rm SUPABASE_URL "$env" --yes 2>/dev/null || true
-  echo "$SUPABASE_URL" | vercel env add SUPABASE_URL "$env"
-done
-
-# ── Supabase service role key (secret) ────────────────────────────────────
-echo ""
-echo "Paste your Supabase SERVICE ROLE key then press Enter"
-echo "(supabase.com → project → Settings → API → service_role):"
-read -rs SUPA_KEY
-echo ""
-for env in production preview development; do
-  vercel env rm SUPABASE_SERVICE_ROLE_KEY "$env" --yes 2>/dev/null || true
-  echo "$SUPA_KEY" | vercel env add SUPABASE_SERVICE_ROLE_KEY "$env"
-done
-
-# ── JWT secrets (auto-generated) ──────────────────────────────────────────
+# Generate JWT secrets
 JWT_SECRET=$(openssl rand -hex 32)
 JWT_REFRESH=$(openssl rand -hex 32)
 
-for env in production preview development; do
-  vercel env rm JWT_SECRET "$env" --yes 2>/dev/null || true
-  echo "$JWT_SECRET" | vercel env add JWT_SECRET "$env"
-
-  vercel env rm JWT_REFRESH_SECRET "$env" --yes 2>/dev/null || true
-  echo "$JWT_REFRESH" | vercel env add JWT_REFRESH_SECRET "$env"
-done
+echo "==> Linking project as \"$PROJECT_NAME\"..."
+vercel link --project "$PROJECT_NAME" --yes 2>/dev/null || vercel link --yes
 
 echo ""
-echo "==> Environment variables set."
-echo ""
-echo "   JWT_SECRET        : $JWT_SECRET"
-echo "   JWT_REFRESH_SECRET: $JWT_REFRESH"
-echo ""
-echo "   Save these — existing sessions break if they change."
+echo "==> Setting environment variables..."
+
+set_env() {
+  local KEY=$1 VAL=$2
+  for env in production preview development; do
+    vercel env rm "$KEY" "$env" --yes 2>/dev/null || true
+    printf '%s' "$VAL" | vercel env add "$KEY" "$env"
+  done
+}
+
+set_env SUPABASE_URL              "$SUPABASE_URL"
+set_env SUPABASE_SERVICE_ROLE_KEY "$SUPA_KEY"
+set_env JWT_SECRET                "$JWT_SECRET"
+set_env JWT_REFRESH_SECRET        "$JWT_REFRESH"
+
 echo ""
 echo "==> Deploying to production..."
-vercel deploy --prod --name "$PROJECT_NAME" --yes
+vercel deploy --prod --yes
 
 echo ""
-echo "====================================================="
-echo " NEDB is live at: https://$PROJECT_NAME.vercel.app"
-echo "====================================================="
-echo " Admin login:  admin / nedb2026"
-echo " Change password at: /data-point/admin"
-echo "====================================================="
+echo "=================================================="
+echo " Live at: https://$PROJECT_NAME.vercel.app"
+echo "=================================================="
+echo " Admin:   admin / nedb2026"
+echo " Change password immediately at /data-point/admin"
+echo "=================================================="
+echo ""
+echo " JWT_SECRET        : $JWT_SECRET"
+echo " JWT_REFRESH_SECRET: $JWT_REFRESH"
+echo " (save these — changing them logs everyone out)"
+echo "=================================================="
