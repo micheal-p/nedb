@@ -3,16 +3,24 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { db } from "@/lib/supabase-server";
 
-async function getSeries() {
+interface SeriesRow {
+  id: string; name: string; sector: string; subsector: string | null;
+  unit_default: string; frequency: string; viz_types: string[];
+  created_at: string; record_count: number;
+}
+
+async function getSeries(): Promise<SeriesRow[]> {
   try {
     const { data } = await db()
       .from("series_types")
       .select("id, name, sector, subsector, unit_default, frequency, viz_types, created_at, energy_records(count)")
       .order("sector").order("name");
-    return (data ?? []).map((s: Record<string, unknown>) => ({
-      ...s,
-      record_count: (s.energy_records as { count: number }[])?.[0]?.count ?? 0,
-      energy_records: undefined,
+    return (data ?? []).map((s) => ({
+      id: s.id as string, name: s.name as string, sector: s.sector as string,
+      subsector: s.subsector as string | null, unit_default: s.unit_default as string,
+      frequency: s.frequency as string, viz_types: s.viz_types as string[],
+      created_at: s.created_at as string,
+      record_count: (s.energy_records as { count: number }[] | null)?.[0]?.count ?? 0,
     }));
   } catch { return []; }
 }
@@ -90,7 +98,7 @@ export default async function Home() {
     acc[s.sector].push(s);
     return acc;
   }, {} as Record<string, typeof series>);
-  const totalRecords = series.reduce((sum, s) => sum + (s.record_count as number), 0);
+  const totalRecords = series.reduce((sum, s) => sum + s.record_count, 0);
 
   return (
     <>
@@ -166,13 +174,13 @@ export default async function Home() {
                     <Link key={s.id} href={`/series/${s.id}`} className="series-cell">
                       <div className="series-meta">
                         <span className="tag tag-green">{s.frequency}</span>
-                        {(s.record_count as number) > 0 && <span className="tag tag-muted">{(s.record_count as number).toLocaleString()} records</span>}
+                        {s.record_count > 0 && <span className="tag tag-muted">{s.record_count.toLocaleString()} records</span>}
                       </div>
                       <div className="series-name">{s.name}</div>
                       <div style={{ display: "flex", gap: "1.5rem", margin: "0.625rem 0" }}>
                         <div>
-                          <div style={{ fontSize: "1.375rem", fontFamily: "var(--font-mono)", fontWeight: 600, lineHeight: 1, color: (s.record_count as number) > 0 ? "var(--ink)" : "var(--ink-5)" }}>
-                            {(s.record_count as number) > 0 ? (s.record_count as number).toLocaleString() : "—"}
+                          <div style={{ fontSize: "1.375rem", fontFamily: "var(--font-mono)", fontWeight: 600, lineHeight: 1, color: s.record_count > 0 ? "var(--ink)" : "var(--ink-5)" }}>
+                            {s.record_count > 0 ? s.record_count.toLocaleString() : "—"}
                           </div>
                           <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 2 }}>Records</div>
                         </div>
@@ -182,7 +190,7 @@ export default async function Home() {
                         </div>
                       </div>
                       <div className="viz-chips">
-                        {(s.viz_types as string[]).map((vt) => <span key={vt} className="viz-chip">{vt}</span>)}
+                        {s.viz_types.map((vt) => <span key={vt} className="viz-chip">{vt}</span>)}
                       </div>
                     </Link>
                   ))}
