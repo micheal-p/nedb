@@ -97,14 +97,14 @@ export default function AdminPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
           <div>
             <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.625rem", fontWeight: 400, color: "var(--ink)", marginBottom: "0.25rem" }}>
-              Energy Staff Accounts
+              User Accounts
             </h1>
             <p style={{ fontSize: "0.8rem", color: "var(--ink-4)" }}>
-              Manage authorised personnel who can upload data to NEDB. Every upload is attributed to the staff member by name.
+              Manage all NEDB portal users. <strong>Energy Staff</strong> can upload datasets. <strong>Data Point Viewers</strong> access the Intelligence Dashboard. All uploads are attributed to the staff member by name.
             </p>
           </div>
           <button className="btn btn-primary" onClick={() => { setShowForm(!showForm); setMsg(null); }}>
-            {showForm ? "Cancel" : "Create Staff Account"}
+            {showForm ? "Cancel" : "Create Account"}
           </button>
         </div>
 
@@ -117,7 +117,7 @@ export default function AdminPage() {
         {/* Create form */}
         {showForm && (
           <div className="panel" style={{ marginBottom: "2rem" }}>
-            <div className="panel-header"><span className="panel-title">New Energy Staff Account</span></div>
+            <div className="panel-header"><span className="panel-title">Create New Account</span></div>
             <div className="panel-body">
               <form onSubmit={createUser}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem 1.5rem" }}>
@@ -140,8 +140,9 @@ export default function AdminPage() {
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">Role</label>
                     <select className="form-input form-select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                      <option value="staff">Energy Staff</option>
-                      <option value="admin">Administrator</option>
+                      <option value="staff">Energy Staff (upload only)</option>
+                      <option value="viewer">Data Point Viewer (dashboard only)</option>
+                      <option value="admin">Administrator (full access)</option>
                     </select>
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
@@ -156,7 +157,7 @@ export default function AdminPage() {
                   <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
                 </div>
                 <p style={{ fontSize: "0.72rem", color: "var(--ink-4)", marginTop: "0.75rem" }}>
-                  The staff member must change this password on first login. Every dataset they upload will be attributed to their full name in the audit trail.
+                  After login: Energy Staff are sent to the Upload Portal, Data Point Viewers to the Intelligence Dashboard. Every uploaded dataset is attributed to the staff member by name.
                 </p>
               </form>
             </div>
@@ -185,7 +186,7 @@ export default function AdminPage() {
         {/* Staff table */}
         <div className="panel">
           <div className="panel-header">
-            <span className="panel-title">Registered Energy Staff ({users.length})</span>
+            <span className="panel-title">All Portal Users ({users.length})</span>
           </div>
           {loading ? (
             <div className="panel-body" style={{ textAlign: "center", color: "var(--ink-4)", fontSize: "0.82rem" }}>Loading...</div>
@@ -217,7 +218,9 @@ export default function AdminPage() {
                       <td style={{ fontSize: "0.78rem", color: "var(--ink-3)" }}>{u.email}</td>
                       <td style={{ fontSize: "0.78rem" }}>{u.agency || "—"}</td>
                       <td>
-                        <span className={`tag ${u.role === "admin" ? "tag-ink" : "tag-green"}`}>{u.role === "admin" ? "Admin" : "Energy Staff"}</span>
+                        <span className={`tag ${u.role === "admin" ? "tag-ink" : u.role === "viewer" ? "tag-muted" : "tag-green"}`}>
+                          {u.role === "admin" ? "Admin" : u.role === "viewer" ? "Viewer" : "Energy Staff"}
+                        </span>
                       </td>
                       <td>
                         {u.is_active

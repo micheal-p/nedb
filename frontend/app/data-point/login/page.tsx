@@ -4,13 +4,19 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
-import { saveTokens, isLoggedIn } from "@/lib/auth";
+import { saveTokens, isLoggedIn, getRole } from "@/lib/auth";
 import CoatOfArms from "@/components/layout/CoatOfArms";
+
+function defaultRedirect(role: string): string {
+  if (role === "admin") return "/data-point/admin";
+  if (role === "staff") return "/upload";
+  return "/data-point/dashboard"; // viewer
+}
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") ?? "/data-point/dashboard";
+  const explicitRedirect = searchParams.get("redirect");
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -18,8 +24,8 @@ function LoginForm() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (isLoggedIn()) router.replace(redirect);
-  }, [router, redirect]);
+    if (isLoggedIn()) router.replace(explicitRedirect ?? defaultRedirect(getRole()));
+  }, [router, explicitRedirect]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +35,7 @@ function LoginForm() {
     try {
       const result = await api.login(username, password);
       saveTokens(result.token, result.refresh_token, result.full_name, result.role);
-      router.push(redirect);
+      router.push(explicitRedirect ?? defaultRedirect(result.role));
     } catch {
       setError("Invalid credentials. Contact the NEDB administrator if you need access.");
     } finally {
@@ -52,11 +58,11 @@ function LoginForm() {
           </div>
 
           <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.625rem", fontWeight: 400, color: "var(--ink)", marginBottom: "0.375rem", lineHeight: 1.15 }}>
-            Staff Authentication
+            NEDB Portal Login
           </h1>
           <p style={{ fontSize: "0.8rem", color: "var(--ink-4)", marginBottom: "2rem", lineHeight: 1.6 }}>
-            Access restricted to authorised ECN and agency personnel. Authentication is required
-            for data upload and the NEDB Intelligence Suite.
+            Access restricted to authorised ECN and agency personnel. Energy Staff are redirected to the
+            Upload Portal. Data Point Viewers are redirected to the Intelligence Dashboard.
           </p>
 
           {error && (

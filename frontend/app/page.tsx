@@ -1,11 +1,20 @@
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { api } from "@/lib/api";
+import { db } from "@/lib/supabase-server";
 
 async function getSeries() {
-  try { return await api.listSeries(); }
-  catch { return []; }
+  try {
+    const { data } = await db()
+      .from("series_types")
+      .select("id, name, sector, subsector, unit_default, frequency, viz_types, created_at, energy_records(count)")
+      .order("sector").order("name");
+    return (data ?? []).map((s: Record<string, unknown>) => ({
+      ...s,
+      record_count: (s.energy_records as { count: number }[])?.[0]?.count ?? 0,
+      energy_records: undefined,
+    }));
+  } catch { return []; }
 }
 
 const SECTOR_META: Record<string, { label: string; desc: string; subsectors: string }> = {
@@ -19,49 +28,58 @@ const SECTOR_META: Record<string, { label: string; desc: string; subsectors: str
     desc: "Generation capacity, energy sent-out, transmission losses and end-use consumption data drawn from NERC licence reports and TCN dispatch records.",
     subsectors: "Generation · Transmission · Distribution · Consumption",
   },
+  gas: {
+    label: "Gas Statistics",
+    desc: "Natural gas production, domestic supply and LNG export volumes from NUPRC and NGC field reports.",
+    subsectors: "Upstream · Midstream · Export",
+  },
   biomass: {
-    label: "Biomass, Coal & Solid Fuels",
-    desc: "Traditional biomass consumption, commercial charcoal production, solid mineral coal output and exports, disaggregated by state and sub-sector.",
-    subsectors: "Fuelwood · Charcoal · Coal · Solid Minerals",
+    label: "Biomass & Solid Fuels",
+    desc: "Traditional biomass consumption, commercial charcoal production, solid mineral coal output and exports, disaggregated by state.",
+    subsectors: "Fuelwood · Charcoal · Coal",
+  },
+  renewable: {
+    label: "Renewable Energy",
+    desc: "Installed capacity and generation from solar, wind, hydro and other renewable sources tracked by REA and NERC.",
+    subsectors: "Solar · Wind · Hydro · Mini-Grid",
+  },
+  solid_mineral: {
+    label: "Solid Minerals",
+    desc: "Coal and mineral production and export volumes from MMSD and NBS.",
+    subsectors: "Coal · Minerals",
   },
 };
 
 const ACTS = [
   {
-    year: "2004",
-    name: "Energy Commission of Nigeria Act",
-    ref: "CAP. E10 LFN 2004",
+    year: "2004", name: "Energy Commission of Nigeria Act", ref: "CAP. E10 LFN 2004",
     desc: "Establishes the ECN mandate to coordinate and advise the Federal Government on all matters relating to energy in Nigeria, including this data bank.",
+    pdf: "/documents/ecn_act.pdf",
   },
   {
-    year: "2021",
-    name: "Petroleum Industry Act (PIA)",
-    ref: "Act No. 6 of 2021",
+    year: "2021", name: "Petroleum Industry Act (PIA)", ref: "Act No. 6 of 2021",
     desc: "Restructures the petroleum sector, establishes NUPRC and NMDPRA as successor regulators, and mandates open data publication of oil and gas statistics.",
+    pdf: "/documents/Petroleum_Industry_Act_2021.pdf",
   },
   {
-    year: "2006",
-    name: "Electric Power Sector Reform Act (EPSRA)",
-    ref: "Act No. 6 of 2005",
+    year: "2006", name: "Electric Power Sector Reform Act (EPSRA)", ref: "Act No. 6 of 2005",
     desc: "Deregulates the electricity sector, creates NERC, and requires NERC to maintain and publish comprehensive generation and distribution statistics.",
+    pdf: null,
   },
   {
-    year: "2023",
-    name: "National Energy Transition Plan",
-    ref: "Federal Government of Nigeria",
+    year: "2023", name: "National Energy Transition Plan", ref: "Federal Government of Nigeria",
     desc: "Commits Nigeria to net-zero by 2060 with sector-specific targets for renewables, gas-to-power, and energy efficiency — all tracked through NEDB.",
+    pdf: "/documents/Energy_Policy_Document.pdf",
   },
   {
-    year: "1999",
-    name: "National Petroleum Investment Management Services Act",
-    ref: "NAPIMS / NNPC Act",
-    desc: "Regulates upstream joint ventures and production-sharing contracts; production and cost-recovery data from these contracts feeds into NEDB crude series.",
+    year: "1999", name: "Hydrocarbon Oil Refinery Act", ref: "CAP. H5 LFN 2004",
+    desc: "Regulates petroleum refining operations in Nigeria. Refinery throughput and capacity data from this regulatory framework feeds into NEDB downstream series.",
+    pdf: "/documents/Hydrocarbon_Oil_Refinery_Act.pdf",
   },
   {
-    year: "2007",
-    name: "Renewable Energy Master Plan",
-    ref: "ECN / REMP",
-    desc: "Sets renewable energy targets and defines the data-collection obligations for REA, ECN and state energy commissions that NEDB aggregates.",
+    year: "2007", name: "Petroleum Technology Development Fund Act", ref: "PTDF Act",
+    desc: "Establishes PTDF and its mandate for petroleum technology development. Relevant to upstream capacity and local content data tracked in NEDB.",
+    pdf: "/documents/Petroleum_Technology_Development_Fund_Act.pdf",
   },
 ];
 
@@ -72,45 +90,27 @@ export default async function Home() {
     acc[s.sector].push(s);
     return acc;
   }, {} as Record<string, typeof series>);
-  const totalRecords = series.reduce((sum, s) => sum + s.record_count, 0);
+  const totalRecords = series.reduce((sum, s) => sum + (s.record_count as number), 0);
 
   return (
     <>
       <Navbar active="databank" />
 
-      {/* ── INSTITUTIONAL HERO ── */}
+      {/* ── HERO ── */}
       <div className="inst-hero">
         <div className="container">
-          <div className="mandate-tag">
-            <span className="dot" />
-            ECN / NEDB · National Energy Data Bank
-          </div>
-          <h1>
-            Nigeria&apos;s authoritative<br />
-            <em>energy statistics platform.</em>
-          </h1>
+          <div className="mandate-tag"><span className="dot" />ECN / NEDB · National Energy Data Bank</div>
+          <h1>Nigeria&apos;s authoritative<br /><em>energy statistics platform.</em></h1>
           <p className="lead">
-            The National Energy Data Bank (NEDB) is an initiative of the Energy Commission of Nigeria
-            (ECN), established to serve as the nation&apos;s primary repository and dissemination
-            platform for comprehensive, validated energy data across all fuels, sectors and states.
+            The National Energy Data Bank (NEDB) is an initiative of the Energy Commission of Nigeria (ECN),
+            established as the nation&apos;s primary repository and dissemination platform for comprehensive,
+            validated energy data across all fuels, sectors and states.
           </p>
           <div className="stat-row">
-            <div className="stat">
-              <div className="num">{series.length}</div>
-              <div className="lbl">Tracked Series</div>
-            </div>
-            <div className="stat">
-              <div className="num accent">{totalRecords.toLocaleString()}</div>
-              <div className="lbl">Data Records</div>
-            </div>
-            <div className="stat">
-              <div className="num">36 + FCT</div>
-              <div className="lbl">State Coverage</div>
-            </div>
-            <div className="stat">
-              <div className="num">Monthly</div>
-              <div className="lbl">Update Frequency</div>
-            </div>
+            <div className="stat"><div className="num">{series.length}</div><div className="lbl">Tracked Series</div></div>
+            <div className="stat"><div className="num accent">{totalRecords.toLocaleString()}</div><div className="lbl">Data Records</div></div>
+            <div className="stat"><div className="num">36 + FCT</div><div className="lbl">State Coverage</div></div>
+            <div className="stat"><div className="num">Monthly</div><div className="lbl">Update Frequency</div></div>
           </div>
         </div>
       </div>
@@ -121,27 +121,15 @@ export default async function Home() {
           <div className="cols">
             <div>
               <div className="col-label">Mandate</div>
-              <p>
-                NEDB aggregates energy data from NUPRC, NERC, NMDPRA, NBS, NGC and state energy
-                agencies into a single, standards-compliant repository for policy analysis,
-                regulatory oversight and public transparency.
-              </p>
+              <p>NEDB aggregates energy data from NUPRC, NERC, NMDPRA, NBS, NGC and state energy agencies into a single, standards-compliant repository for policy analysis, regulatory oversight and public transparency.</p>
             </div>
             <div>
               <div className="col-label">Data Standards</div>
-              <p>
-                Records conform to IEA / UN Energy Statistics Recommendations. Each series carries
-                explicit unit codes, source attribution, methodology versioning and region codes
-                aligned to ISO 3166-2:NG.
-              </p>
+              <p>Records conform to IEA / UN Energy Statistics Recommendations. Each series carries explicit unit codes, source attribution, methodology versioning and region codes aligned to ISO 3166-2:NG.</p>
             </div>
             <div>
               <div className="col-label">Access Policy</div>
-              <p>
-                Statistical tables are publicly accessible without registration. Upstream upload,
-                revision and commit operations require ECN staff authentication via the Staff
-                Upload Portal.
-              </p>
+              <p>Statistical tables are publicly accessible without registration. Upload, revision and commit operations require ECN staff authentication via the Staff Upload Portal.</p>
             </div>
           </div>
         </div>
@@ -151,16 +139,11 @@ export default async function Home() {
       <main style={{ background: "var(--surface)", padding: "2.5rem 0 4rem" }}>
         <div className="page-wrap">
 
-          {/* Sector sub-nav */}
           <div className="sub-nav" style={{ marginBottom: "2rem", marginLeft: "-2rem", marginRight: "-2rem", paddingLeft: "2rem" }}>
-            <Link href="/" className="sub-nav-link active">
-              All Sectors
-              <span className="count">{series.length}</span>
-            </Link>
-            {Object.keys(SECTOR_META).map((sec) => (
+            <Link href="/" className="sub-nav-link active">All Sectors<span className="count">{series.length}</span></Link>
+            {Object.entries(SECTOR_META).filter(([sec]) => bySector[sec]?.length).map(([sec, meta]) => (
               <a key={sec} href={`#sector-${sec}`} className="sub-nav-link">
-                {SECTOR_META[sec].label}
-                <span className="count">{(bySector[sec] ?? []).length}</span>
+                {meta.label}<span className="count">{(bySector[sec] ?? []).length}</span>
               </a>
             ))}
           </div>
@@ -173,32 +156,23 @@ export default async function Home() {
                 <div className="sec-hd">
                   <div>
                     <h2>{meta.label}</h2>
-                    <p style={{ fontSize: "0.78rem", color: "var(--ink-3)", marginTop: 4, fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
-                      {meta.desc}
-                    </p>
-                    <p style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 2, letterSpacing: "0.05em" }}>
-                      {meta.subsectors}
-                    </p>
+                    <p style={{ fontSize: "0.78rem", color: "var(--ink-3)", marginTop: 4, fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>{meta.desc}</p>
+                    <p style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 2, letterSpacing: "0.05em" }}>{meta.subsectors}</p>
                   </div>
                   <span className="sec-hd-meta">{items.length} series</span>
                 </div>
-
                 <div className="series-grid">
                   {items.map((s) => (
                     <Link key={s.id} href={`/series/${s.id}`} className="series-cell">
                       <div className="series-meta">
                         <span className="tag tag-green">{s.frequency}</span>
-                        {s.record_count > 0 && (
-                          <span className="tag tag-muted">
-                            {s.record_count.toLocaleString()} records
-                          </span>
-                        )}
+                        {(s.record_count as number) > 0 && <span className="tag tag-muted">{(s.record_count as number).toLocaleString()} records</span>}
                       </div>
                       <div className="series-name">{s.name}</div>
                       <div style={{ display: "flex", gap: "1.5rem", margin: "0.625rem 0" }}>
                         <div>
-                          <div style={{ fontSize: "1.375rem", fontFamily: "var(--font-mono)", fontWeight: 600, lineHeight: 1, color: s.record_count > 0 ? "var(--ink)" : "var(--ink-5)" }}>
-                            {s.record_count > 0 ? s.record_count.toLocaleString() : "—"}
+                          <div style={{ fontSize: "1.375rem", fontFamily: "var(--font-mono)", fontWeight: 600, lineHeight: 1, color: (s.record_count as number) > 0 ? "var(--ink)" : "var(--ink-5)" }}>
+                            {(s.record_count as number) > 0 ? (s.record_count as number).toLocaleString() : "—"}
                           </div>
                           <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 2 }}>Records</div>
                         </div>
@@ -208,9 +182,7 @@ export default async function Home() {
                         </div>
                       </div>
                       <div className="viz-chips">
-                        {s.viz_types.map((vt) => (
-                          <span key={vt} className="viz-chip">{vt}</span>
-                        ))}
+                        {(s.viz_types as string[]).map((vt) => <span key={vt} className="viz-chip">{vt}</span>)}
                       </div>
                     </Link>
                   ))}
@@ -221,12 +193,8 @@ export default async function Home() {
 
           {series.length === 0 && (
             <div style={{ textAlign: "center", padding: "6rem 0" }}>
-              <p style={{ fontSize: "0.95rem", color: "var(--ink-3)", marginBottom: "1rem" }}>
-                No series data available.
-              </p>
-              <p style={{ fontSize: "0.82rem", color: "var(--ink-4)" }}>
-                Contact the NEDB administrator to initialise the database.
-              </p>
+              <p style={{ fontSize: "0.95rem", color: "var(--ink-3)", marginBottom: "0.5rem" }}>No data records published yet.</p>
+              <p style={{ fontSize: "0.82rem", color: "var(--ink-4)" }}>Series are listed above. Staff can upload data via the portal below.</p>
             </div>
           )}
 
@@ -242,47 +210,31 @@ export default async function Home() {
                   <div className="act-year">{act.year} &nbsp;·&nbsp; {act.ref}</div>
                   <div className="act-name">{act.name}</div>
                   <div className="act-desc">{act.desc}</div>
-                  <div className="act-link">
-                    View instrument
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M7 17L17 7M17 7H7M17 7v10"/>
-                    </svg>
-                  </div>
+                  {act.pdf ? (
+                    <a href={act.pdf} target="_blank" rel="noopener noreferrer" className="act-link">
+                      View instrument
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+                    </a>
+                  ) : (
+                    <span className="act-link" style={{ opacity: 0.35, cursor: "default" }}>Document pending</span>
+                  )}
                 </div>
               ))}
             </div>
           </section>
 
-          {/* ── UPLOAD CTA ── */}
-          <div style={{
-            background: "var(--ink)",
-            borderRadius: "var(--r-lg)",
-            padding: "2.5rem",
-            marginTop: "3rem",
-            display: "grid",
-            gridTemplateColumns: "1fr auto",
-            alignItems: "center",
-            gap: "2rem",
-          }}>
+          {/* ── STAFF UPLOAD CTA ── */}
+          <div style={{ background: "var(--ink)", borderRadius: "var(--r-lg)", padding: "2.5rem", marginTop: "3rem", display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: "2rem" }}>
             <div>
-              <div style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green-mid)", marginBottom: "0.5rem" }}>
-                Staff Upload Portal
-              </div>
-              <h3 style={{ fontSize: "1.125rem", fontWeight: 700, color: "#fff", marginBottom: "0.5rem" }}>
-                Authorised ECN / agency staff
-              </h3>
+              <div style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green-mid)", marginBottom: "0.5rem" }}>Staff Upload Portal</div>
+              <h3 style={{ fontSize: "1.125rem", fontWeight: 700, color: "#fff", marginBottom: "0.5rem" }}>Authorised ECN / agency staff</h3>
               <p style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.5)", maxWidth: 480 }}>
-                Upload official energy datasets in CSV or XLSX format. Row-by-row validation
-                with inline error reporting before final commit to the database. Authentication
-                required.
+                Upload official energy datasets in CSV or XLSX format. Row-by-row validation with inline error reporting before final commit to the database. Authentication required.
               </p>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", flexShrink: 0 }}>
-              <Link href="/upload" className="btn btn-primary">
-                Upload Dataset
-              </Link>
-              <Link href="/data-point/login" className="btn btn-ghost">
-                Staff Login
+            <div style={{ flexShrink: 0 }}>
+              <Link href="/data-point/login?redirect=/upload" className="btn btn-primary">
+                Staff Login &amp; Upload
               </Link>
             </div>
           </div>
