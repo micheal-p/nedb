@@ -34,13 +34,12 @@ export default function Navbar({ active }: NavbarProps) {
           <Link href="/" className={`nav-link-main${active === "databank" ? " active" : ""}`}>Data Bank</Link>
           <Link href="/data-point" className={`nav-link-main${active === "datapoint" ? " active" : ""}`}>Data Point</Link>
           <Link href="/about" className={`nav-link-main${active === "about" ? " active" : ""}`}>About NEDB</Link>
-          <a href="https://ecnnigeria.org" target="_blank" rel="noopener noreferrer" className="nav-link-main">ECN Website</a>
+          <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer" className="nav-link-main">ECN Website</a>
         </div>
 
         {/* Desktop actions */}
         <div className="nav-actions nav-desktop">
-          <Link href="/upload" className="btn btn-ghost btn-sm">Staff Upload</Link>
-          <Link href="/data-point/login" className="btn btn-primary btn-sm">Intelligence Suite</Link>
+          <Link href="/data-point/login" className="btn btn-primary btn-sm">Portal Login</Link>
         </div>
 
         {/* Mobile hamburger */}
@@ -61,10 +60,9 @@ export default function Navbar({ active }: NavbarProps) {
           <Link href="/" className={`mobile-link${active === "databank" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Data Bank</Link>
           <Link href="/data-point" className={`mobile-link${active === "datapoint" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Data Point</Link>
           <Link href="/about" className={`mobile-link${active === "about" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>About NEDB</Link>
-          <a href="https://ecnnigeria.org" target="_blank" rel="noopener noreferrer" className="mobile-link" onClick={() => setMenuOpen(false)}>ECN Website</a>
-          <div style={{ padding: "1rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            <Link href="/upload" className="btn btn-ghost" style={{ justifyContent: "center" }} onClick={() => setMenuOpen(false)}>Staff Upload</Link>
-            <Link href="/data-point/login" className="btn btn-primary" style={{ justifyContent: "center" }} onClick={() => setMenuOpen(false)}>Intelligence Suite</Link>
+          <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer" className="mobile-link" onClick={() => setMenuOpen(false)}>ECN Website</a>
+          <div style={{ padding: "1rem" }}>
+            <Link href="/data-point/login" className="btn btn-primary" style={{ justifyContent: "center", width: "100%" }} onClick={() => setMenuOpen(false)}>Portal Login</Link>
           </div>
         </div>
       )}

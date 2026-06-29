@@ -120,26 +120,30 @@ function LoginForm() {
       <div className="login-info">
         <div style={{ maxWidth: 420 }}>
           <h2>
-            NEDB Intelligence Suite &mdash;<br />
-            <em>energy data for those who decide.</em>
+            One portal &mdash;<br />
+            <em>your access follows your role.</em>
           </h2>
+          <p style={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.55)", marginBottom: "2rem", lineHeight: 1.7 }}>
+            All NEDB personnel — administrators, energy staff, and data point viewers — log in here.
+            The system routes you to your assigned workspace automatically.
+          </p>
           <div className="info-points">
             {[
               {
-                title: "Fiscal Intelligence Panels",
-                desc: "Real-time energy revenue, midstream throughput, and power sector settlement data mapped to agency reports.",
+                title: "Administrator",
+                desc: "Full access: manage user accounts, upload energy datasets, and view the intelligence dashboard. Assign portals to new users.",
               },
               {
-                title: "Validated Data Upload",
-                desc: "Upload CSV or XLSX datasets with row-by-row validation, error previews and atomic commit to the central database.",
+                title: "Energy Staff",
+                desc: "Upload official CSV or XLSX datasets with row-by-row validation and inline error reporting before committing to the database.",
               },
               {
-                title: "Anomaly Detection Feed",
-                desc: "Automated alerts for statistical anomalies, sudden value changes, and data gaps across all monitored series.",
+                title: "Data Point Viewer",
+                desc: "Access the NEDB Intelligence Dashboard for energy analytics, fiscal panels, and monitored series — assigned by the administrator.",
               },
               {
-                title: "Restricted Access",
-                desc: "Intelligence Suite access is limited to ECN staff and designated agency liaisons. Public data remains freely accessible.",
+                title: "Authorised Access Only",
+                desc: "Accounts are provisioned by the NEDB administrator. Contact ECN IT to request access. Public data remains freely accessible at energy.gov.ng.",
               },
             ].map((pt) => (
               <div key={pt.title} className="info-point">
@@ -156,8 +160,8 @@ function LoginForm() {
             ))}
           </div>
           <div style={{ marginTop: "2.5rem", paddingTop: "2rem", borderTop: "1px solid rgba(255,255,255,0.1)", fontSize: "0.72rem", color: "rgba(255,255,255,0.3)" }}>
-            Energy Commission of Nigeria (ECN) &nbsp;·&nbsp; National Energy Data Bank (NEDB)<br />
-            Established under ECN Act, CAP. E10, LFN 2004
+            Energy Commission of Nigeria (ECN) &nbsp;·&nbsp; <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.45)" }}>energy.gov.ng</a><br />
+            National Energy Data Bank (NEDB) &nbsp;·&nbsp; Established under ECN Act, CAP. E10, LFN 2004
           </div>
         </div>
       </div>

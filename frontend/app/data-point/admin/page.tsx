@@ -84,8 +84,9 @@ export default function AdminPage() {
               <div style={{ fontSize: "0.62rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Energy Staff Management</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.5)" }}>Signed in as {adminName}</span>
+            <button onClick={() => router.push("/upload")} className="btn btn-ghost btn-sm">Upload Data</button>
             <button onClick={() => router.push("/data-point/dashboard")} className="btn btn-ghost btn-sm">Dashboard</button>
           </div>
         </div>
@@ -138,11 +139,11 @@ export default function AdminPage() {
                     <input className="form-input" placeholder="e.g. ECN, NUPRC, NERC" value={form.agency} onChange={(e) => setForm({ ...form, agency: e.target.value })} />
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Role</label>
+                    <label className="form-label">Landing Portal</label>
                     <select className="form-input form-select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                      <option value="staff">Energy Staff (upload only)</option>
-                      <option value="viewer">Data Point Viewer (dashboard only)</option>
-                      <option value="admin">Administrator (full access)</option>
+                      <option value="staff">Staff Upload Portal — logs in to dataset upload</option>
+                      <option value="viewer">Data Point Dashboard — logs in to analytics viewer</option>
+                      <option value="admin">Administrator — full access to all areas</option>
                     </select>
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
@@ -157,7 +158,8 @@ export default function AdminPage() {
                   <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
                 </div>
                 <p style={{ fontSize: "0.72rem", color: "var(--ink-4)", marginTop: "0.75rem" }}>
-                  After login: Energy Staff are sent to the Upload Portal, Data Point Viewers to the Intelligence Dashboard. Every uploaded dataset is attributed to the staff member by name.
+                  All users log in at the same page. The landing portal you select here is where they land automatically after authentication.
+                  Every dataset upload is permanently attributed to the staff member&apos;s full name.
                 </p>
               </form>
             </div>

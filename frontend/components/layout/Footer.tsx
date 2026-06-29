@@ -11,6 +11,13 @@ export default function Footer() {
             energy statistics in support of national planning, regulatory oversight, and
             public transparency.
           </p>
+          <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: "0.75rem", fontSize: "0.78rem", color: "var(--green-mid)", fontWeight: 600 }}>
+            energy.gov.ng
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M7 17L17 7M17 7H7M17 7v10"/>
+            </svg>
+          </a>
         </div>
         <div className="ft-col">
           <h4>Data Bank</h4>
@@ -23,17 +30,16 @@ export default function Footer() {
         <div className="ft-col">
           <h4>Platform</h4>
           <Link href="/data-point">Data Point</Link>
-          <Link href="/upload">Staff Upload Portal</Link>
           <Link href="/about">About NEDB</Link>
-          <Link href="/data-point/login">Staff Login</Link>
+          <Link href="/data-point/login">Portal Login</Link>
         </div>
         <div className="ft-col">
-          <h4>Policy & Legal</h4>
-          <a href="#">ECN Act, CAP. E10</a>
-          <a href="#">PIA Act 2021</a>
-          <a href="#">National Energy Policy</a>
-          <a href="#">NEDB Data Standards</a>
-          <a href="#">ecnnigeria.org</a>
+          <h4>Policy &amp; Legal</h4>
+          <a href="/documents/ecn_act.pdf" target="_blank" rel="noopener noreferrer">ECN Act, CAP. E10</a>
+          <a href="/documents/Petroleum_Industry_Act_2021.pdf" target="_blank" rel="noopener noreferrer">PIA Act 2021</a>
+          <a href="/documents/Energy_Policy_Document.pdf" target="_blank" rel="noopener noreferrer">National Energy Policy</a>
+          <a href="/documents/Hydrocarbon_Oil_Refinery_Act.pdf" target="_blank" rel="noopener noreferrer">Hydrocarbon Oil Refinery Act</a>
+          <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer">ECN Official Site</a>
         </div>
       </div>
       <div className="ft-bottom">
