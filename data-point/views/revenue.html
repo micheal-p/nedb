@@ -1,0 +1,105 @@
+<div class="page-header reveal">
+    <div>
+        <h2 class="page-title">Revenue Portal<br><span>& Financial Audit.</span></h2>
+        <p class="page-subtitle">Consolidated tracking of energy company sales, taxes, and national revenue accruals.</p>
+    </div>
+</div>
+
+<div class="metrics-grid reveal">
+    <div class="metric-card glass-card">
+        <div class="metric-label">National Sales (FY 2026)</div>
+        <div class="metric-value">₦1.24T</div>
+        <div class="metric-trend up"><i class="fas fa-arrow-up"></i> 8.2% YoY</div>
+    </div>
+    <div class="metric-card glass-card">
+        <div class="metric-label">Taxes Accrued</div>
+        <div class="metric-value">₦84.5B</div>
+        <div class="metric-trend up"><i class="fas fa-arrow-up"></i> 4.1% YoY</div>
+    </div>
+    <div class="metric-card glass-card">
+        <div class="metric-label">Avg. Margin / Liter</div>
+        <div class="metric-value">₦12.40</div>
+        <div class="metric-trend neutral"><i class="fas fa-minus"></i> Stable</div>
+    </div>
+</div>
+
+<div class="chart-block glass-card reveal">
+    <div class="chart-header">
+        <div>
+            <h3>Company Revenue Registry</h3>
+            <div class="chart-desc">All verified downstream operators and their financial standing.</div>
+        </div>
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <div class="search-wrap" style="background: rgba(255,255,255,0.05); padding: 5px 12px; border-radius: var(--r-sm);">
+                <i class="fas fa-magnifying-glass" style="font-size: 0.8rem; color: var(--text-muted);"></i>
+                <input type="text" id="revenueSearch" placeholder="Filter company..." style="background: none; border: none; color: var(--text-primary); font-size: 0.85rem; outline: none;">
+            </div>
+            <button class="topbar-action" onclick="window.print()">
+                <i class="fas fa-print"></i>
+                <span>Print Report</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Revenue List UI -->
+    <div class="revenue-list" id="revenueList">
+        <!-- Rendered via JS -->
+    </div>
+</div>
+
+<!-- Detailed Revenue Modal/Overlay (Hidden by default) -->
+<div id="revDetailOverlay" class="sidebar-overlay" style="z-index: 2000;"></div>
+<div id="revDetailPanel" class="rev-detail-panel glass-card">
+    <div class="rev-close" id="closeRevDetail">
+        <i class="fas fa-xmark"></i>
+    </div>
+    <div id="revDetailContent">
+        <!-- populated by JS -->
+    </div>
+</div>
+
+<style>
+.revenue-list { margin-top: 1.5rem; }
+.rev-item { 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    padding: 1.25rem; 
+    border-radius: var(--r-md); 
+    background: rgba(255,255,255,0.02); 
+    border: 1px solid rgba(255,255,255,0.05); 
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.rev-item:hover { background: rgba(255,255,255,0.04); border-color: var(--green); transform: translateX(5px); }
+.rev-info { display: flex; align-items: center; gap: 1rem; }
+.rev-logo { width: 40px; height: 40px; border-radius: 8px; object-fit: contain; background: white; padding: 4px; }
+.rev-tag { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: var(--green-dim); color: var(--green); font-weight: 600; text-transform: uppercase; }
+
+.rev-detail-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    width: 90%;
+    max-width: 800px;
+    max-height: 85vh;
+    z-index: 2001;
+    padding: 2.5rem;
+    overflow-y: auto;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.rev-detail-panel.active { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+
+.rev-close { position: absolute; top: 1.5rem; right: 1.5rem; cursor: pointer; color: var(--text-muted); font-size: 1.2rem; }
+
+@media print {
+    body * { visibility: hidden; }
+    #revDetailPanel, #revDetailPanel * { visibility: visible; }
+    #revDetailPanel { position: absolute; left: 0; top: 0; width: 100%; max-width: none; transform: none; box-shadow: none; border: none; background: white; color: black; }
+    .rev-close { display: none; }
+}
+</style>

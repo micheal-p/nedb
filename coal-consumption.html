@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coal Consumption Statistics - NEDB</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" type="image/svg+xml" href="../assets/images/Coat_of_arms_of_Nigeria.svg" sizes="50x50">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/fgn_logo_small.png?v=2" />    </head>
+
+<body>
+
+    <!-- LOGO (Fixed, separate from nav) -->
+    <a href="../index.html" class="logo-fixed">
+        <div class="logo-wrapper" style="flex-direction: column; align-items: flex-start; gap: 2px;">
+            <br>
+            <br>
+            <img src="assets/ecnlogo.png" alt="ECN Logo" style="height: 62px; width: auto;">
+            <span
+                style="font-size: 0.3rem; font-weight: 450; color: var(--text-primary); letter-spacing: 0.5px;">NATIONAL
+                ENERGY DATA BANK</span>
+        </div>
+    </a>
+
+    <!-- PILL NAVBAR -->
+    <nav class="navbar pill-nav">
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">Home</a>
+
+            <div class="nav-item dropdown">
+                <span class="nav-link dropdown-toggle">Petroleum Statistics <i class="fas fa-chevron-down"></i></span>
+                <div class="drop-menu">
+                    <a href="crude-oil.html" class="drop-item">Crude Oil Statistics</a>
+                    <a href="pms.html" class="drop-item">PMS Statistics</a>
+                    <a href="lpg.html" class="drop-item">LPG Statistics</a>
+                    <a href="ago.html" class="drop-item">AGO Statistics</a>
+                    <a href="hhk.html" class="drop-item">HHK Statistics</a>
+                    <a href="fuel-oil.html" class="drop-item">Fuel Oil Statistics</a>
+                    <a href="dpk.html" class="drop-item">DPK Statistics</a>
+                    <a href="atk.html" class="drop-item">ATK Statistics</a>
+                    <a href="natural-gas.html" class="drop-item">Natural Gas Statistics</a>
+                </div>
+            </div>
+
+            <div class="nav-item dropdown">
+                <span class="nav-link dropdown-toggle">Electricity <i class="fas fa-chevron-down"></i></span>
+                <div class="drop-menu">
+                    <a href="electricity-consumption.html" class="drop-item">Electricity Consumption</a>
+                    <a href="electricity-sent-out.html" class="drop-item">Electricity Sent Out</a>
+                    <a href="electricity-generation.html" class="drop-item">Electricity Generation</a>
+                </div>
+            </div>
+
+            <div class="nav-item dropdown">
+                <span class="nav-link dropdown-toggle active">Biomass &amp; Coal <i
+                        class="fas fa-chevron-down"></i></span>
+                <div class="drop-menu">
+                    <a href="fuelwood-consumption.html" class="drop-item">Fuelwood Consumption</a>
+                    <a href="charcoal-consumption.html" class="drop-item">Charcoal Consumption</a>
+                    <a href="coal-consumption.html" class="drop-item">Coal Consumption</a>
+                    <a href="coal-export.html" class="drop-item">Coal Export</a>
+                    <a href="coal-for-electricity.html" class="drop-item">Coal for Electricity</a>
+                </div>
+            </div>
+
+            <div class="nav-item dropdown">
+                <span class="nav-link dropdown-toggle">Energy Laws <i class="fas fa-chevron-down"></i></span>
+                <div class="drop-menu">
+                    <a href="document/Energy_Policy_Document.pdf" target="_blank" class="drop-item">Energy Policy</a>
+                    <a href="document/ecn_act.pdf" class="drop-item">ECN Act</a>
+                    <a href="document/Petroleum_Industry_Act_2021.pdf" class="drop-item">PIA Act 2021</a>
+                    <a href="document/Petroleum_Technology_Development_Fund_Act.pdf" class="drop-item">PTDF Act</a>
+                    <a href="document/Nigerian_Atomic_Energy_Commission_Act.pdf" class="drop-item">NAEC Act</a>
+                    <a href="document/Nuclear_Safety_and_Radiation_Protection_Act.pdf" class="drop-item">NSRP Act</a>
+                    <a href="document/Hydrocarbon_Oil_Refinery_Act.pdf" class="drop-item">HOR Act</a>
+                    <a href="document/Petroleum_Traning_Institute_Act.pdf" class="drop-item">PTIF Act</a>
+                </div>
+            </div>
+
+            <a href="data-point/index.html" class="nav-link">Data Point</a>
+            <a href="../atlas.html" class="nav-link">Energy Atlas</a>
+        </div>
+    </nav>
+
+    
+
+    <!-- MOBILE BUTTON -->
+    <button class="mobile-menu-btn" id="mobileMenuBtn">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- MOBILE OVERLAY -->
+    <div class="mobile-nav-overlay" id="mobileOverlay">
+        <div class="mobile-nav-header">
+            <img src="assets/ecnlogo.png" alt="ECN Logo" class="mobile-nav-logo">
+            <button class="mobile-close-btn" id="mobileCloseBtn"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="mobile-nav-content">
+            <ul class="mobile-nav-list">
+                <li class="mobile-nav-item"><a href="index.html" class="mobile-nav-link">Home</a></li>
+
+                <li class="mobile-nav-item">
+                    <div class="mobile-nav-link mobile-dropdown-header">
+                        Petroleum Statistics <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="mobile-dropdown-content">
+                        <a href="crude-oil.html">Crude Oil Statistics</a>
+                        <a href="pms.html">PMS Statistics</a>
+                        <a href="lpg.html">LPG Statistics</a>
+                        <a href="ago.html">AGO Statistics</a>
+                        <a href="hhk.html">HHK Statistics</a>
+                        <a href="fuel-oil.html">Fuel Oil Statistics</a>
+                        <a href="dpk.html">DPK Statistics</a>
+                        <a href="atk.html">ATK Statistics</a>
+                        <a href="natural-gas.html">Natural Gas Statistics</a>
+                    </div>
+                </li>
+
+                <li class="mobile-nav-item">
+                    <div class="mobile-nav-link mobile-dropdown-header">
+                        Electricity Statistics <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="mobile-dropdown-content">
+                        <a href="electricity-consumption.html">Electricity Consumption</a>
+                        <a href="electricity-sent-out.html">Electricity Sent Out</a>
+                        <a href="electricity-generation.html">Electricity Generation</a>
+                    </div>
+                </li>
+
+                <li class="mobile-nav-item">
+                    <div class="mobile-nav-link mobile-dropdown-header">
+                        Biomass &amp; Coal <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="mobile-dropdown-content">
+                        <a href="fuelwood-consumption.html">Fuelwood Consumption</a>
+                        <a href="charcoal-consumption.html">Charcoal Consumption</a>
+                        <a href="coal-consumption.html">Coal Consumption</a>
+                        <a href="coal-export.html">Coal Export</a>
+                        <a href="coal-for-electricity.html">Coal for Electricity</a>
+                    </div>
+                </li>
+
+                <li class="mobile-nav-item">
+                    <div class="mobile-nav-link mobile-dropdown-header">
+                        Energy Laws <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="mobile-dropdown-content">
+                        <a href="document/Energy_Policy_Document.pdf" target="_blank">Energy Policy</a>
+                        <a href="document/ecn_act.pdf">ECN Act</a>
+                        <a href="document/Petroleum_Industry_Act_2021.pdf">PIA Act 2021</a>
+                        <a href="document/Petroleum_Technology_Development_Fund_Act.pdf">PTDF Act</a>
+                        <a href="document/Nigerian_Atomic_Energy_Commission_Act.pdf">NAEC Act</a>
+                        <a href="document/Nuclear_Safety_and_Radiation_Protection_Act.pdf">NSRP Act</a>
+                        <a href="document/Hydrocarbon_Oil_Refinery_Act.pdf">HOR Act</a>
+                        <a href="document/Petroleum_Traning_Institute_Act.pdf">PTIF Act</a>
+                    </div>
+                </li>
+
+                <li class="mobile-nav-item"><a href="data-point/index.html" class="mobile-nav-link">Data Point</a></li>
+                <li class="mobile-nav-item"><a href="../atlas.html" class="mobile-nav-link">Energy Atlas</a></li>
+            </ul>
+
+            <div class="mobile-nav-footer">
+                <!-- Auth handled in header/profile -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content-wrapper" style="padding-top: calc(var(--header-h) + 40px); padding-bottom: 80px;">
+        <div class="container">
+
+            <!-- Breadcrumb -->
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> <i class="fas fa-chevron-right"></i>
+                <span>Biomass & Coal Statistics</span> <i class="fas fa-chevron-right"></i>
+                <span class="current">Coal Consumption Statistics</span>
+            </div>
+
+            <div class="page-header">
+                <h1>Coal Consumption Statistics</h1>
+                <p>Comprehensive data on coal consumption in Nigeria.</p>
+            </div>
+
+            <!-- Filters & Actions -->
+            <div class="data-toolbar">
+                <div class="filter-group">
+                    <div class="filter-item">
+                        <label>Product Description</label>
+                        <select class="form-select" style="min-width: 200px;" id="filterProduct">
+                            <option value="all">All Descriptions</option>
+                            <option>Coal Consumption in Steel Industry</option>
+                            <option>Coal Consumption in Cement Plants</option>
+                            <option>Coal Consumption in Rail Transport</option>
+                            <option>Total Coal Consumption</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label>Year From</label>
+                        <select class="form-select" id="filterYearFrom">
+                            <option>2026</option>
+                            <option>2025</option>
+                            <option>2024</option>
+                            <option>2023</option>
+                            <option>2022</option>
+                            <option>2021</option>
+                            <option>2020</option>
+                            <option>2019</option>
+                            <option>2018</option>
+                            <option>2017</option>
+                            <option>2016</option>
+                            <option>2015</option>
+                            <option>2014</option>
+                            <option>2013</option>
+                            <option>2012</option>
+                            <option>2011</option>
+                            <option>2010</option>
+                            <option>2009</option>
+                            <option>2008</option>
+                            <option>2007</option>
+                            <option>2006</option>
+                            <option>2005</option>
+                            <option>2004</option>
+                            <option>2003</option>
+                            <option>2002</option>
+                            <option>2001</option>
+                            <option>2000</option>
+                            <option>1999</option>
+                            <option>1998</option>
+                            <option>1997</option>
+                            <option>1996</option>
+                            <option>1995</option>
+                            <option>1994</option>
+                            <option>1993</option>
+                            <option>1992</option>
+                            <option>1991</option>
+                            <option>1990</option>
+                            <option>1989</option>
+                            <option>1988</option>
+                            <option>1987</option>
+                            <option>1986</option>
+                            <option>1985</option>
+                            <option>1984</option>
+                            <option>1983</option>
+                            <option>1982</option>
+                            <option>1981</option>
+                            <option>1980</option>
+                            <option>1979</option>
+                            <option>1978</option>
+                            <option>1977</option>
+                            <option>1976</option>
+                            <option>1975</option>
+                            <option>1974</option>
+                            <option>1973</option>
+                            <option>1972</option>
+                            <option>1971</option>
+                            <option>1970</option>
+                            <option>1969</option>
+                            <option>1968</option>
+                            <option>1967</option>
+                            <option>1966</option>
+                            <option>1965</option>
+                            <option>1964</option>
+                            <option>1963</option>
+                            <option>1962</option>
+                            <option>1961</option>
+                            <option>1960</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label>Year To</label>
+                        <select class="form-select" id="filterYearTo">
+                            <option>2026</option>
+                            <option>2025</option>
+                            <option>2024</option>
+                            <option>2023</option>
+                            <option>2022</option>
+                            <option>2021</option>
+                            <option>2020</option>
+                            <option>2019</option>
+                            <option>2018</option>
+                            <option>2017</option>
+                            <option>2016</option>
+                            <option>2015</option>
+                            <option>2014</option>
+                            <option>2013</option>
+                            <option>2012</option>
+                            <option>2011</option>
+                            <option>2010</option>
+                            <option>2009</option>
+                            <option>2008</option>
+                            <option>2007</option>
+                            <option>2006</option>
+                            <option>2005</option>
+                            <option>2004</option>
+                            <option>2003</option>
+                            <option>2002</option>
+                            <option>2001</option>
+                            <option>2000</option>
+                            <option>1999</option>
+                            <option>1998</option>
+                            <option>1997</option>
+                            <option>1996</option>
+                            <option>1995</option>
+                            <option>1994</option>
+                            <option>1993</option>
+                            <option>1992</option>
+                            <option>1991</option>
+                            <option>1990</option>
+                            <option>1989</option>
+                            <option>1988</option>
+                            <option>1987</option>
+                            <option>1986</option>
+                            <option>1985</option>
+                            <option>1984</option>
+                            <option>1983</option>
+                            <option>1982</option>
+                            <option>1981</option>
+                            <option>1980</option>
+                            <option>1979</option>
+                            <option>1978</option>
+                            <option>1977</option>
+                            <option>1976</option>
+                            <option>1975</option>
+                            <option>1974</option>
+                            <option>1973</option>
+                            <option>1972</option>
+                            <option>1971</option>
+                            <option>1970</option>
+                            <option>1969</option>
+                            <option>1968</option>
+                            <option>1967</option>
+                            <option>1966</option>
+                            <option>1965</option>
+                            <option>1964</option>
+                            <option>1963</option>
+                            <option>1962</option>
+                            <option>1961</option>
+                            <option>1960</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" id="filterBtn">Filter</button>
+                </div>
+                <div class="action-group">
+                    <button class="btn btn-outline" id="exportBtn"><i class="fas fa-download"></i> Export
+                        Report</button>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">S/No</th>
+                            <th>Description</th>
+                            <th>Year</th>
+                            <th>Value</th>
+                            <th>Unit of Measure</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>1</td><td>Coal Production = Consumption (Avg. Annual)</td><td>2014–2023</td><td>~2,700,000</td><td>Short tons / year — EIA International Energy Statistics</td></tr>
+                        <tr><td>2</td><td>Coal Reserves (Recoverable)</td><td>2023</td><td>~246,000,000</td><td>Short tons — EIA</td></tr>
+                        <tr><td>3</td><td>Coal Type</td><td>—</td><td>Bituminous</td><td>(100% of production)</td></tr>
+                        <tr><td>4</td><td>Domestic Use Share</td><td>2014–2023</td><td>100%</td><td>(no exports — Nigeria consumes all production domestically)</td></tr>
+                        <tr><td>5</td><td>Coal Share of Primary Energy Consumption</td><td>2023</td><td>2%</td><td>(EIA Table 1)</td></tr>
+                        <tr><td>6</td><td>Coal Share of Primary Energy Production</td><td>2023</td><td>1%</td><td>(EIA Table 1)</td></tr>
+                    </tbody>
+                </table>
+                <div class="data-source" style="padding:14px 16px; margin-top:12px; background:#f8fafc; border-radius:6px; font-size:13px; line-height:1.55; color:#334155;">
+                    <strong style="color:#0f172a;">Sources &amp; verification:</strong>
+                    <ul style="margin:8px 0 0 18px; padding:0;">
+                        <li><a href="https://www.eia.gov/international/content/analysis/countries_long/Nigeria/Nigeria-2025.pdf" target="_blank" rel="noopener">EIA Country Analysis Brief — Nigeria, Nov 2025</a>, "Coal" section &amp; Figure 5 (citing EIA International Energy Statistics database).</li>
+                        <li>Direct quote from EIA: <em>"Between 2014 and 2023, the country averaged about 2.7 million short tons of coal production, all of which was bituminous coal. Nigeria uses all its production to satisfy its domestic needs."</em></li>
+                        <li>Year-by-year breakdowns 2014–2023 are visible only as a chart in the EIA brief; the underlying yearly numbers live in the EIA International Energy Statistics database. Verbatim per-year figures were not extracted during this scrape — only the 10-year average is quoted as authoritative here.</li>
+                    </ul>
+                    <div style="margin-top:8px; font-size:12px; color:#64748b;">Last verified: 2026-05-03.</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+        <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="container footer-bottom">
+            <div class="logo-wrapper">
+                <img src="assets/ecnlogo.png" alt="ECN Logo">
+                <span>Energy Commission of Nigeria</span>
+            </div>
+            <p>&copy; 2025 National Energy Data Bank. All rights reserved. &nbsp;|&nbsp; Version 3.0.1</p>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+</body>
+
+</html>

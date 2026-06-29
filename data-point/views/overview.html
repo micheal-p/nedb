@@ -1,0 +1,82 @@
+<!-- Page Header -->
+<div class="page-header reveal">
+    <div>
+        <h2 class="page-title" id="dashTitle">
+            National Downstream<br>
+            <span>Intelligence.</span>
+        </h2>
+        <p class="page-subtitle" id="dashSubtitle">
+            Aggregated industry data for verified petroleum product sales.
+        </p>
+    </div>
+    <div style="text-align: right; flex-shrink: 0;">
+        <div style="font-size: 0.7rem; font-weight: 600; color: var(--text-dark-secondary); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.3rem;">
+            Last Updated</div>
+        <div style="font-family: var(--mono); font-size: 0.85rem; color: var(--text-dark);" id="lastUpdated">—</div>
+    </div>
+</div>
+
+<!-- Metric Cards -->
+<div class="metrics-grid reveal">
+    <div class="metric-card glass-card">
+        <div class="metric-label">PMS Volume (Liters)</div>
+        <div class="metric-value" id="pmsMetric">—</div>
+        <div class="metric-trend up"><i class="fas fa-arrow-up"></i> 2.1% vs last week</div>
+    </div>
+    <div class="metric-card glass-card">
+        <div class="metric-label">AGO (BRL Equivalent)</div>
+        <div class="metric-value" id="agoMetric">—</div>
+        <div class="metric-trend down"><i class="fas fa-arrow-down"></i> 0.8% vs last week</div>
+    </div>
+    <div class="metric-card glass-card">
+        <div class="metric-label">Market Revenue (₦)</div>
+        <div class="metric-value" id="revMetric">—</div>
+        <div class="metric-trend up"><i class="fas fa-arrow-up"></i> 5.4% vs last week</div>
+    </div>
+    <div class="metric-card glass-card">
+        <div class="metric-label">IoT Nodes Verified</div>
+        <div class="metric-value" id="iotMetric">—</div>
+        <div class="metric-trend neutral"><i class="fas fa-circle-check"></i> All nodes active</div>
+    </div>
+</div>
+
+<!-- Chart Block -->
+<div class="chart-block glass-card reveal">
+    <div class="chart-header">
+        <div>
+            <h3>Product Delivery Projections</h3>
+            <div class="chart-desc">PMS vs AGO — daily throughput in barrels equivalent</div>
+        </div>
+        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+            <div class="pill-tabs">
+                <button class="pill-tab active" data-range="daily">Daily</button>
+                <button class="pill-tab" data-range="weekly">Weekly</button>
+                <button class="pill-tab" data-range="monthly">Monthly</button>
+            </div>
+            <button class="topbar-action" id="filterBtn" style="font-size: 0.78rem;">
+                <i class="fas fa-sliders"></i>
+                <span>Filter</span>
+            </button>
+        </div>
+    </div>
+    <div class="chart-canvas-wrap">
+        <canvas id="mixChart"></canvas>
+    </div>
+</div>
+
+<!-- Activity Log -->
+<div class="log-block glass-card reveal">
+    <div class="log-header">
+        <h3>Live IoT Downstream Telemetry</h3>
+        <div class="live-indicator">
+            <span class="live-dot"></span>
+            Real-time feed
+        </div>
+    </div>
+    <div class="log-body" id="logStage">
+        <div class="log-item">
+            <span class="log-ts">INIT</span>
+            <span class="log-msg">Connecting to national IoT nexus via CBN-Secure Bridge…</span>
+        </div>
+    </div>
+</div>

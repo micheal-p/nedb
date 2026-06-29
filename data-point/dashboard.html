@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — Data Point</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+</head>
+
+<body>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="dashboard">
+
+        <!-- ====== SIDEBAR ====== -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <img src="../assets/fgn_logo_small.png" class="brand-logo" alt="FGN">
+                    Data Point
+                </div>
+                <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <span class="nav-section-label">National Intel</span>
+                <button class="sidebar-link" id="sideOverview">
+                    <div class="sidebar-link-content">
+                        <i class="fas fa-table-cells-large"></i>
+                        <span>Overview</span>
+                    </div>
+                </button>
+                <button class="sidebar-link" id="sideNodeMap">
+                    <div class="sidebar-link-content">
+                        <i class="fas fa-map-location-dot"></i>
+                        <span>Live Node Map</span>
+                    </div>
+                </button>
+
+                <span class="nav-section-label">Data Bank Ecosystem</span>
+
+                <!-- ENERGY DROPDOWN -->
+                <div class="nav-dropdown-wrap">
+                    <button class="sidebar-link dropdown-trigger" id="dropEnergy">
+                        <div class="sidebar-link-content">
+                            <i class="fas fa-bolt"></i>
+                            <span>Energy Sectors</span>
+                        </div>
+                        <i class="fas fa-chevron-down chevron"></i>
+                    </button>
+                    <div class="nav-sub-menu">
+                        <!-- OIL & GAS NESTED -->
+                        <button class="sidebar-link dropdown-trigger sub-dropdown" id="dropOilGas">
+                            <div class="sidebar-link-content">
+                                <i class="fas fa-oil-can" style="font-size: 0.75rem;"></i>
+                                <span>Oil & Gas</span>
+                            </div>
+                            <i class="fas fa-chevron-down chevron"></i>
+                        </button>
+                        <div class="nav-sub-menu">
+                            <button class="sub-link" id="sideUpstream">Upstream <span class="badge badge-amber"
+                                    style="font-size: 0.5rem;">Soon</span></button>
+                            <button class="sub-link" id="sideMidstream">Midstream <span class="badge badge-amber"
+                                    style="font-size: 0.5rem;">Soon</span></button>
+                            <button class="sub-link active" id="sideDownstream">Downstream <span
+                                    class="badge badge-green" style="font-size: 0.5rem;">Live</span></button>
+                        </div>
+
+                        <button class="sub-link" id="sidePower">Power Generation</button>
+                        <button class="sub-link" id="sideRenewable">Renewable Energy</button>
+                        <button class="sub-link" id="sideBioenergy">Bioenergy</button>
+                    </div>
+                </div>
+
+                <button class="sidebar-link" id="sideRevenue">
+                    <div class="sidebar-link-content">
+                        <i class="fas fa-landmark"></i>
+                        <span>Revenue Portal</span>
+                    </div>
+                </button>
+                <button class="sidebar-link" id="sideIoT">
+                    <div class="sidebar-link-content">
+                        <i class="fas fa-microchip"></i>
+                        <span>IoT Analytics</span>
+                    </div>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-fx">
+                    <span class="label">Verified Volume (FY)</span>
+                    <div class="value" id="fxRate">62.0M L</div>
+                </div>
+                <button class="sidebar-link danger" onclick="window.location.href='index.html'">
+                    <i class="fas fa-power-off"></i>
+                    <span>Exit Terminal</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ====== MAIN ====== -->
+        <div class="main">
+
+            <!-- TOP BAR -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="search-wrap">
+                        <i class="fas fa-magnifying-glass"></i>
+                        <input type="text" id="companySearch" class="search-input"
+                            placeholder="Search: Oando, NNPC, Total…" autocomplete="off">
+                        <div id="searchResults" class="search-results"></div>
+                    </div>
+                    <div class="entity-chip" id="entityChip">
+                        <img src="../assets/fgn_logo_small.png" class="entity-logo" id="chipLogo"
+                            style="height: 18px; width: 18px; object-fit: contain;">
+                        <span id="chipLabel">National Aggregate</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- DYNAMIC VIEW CONTAINER -->
+            <div class="content" id="viewContainer">
+                <!-- Fragmented views load here -->
+                <div class="loader-wrap">
+                    <div class="loader"></div>
+                    <span>Initializing Intel Nexus...</span>
+                </div>
+            </div>
+
+        </div><!-- /main -->
+    </div><!-- /dashboard -->
+
+    <script src="views.js"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>

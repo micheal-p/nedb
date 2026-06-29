@@ -1,0 +1,29 @@
+<div class="page-header reveal">
+    <div>
+        <h2 class="page-title">Live Node Map<br><span>& Dynamic Telemetry.</span></h2>
+        <p class="page-subtitle">Interactive visualization of all active downstream nodes across Nigeria.</p>
+    </div>
+</div>
+
+<div class="chart-block glass-card map-container reveal" style="padding: 0; overflow: hidden; height: 600px; position: relative;">
+    <div id="iotMap" style="height: 100%; width: 100%; z-index: 1;"></div>
+    
+    <!-- Map Legend/Overlay -->
+    <div class="map-overlay-card glass-card" style="position: absolute; bottom: 20px; right: 20px; z-index: 1000; padding: 1rem; width: 220px;">
+        <h4 style="font-size: 0.8rem; margin-bottom: 0.75rem;">Network Status</h4>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.75rem;">
+                <span class="text-secondary">Total Nodes</span>
+                <b id="activeNodeCount">0</b>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.7rem;">
+                <span style="width: 8px; height: 8px; background: var(--green); border-radius: 50%;"></span>
+                <span>Static Depot (Verified)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.7rem;">
+                <span style="width: 8px; height: 8px; background: var(--blue); border-radius: 50%;"></span>
+                <span>Mobile Tanker (GPS)</span>
+            </div>
+        </div>
+    </div>
+</div>

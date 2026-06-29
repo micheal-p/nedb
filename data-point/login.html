@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In — Data Point Intelligence</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="login.css">
+</head>
+
+<body>
+
+    <div class="login-page">
+
+        <div class="login-card">
+            <!-- Brand -->
+            <div class="login-brand">
+                <img src="../assets/fgn_logo_small.png" class="brand-logo" alt="FGN">
+                Data Point
+            </div>
+
+            <!-- Title -->
+            <div class="login-title">
+                <h2>Welcome <em>back</em></h2>
+                <p>Enter your official energy clearance credentials</p>
+            </div>
+
+            <!-- Form -->
+            <form id="loginForm" autocomplete="off">
+                <div class="input-group">
+                    <label class="input-label" for="accessId">Access ID</label>
+                    <div class="input-field-icon">
+                        <i class="fas fa-id-card"></i>
+                        <input type="text" id="accessId" class="input-field" placeholder="e.g. ECN-OPS-00422" required
+                            autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label" for="passkey">Passkey</label>
+                    <div class="input-field-icon">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="passkey" class="input-field" placeholder="Enter passkey" required
+                            autocomplete="off">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-login" id="loginBtn">
+                    <span id="btnLabel">Continue</span>
+                    <i class="fas fa-arrow-right" id="btnIcon" style="font-size: 0.8rem;"></i>
+                </button>
+            </form>
+
+            <div class="login-back">
+                <a href="index.html">
+                    <i class="fas fa-arrow-left" style="font-size: 0.75rem; margin-right: 4px;"></i>
+                    Back to home
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const label = document.getElementById('btnLabel');
+            const icon = document.getElementById('btnIcon');
+
+            btn.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin';
+            icon.style.fontSize = '0.85rem';
+            label.textContent = 'Verifying';
+
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 1400);
+        });
+    </script>
+
+</body>
+
+</html>

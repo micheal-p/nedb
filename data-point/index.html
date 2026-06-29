@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Point — Energy Intelligence Suite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+
+    <div class="landing-wrap">
+
+        <!-- NAV -->
+        <nav class="top-nav">
+            <div class="nav-inner">
+                <div class="brand">
+                    <img src="../assets/fgn_logo_small.png" class="brand-logo" alt="FGN">
+                    Data Point
+                </div>
+                <div class="nav-links">
+                    <a href="../../index.html" class="nav-link">Home</a>
+                    <a href="#features" class="nav-link">Features</a>
+                    <a href="login.html" class="btn btn-primary" style="padding: 0.45rem 1.1rem; font-size: 0.85rem;">
+                        Open Dashboard <i class="fas fa-arrow-right" style="font-size: 0.75rem;"></i>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- HERO -->
+        <section class="hero container reveal">
+            <div class="badge">
+                <i class="dot"></i>
+                National Energy Intelligence
+            </div>
+            <h1 class="display">Nigeria's center of<br><em>energy transparency.</em>
+            </h1>
+            <p>One source of truth for Nigeria's entire downstream energy sector. Aggregating production, grids, and
+                sales data with IoT precision.</p>
+            <div class="hero-cta">
+                <a href="login.html" class="btn btn-primary">
+                    Open Dashboard <i class="fas fa-chevron-right" style="font-size: 0.75rem;"></i>
+                </a>
+                <a href="#features" class="btn btn-ghost">Learn more</a>
+            </div>
+
+            <!-- Stats Banner -->
+            <div class="stats-banner reveal">
+                <div class="stat-item">
+                    <div class="stat-label">Verified Volume (FY)</div>
+                    <div class="stat-value mono" id="volumeTicker">62.0M L</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Coverage</div>
+                    <div class="stat-value green">36 States</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">IoT Verified Nodes</div>
+                    <div class="stat-value">12,402</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FEATURES -->
+        <section class="features-section container" id="features">
+            <div class="section-header reveal">
+                <span class="label">What's inside</span>
+                <h2>Built for precision at <em>every layer</em></h2>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card glass-card reveal">
+                    <div class="feature-icon"><i class="fas fa-bolt"></i></div>
+                    <h3>Grid Telemetry</h3>
+                    <p>Real-time monitoring of electricity generation and distribution across the national grid
+                        infrastructure.</p>
+                </div>
+                <div class="feature-card glass-card reveal">
+                    <div class="feature-icon"><i class="fas fa-gas-pump"></i></div>
+                    <h3>Downstream Flow</h3>
+                    <p>Precise tracking of petroleum product sales through verified flow meters at the pump level
+                        nationwide.</p>
+                </div>
+                <div class="feature-card glass-card reveal">
+                    <div class="feature-icon"><i class="fas fa-mountain"></i></div>
+                    <h3>Solid Minerals</h3>
+                    <p>Tracking coal exports and biomass consumption indicators for coordinated energy policy decisions.</p>
+                </div>
+                <div class="feature-card glass-card reveal">
+                    <div class="feature-icon"><i class="fas fa-microchip"></i></div>
+                    <h3>IoT Node Network</h3>
+                    <p>Over 12,400 verified hardware nodes streaming tamper-proof consumption data in real time.</p>
+                </div>
+                <div class="feature-card glass-card reveal">
+                    <div class="feature-icon"><i class="fas fa-landmark"></i></div>
+                    <h3>Revenue Portal</h3>
+                    <p>Per-company volumes in liters with full attribution to the IoT locations producing each figure.</p>
+                </div>
+                <div class="feature-card glass-card reveal">
+                    <div class="feature-icon"><i class="fas fa-shield-halved"></i></div>
+                    <h3>Secure Clearance</h3>
+                    <p>Role-based access control with identity-locked energy clearance IDs for all verified operators.</p>
+                </div>
+            </div>
+        </section>
+
+            <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="container footer-bottom">
+            <div class="logo-wrapper">
+                <img src="../assets/ecnlogo.png" alt="ECN Logo">
+                <span>Energy Commission of Nigeria</span>
+            </div>
+            <p>&copy; 2025 National Energy Data Bank. All rights reserved. &nbsp;|&nbsp; Version 3.0.1</p>
+        </div>
+    </footer>
+
+    </div>
+
+    <script>
+        // Intersection Observer for Reveal animations
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // Verified Volume Ticker
+        const ticker = document.getElementById('volumeTicker');
+        if (ticker) {
+            setInterval(() => {
+                const drift = (Math.random() * 0.04 - 0.02).toFixed(2);
+                const vol = (62.0 + parseFloat(drift)).toFixed(2);
+                ticker.textContent = `${vol}M L`;
+            }, 5000);
+        }
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+
+</body>
+
+</html>
