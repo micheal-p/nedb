@@ -175,7 +175,7 @@ export default function Dashboard() {
 
           <div style={{ padding: "0.5rem 0", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
             {staffRole === "admin" && (
-              <Link href="/data-point/admin" className="sb-link">
+              <Link href="/admin" className="sb-link">
                 <span className="sb-label">Manage Staff Accounts</span>
                 <span style={{ fontSize: "0.6rem", background: "var(--green)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>ADMIN</span>
               </Link>

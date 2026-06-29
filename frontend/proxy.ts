@@ -29,17 +29,17 @@ export async function proxy(request: NextRequest) {
 
   const role = claims.role ?? "";
 
+  // /admin — admin only
+  if (pathname.startsWith("/admin") && role !== "admin") {
+    return NextResponse.redirect(new URL("/data-point/login", request.url));
+  }
+
   // /upload — staff and admin only
   if (pathname.startsWith("/upload") && role !== "staff" && role !== "admin") {
     return NextResponse.redirect(new URL("/data-point/login", request.url));
   }
 
-  // /data-point/admin — admin only
-  if (pathname.startsWith("/data-point/admin") && role !== "admin") {
-    return NextResponse.redirect(new URL("/data-point/dashboard", request.url));
-  }
-
-  // /data-point/dashboard — viewer and admin only (staff goes to upload)
+  // /data-point/dashboard — viewer and admin (staff → upload)
   if (pathname.startsWith("/data-point/dashboard") && role === "staff") {
     return NextResponse.redirect(new URL("/upload", request.url));
   }
@@ -48,5 +48,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/upload/:path*", "/data-point/dashboard/:path*", "/data-point/admin/:path*"],
+  matcher: ["/admin/:path*", "/upload/:path*", "/data-point/dashboard/:path*", "/data-point/admin/:path*"],
 };
