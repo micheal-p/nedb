@@ -98,3 +98,18 @@ ALTER TABLE staff_users       ENABLE ROW LEVEL SECURITY;
 -- Public read on series_types and energy_records (the data is public)
 CREATE POLICY "public read series"  ON series_types   FOR SELECT USING (true);
 CREATE POLICY "public read records" ON energy_records  FOR SELECT USING (true);
+
+-- 008: Seed admin account
+-- Password hash below is bcrypt(cost=12) of: nedb2026
+-- Change the password via the admin panel after first login
+INSERT INTO staff_users (username, full_name, email, role, password_hash, agency, is_active, created_by)
+VALUES (
+  'admin',
+  'System Administrator',
+  'admin@nedb.gov.ng',
+  'admin',
+  '$2b$12$TRJnj7QYGWRiKWobmEctYu/z2TFqirscWVMQOv8cmKS29RKbCgfYe',
+  'ECN',
+  true,
+  'system'
+) ON CONFLICT (username) DO NOTHING;

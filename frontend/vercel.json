@@ -4,8 +4,18 @@
   "outputDirectory": ".next",
   "installCommand": "npm install",
   "functions": {
-    "app/api/**": {
-      "maxDuration": 30
+    "app/api/upload/validate/route": { "maxDuration": 30 },
+    "app/api/upload/commit/[sessionId]/route": { "maxDuration": 30 },
+    "app/api/templates/[id]/route": { "maxDuration": 15 }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin",  "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type,Authorization" }
+      ]
     }
-  }
+  ]
 }
