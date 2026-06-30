@@ -25,7 +25,278 @@ interface ProfileDef {
   alerts: { level: string; msg: string; time: string }[];
 }
 
+const ALL_NAV = ["overview", "downstream", "upstream", "midstream", "power", "renewable", "bioenergy", "revenue", "faac"];
+
 const PROFILE_MAP: Record<string, ProfileDef> = {
+
+  // ── AGENCY PROFILES ──────────────────────────────────────────
+
+  presidency: {
+    label: "State House — Presidency",
+    roleTitle: "National Energy Security Intelligence Brief",
+    color: "#1B2A4A",
+    accent: "rgba(27,42,74,0.06)",
+    persona: "Strategic energy intelligence for the Presidency and State House. Cross-sector overview covering national energy security, production benchmarks and fiscal performance.",
+    defaultView: "overview",
+    navOrder: ALL_NAV,
+    kpis: [
+      { label: "Crude Oil Production",   value: "85.1M",  unit: "Barrels",  change: "+13.3%", up: true,  period: "Dec 2024" },
+      { label: "Nat. Energy Access Rate",value: "57.4%",  unit: "Popn.",    change: "+2.1pp", up: true,  period: "2024" },
+      { label: "Oil Revenue (FAAC)",     value: "₦2.8T",  unit: "",         change: "+9.3%",  up: true,  period: "Q4 2024" },
+      { label: "Electricity Generation", value: "3,241",  unit: "GWh",      change: "+4.1%",  up: true,  period: "Q4 2024" },
+    ],
+    alerts: [
+      { level: "high",   msg: "National crude oil production still 18% below OPEC+ quota — diplomatic implication.", time: "Today" },
+      { level: "high",   msg: "Power sector market shortfall at ₦4.1T — investor confidence risk.", time: "2 days ago" },
+      { level: "medium", msg: "LPG penetration at 18.4% — below 25% Decade of Gas target.", time: "3 days ago" },
+      { level: "low",    msg: "Renewable energy capacity grew 18.4% YoY — SEforALL commitment on track.", time: "1 week ago" },
+    ],
+  },
+
+  ecn: {
+    label: "Energy Commission of Nigeria (ECN)",
+    roleTitle: "ECN — National Energy Policy Intelligence",
+    color: "#0E7A3C",
+    accent: "rgba(14,122,60,0.06)",
+    persona: "All-sector energy intelligence for ECN leadership. Policy monitoring across petroleum, electricity, gas, renewables and biomass sectors.",
+    defaultView: "overview",
+    navOrder: ALL_NAV,
+    kpis: [
+      { label: "National Energy Mix",    value: "57.4%",  unit: "Fossil",   change: "-2.3pp", up: true,  period: "2024" },
+      { label: "Renewable Capacity",     value: "2,014",  unit: "MW",       change: "+18.4%", up: true,  period: "2024" },
+      { label: "Natural Gas Produced",   value: "196.4",  unit: "Bcf",      change: "+7.8%",  up: true,  period: "Q4 2024" },
+      { label: "Fuelwood Consumption",   value: "71.2M",  unit: "m³",       change: "-3.1%",  up: true,  period: "2024" },
+    ],
+    alerts: [
+      { level: "medium", msg: "National energy efficiency target for 2025 at risk — Q3 consumption up 4%.", time: "3 days ago" },
+      { level: "medium", msg: "Renewable energy data for Q4 not yet submitted by 4 state agencies.", time: "4 days ago" },
+      { level: "low",    msg: "Natural gas utilisation improved: flaring down 6% YoY.", time: "1 week ago" },
+      { level: "low",    msg: "Biomass consumption reconciliation pending for 7 northern states.", time: "1 week ago" },
+    ],
+  },
+
+  nerc: {
+    label: "NERC — Electricity Regulatory Commission",
+    roleTitle: "NERC — Electricity Market Regulatory Dashboard",
+    color: "#1D4ED8",
+    accent: "rgba(29,78,216,0.05)",
+    persona: "Regulatory intelligence for NERC commissioners and directorates. DisCo compliance, market settlement, tariff performance and grid reliability monitoring.",
+    defaultView: "downstream",
+    navOrder: ["downstream", "power", "midstream", "overview", "upstream", "renewable", "bioenergy", "faac", "revenue"],
+    kpis: [
+      { label: "Avg ATC&C Loss (Nat.)", value: "46.2%",  unit: "",    change: "-1.8pp", up: true,  period: "Q4 2024" },
+      { label: "Collection Efficiency", value: "73.5%",  unit: "",    change: "+2.1pp", up: true,  period: "Q4 2024" },
+      { label: "Market Shortfall",      value: "₦4.1T",  unit: "",    change: "Cumul.", up: false, period: "FY 2024" },
+      { label: "Installed Capacity",    value: "12,522", unit: "MW",  change: "+3.2%",  up: true,  period: "Q4 2024" },
+    ],
+    alerts: [
+      { level: "high",   msg: "Abuja DisCo ATC&C loss exceeded 40% threshold for 3rd consecutive month.", time: "2 hours ago" },
+      { level: "high",   msg: "Kano DisCo collection efficiency fell below 65% — regulatory trigger breached.", time: "1 day ago" },
+      { level: "medium", msg: "NBET payment shortfall increased by ₦12B vs. previous month.", time: "4 days ago" },
+      { level: "low",    msg: "3 DisCos yet to submit November generation data — enforcement notice pending.", time: "2 days ago" },
+    ],
+  },
+
+  nuprc: {
+    label: "NUPRC — Upstream Petroleum Regulator",
+    roleTitle: "NUPRC — Upstream Petroleum Regulatory Dashboard",
+    color: "#78350F",
+    accent: "rgba(120,53,15,0.05)",
+    persona: "Upstream regulatory intelligence for NUPRC. Crude oil production, OML block performance, licensing, royalty compliance and flare reduction monitoring.",
+    defaultView: "upstream",
+    navOrder: ["upstream", "revenue", "overview", "downstream", "midstream", "faac", "power", "renewable", "bioenergy"],
+    kpis: [
+      { label: "Crude Oil Production",  value: "85.1M",  unit: "Barrels",  change: "+13.3%", up: true,  period: "Dec 2024" },
+      { label: "Gas Flared (Nat.)",     value: "1.84",   unit: "Bcf",      change: "-6.1%",  up: true,  period: "Q4 2024" },
+      { label: "Active OML Blocks",     value: "79",     unit: "Blocks",   change: "+3",      up: true,  period: "2024" },
+      { label: "Royalty Compliance",    value: "84.2%",  unit: "",         change: "+5.1pp", up: true,  period: "Q4 2024" },
+    ],
+    alerts: [
+      { level: "high",   msg: "OML 25 royalty remittance overdue by 45 days — enforcement action pending.", time: "Today" },
+      { level: "medium", msg: "Crude production still 18% below OPEC+ quota — operator notification required.", time: "2 days ago" },
+      { level: "medium", msg: "3 marginal field operators missed Q4 production reporting deadline.", time: "3 days ago" },
+      { level: "low",    msg: "NUPRC Q4 crude lifting schedule published. 3 cargoes deferred.", time: "5 days ago" },
+    ],
+  },
+
+  nmdpra: {
+    label: "NMDPRA — Midstream & Downstream Regulator",
+    roleTitle: "NMDPRA — Midstream & Downstream Regulatory Dashboard",
+    color: "#0369A1",
+    accent: "rgba(3,105,161,0.05)",
+    persona: "Midstream and downstream regulatory intelligence for NMDPRA. Refinery throughput, product distribution, pipeline performance and retail compliance.",
+    defaultView: "downstream",
+    navOrder: ["downstream", "midstream", "overview", "upstream", "revenue", "power", "renewable", "bioenergy", "faac"],
+    kpis: [
+      { label: "PMS Sales Volume",       value: "1.82B",  unit: "Litres",   change: "-2.3%",  up: false, period: "Q3 2024" },
+      { label: "AGO (Diesel) Sales",     value: "624M",   unit: "Litres",   change: "+5.1%",  up: true,  period: "Q3 2024" },
+      { label: "LPG Consumption",        value: "214K",   unit: "MT",       change: "+11.2%", up: true,  period: "Q3 2024" },
+      { label: "Refinery Throughput",    value: "38.4%",  unit: "Capacity", change: "+12pp",  up: true,  period: "Q4 2024" },
+    ],
+    alerts: [
+      { level: "high",   msg: "PMS national stock level below 14-day buffer — potential supply stress.", time: "Yesterday" },
+      { level: "medium", msg: "AGO diesel price differential widening — cross-border arbitrage risk.", time: "4 days ago" },
+      { level: "medium", msg: "4 depot operators non-compliant with Q4 stock reporting requirement.", time: "3 days ago" },
+      { level: "low",    msg: "Dangote Refinery throughput at 38.4% of nameplate capacity — improving.", time: "1 week ago" },
+    ],
+  },
+
+  nnpcl: {
+    label: "NNPC Limited",
+    roleTitle: "NNPC Limited — Operational Intelligence Dashboard",
+    color: "#065F46",
+    accent: "rgba(6,95,70,0.05)",
+    persona: "Operational and commercial intelligence for NNPC Limited leadership. Production performance, equity crude, gas monetisation and downstream operations.",
+    defaultView: "upstream",
+    navOrder: ["upstream", "downstream", "midstream", "revenue", "overview", "power", "renewable", "bioenergy", "faac"],
+    kpis: [
+      { label: "Equity Crude Lifted",    value: "42.3M",  unit: "Barrels",  change: "+8.7%",  up: true,  period: "Dec 2024" },
+      { label: "Gas Monetised",          value: "114.2",  unit: "Bcf",      change: "+12.1%", up: true,  period: "Q4 2024" },
+      { label: "Refinery Throughput",    value: "38.4%",  unit: "Capacity", change: "+12pp",  up: true,  period: "Q4 2024" },
+      { label: "Downstream Revenue",     value: "₦1.4T",  unit: "",         change: "+18.3%", up: true,  period: "Q4 2024" },
+    ],
+    alerts: [
+      { level: "medium", msg: "JV cash calls shortfall — Shell SPDC OML 21 production at risk.", time: "2 days ago" },
+      { level: "medium", msg: "Gas flaring above threshold in OML 58 — TCO penalty exposure.", time: "3 days ago" },
+      { level: "low",    msg: "NLNG Train 7 FID timeline pushed to Q2 2025.", time: "5 days ago" },
+      { level: "low",    msg: "Equity crude lifting plan for Q1 2025 submitted to NUPRC.", time: "1 week ago" },
+    ],
+  },
+
+  nemic: {
+    label: "NEMIC — Energy Management & Infrastructure",
+    roleTitle: "NEMIC — National Energy Management Intelligence Dashboard",
+    color: "#4338CA",
+    accent: "rgba(67,56,202,0.05)",
+    persona: "Infrastructure and management intelligence for NEMIC. Energy infrastructure investment, grid capacity, emergency response and critical asset monitoring.",
+    defaultView: "power",
+    navOrder: ["power", "midstream", "renewable", "overview", "downstream", "upstream", "bioenergy", "faac", "revenue"],
+    kpis: [
+      { label: "Grid Installed Capacity", value: "12,522", unit: "MW",   change: "+3.2%",  up: true,  period: "Q4 2024" },
+      { label: "Transmission Capacity",   value: "7,801",  unit: "MW",   change: "+1.8%",  up: true,  period: "Q4 2024" },
+      { label: "Critical Assets Flagged", value: "14",     unit: "Items",change: "+3",     up: false, period: "Q4 2024" },
+      { label: "Infra. Investment (FY)",  value: "₦284B",  unit: "",     change: "+22.1%", up: true,  period: "2024" },
+    ],
+    alerts: [
+      { level: "high",   msg: "Transmission lines in Kaduna corridor at 94% utilisation — overload risk.", time: "6 hours ago" },
+      { level: "high",   msg: "Afam IV gas turbine scheduled maintenance overdue — reliability risk.", time: "1 day ago" },
+      { level: "medium", msg: "Pipeline integrity inspection for Escravos–Lagos deferred to Q2 2025.", time: "3 days ago" },
+      { level: "low",    msg: "Solar hybrid mini-grid rollout at 68% of 2024 REA target.", time: "1 week ago" },
+    ],
+  },
+
+  nrs: {
+    label: "NRS — Natural Resources Statistics",
+    roleTitle: "NRS — Natural Resources Statistical Dashboard",
+    color: "#6B21A8",
+    accent: "rgba(107,33,168,0.05)",
+    persona: "Statistical intelligence for Natural Resources reporting. Production volumes, consumption trends, cross-sector comparisons and data quality monitoring.",
+    defaultView: "overview",
+    navOrder: ALL_NAV,
+    kpis: [
+      { label: "Series Tracked",         value: "12",    unit: "Series",  change: "Active",  up: true,  period: "2025" },
+      { label: "Records in Database",    value: "4,820", unit: "Rows",    change: "+312",    up: true,  period: "This month" },
+      { label: "Data Completeness",      value: "76.4%", unit: "",        change: "+4.1pp",  up: true,  period: "Q4 2024" },
+      { label: "Agencies Reporting",     value: "9",     unit: "Active",  change: "of 12",   up: false, period: "Q4 2024" },
+    ],
+    alerts: [
+      { level: "medium", msg: "3 agencies yet to submit Q4 2024 data — completeness at risk.", time: "2 days ago" },
+      { level: "medium", msg: "Biomass methodology revision pending ECN sign-off.", time: "4 days ago" },
+      { level: "low",    msg: "Crude oil production CAGR updated following NUPRC Q4 reconciliation.", time: "3 days ago" },
+      { level: "low",    msg: "NBS energy statistics annual report reconciliation scheduled for Jan 2025.", time: "1 week ago" },
+    ],
+  },
+
+  rea: {
+    label: "REA — Rural Electrification Agency",
+    roleTitle: "REA — Rural Electrification & Off-Grid Dashboard",
+    color: "#15803D",
+    accent: "rgba(21,128,61,0.05)",
+    persona: "Rural electrification and off-grid intelligence for REA. Mini-grid rollout, solar penetration, off-grid connections and clean energy access by state.",
+    defaultView: "renewable",
+    navOrder: ["renewable", "bioenergy", "power", "overview", "downstream", "upstream", "midstream", "faac", "revenue"],
+    kpis: [
+      { label: "Off-Grid Connections",   value: "2.4M",  unit: "Households", change: "+18.2%", up: true,  period: "2024" },
+      { label: "Mini-Grids Deployed",    value: "214",   unit: "Sites",      change: "+62",    up: true,  period: "2024" },
+      { label: "Renewable Capacity",     value: "2,014", unit: "MW",         change: "+18.4%", up: true,  period: "2024" },
+      { label: "LPG Penetration",        value: "18.4%", unit: "Households", change: "+2.1pp", up: true,  period: "2024" },
+    ],
+    alerts: [
+      { level: "medium", msg: "Solar hybrid mini-grid rollout at 68% of 2024 target — 66 sites behind.", time: "3 days ago" },
+      { level: "medium", msg: "FiT payment obligations for wind projects missed Q3 deadline.", time: "1 week ago" },
+      { level: "low",    msg: "NREEEP Phase 2 off-grid connections ahead of target in Katsina and Sokoto.", time: "5 days ago" },
+      { level: "low",    msg: "World Bank funding tranche for off-grid solar released — disbursement pending.", time: "1 week ago" },
+    ],
+  },
+
+  tcn: {
+    label: "TCN — Transmission Company of Nigeria",
+    roleTitle: "TCN — Grid Transmission Intelligence Dashboard",
+    color: "#B45309",
+    accent: "rgba(180,83,9,0.05)",
+    persona: "Transmission grid intelligence for TCN management. Grid capacity, wheeling capacity, system stability, constraint management and capital projects.",
+    defaultView: "power",
+    navOrder: ["power", "midstream", "downstream", "overview", "upstream", "renewable", "bioenergy", "faac", "revenue"],
+    kpis: [
+      { label: "System Sent Out",       value: "2,890",  unit: "GWh",   change: "+3.8%",  up: true,  period: "Q4 2024" },
+      { label: "Wheeling Capacity",     value: "7,801",  unit: "MW",    change: "+1.8%",  up: true,  period: "Q4 2024" },
+      { label: "Transmission Losses",   value: "8.4%",   unit: "",      change: "-0.6pp", up: true,  period: "Q4 2024" },
+      { label: "System Frequency Exc.", value: "4",      unit: "Events",change: "-2",     up: true,  period: "This week" },
+    ],
+    alerts: [
+      { level: "high",   msg: "Transmission lines in Kaduna corridor at 94% utilisation — overload risk.", time: "6 hours ago" },
+      { level: "high",   msg: "System frequency dropped below 49.5 Hz on 4 occasions in the past week.", time: "1 day ago" },
+      { level: "medium", msg: "330kV Benin–Onitsha line maintenance scheduled — rerouting required.", time: "3 days ago" },
+      { level: "low",    msg: "TCN capacity expansion project at Ikeja West substation 74% complete.", time: "5 days ago" },
+    ],
+  },
+
+  firs: {
+    label: "FIRS — Federal Inland Revenue Service",
+    roleTitle: "FIRS — Energy Sector Tax & Revenue Dashboard",
+    color: "#9F1239",
+    accent: "rgba(159,18,57,0.05)",
+    persona: "Energy sector tax and revenue intelligence for FIRS. Petroleum Profit Tax, royalties, CITA from energy companies and FAAC energy contribution tracking.",
+    defaultView: "revenue",
+    navOrder: ["revenue", "faac", "upstream", "overview", "downstream", "midstream", "power", "renewable", "bioenergy"],
+    kpis: [
+      { label: "PPT Collected",          value: "₦289B",  unit: "",  change: "+6.8%",  up: true,  period: "Q4 2024" },
+      { label: "Upstream Royalties",     value: "₦412B",  unit: "",  change: "+14.1%", up: true,  period: "Q4 2024" },
+      { label: "CITA (Energy Sector)",   value: "₦74B",   unit: "",  change: "+9.2%",  up: true,  period: "Q4 2024" },
+      { label: "Oil Revenue (FAAC)",     value: "₦2.8T",  unit: "",  change: "+9.3%",  up: true,  period: "Q4 2024" },
+    ],
+    alerts: [
+      { level: "high",   msg: "PPT audit for 2 IOC JVs pending — ₦38B in dispute.", time: "4 days ago" },
+      { level: "medium", msg: "FAAC oil revenue share 12% below budget projection for Q4.", time: "2 days ago" },
+      { level: "medium", msg: "3 E&P companies yet to file Q4 PPT self-assessment.", time: "5 days ago" },
+      { level: "low",    msg: "FIRS energy sector audit programme for 2025 published.", time: "1 week ago" },
+    ],
+  },
+
+  nbs: {
+    label: "NBS — National Bureau of Statistics",
+    roleTitle: "NBS — Energy Sector Statistical Dashboard",
+    color: "#0C4A6E",
+    accent: "rgba(12,74,110,0.05)",
+    persona: "Energy sector statistical intelligence for NBS. Cross-sector production and consumption data validation, trend analysis and national accounts reconciliation.",
+    defaultView: "overview",
+    navOrder: ALL_NAV,
+    kpis: [
+      { label: "Crude Oil (GDP Weight)", value: "5.4%",   unit: "of GDP",  change: "+0.3pp", up: true,  period: "Q4 2024" },
+      { label: "Energy Sector CPI",      value: "184.2",  unit: "Index",   change: "+12.4%", up: false, period: "Dec 2024" },
+      { label: "Data Completeness",      value: "76.4%",  unit: "",        change: "+4.1pp", up: true,  period: "Q4 2024" },
+      { label: "Natural Gas Produced",   value: "196.4",  unit: "Bcf",     change: "+7.8%",  up: true,  period: "Q4 2024" },
+    ],
+    alerts: [
+      { level: "medium", msg: "Energy sector contribution to Q4 GDP pending reconciliation with NUPRC.", time: "3 days ago" },
+      { level: "medium", msg: "CPI energy sub-index showed 12.4% YoY increase — inflation signal.", time: "4 days ago" },
+      { level: "low",    msg: "Annual energy statistics report 2023 released for public consultation.", time: "5 days ago" },
+      { level: "low",    msg: "Biomass methodology revision pending ECN sign-off before next publication.", time: "1 week ago" },
+    ],
+  },
+
+  // ── GENERIC SECTOR PROFILES (retained) ────────────────────────
+
   executive: {
     label: "Executive Overview",
     roleTitle: "National Energy Intelligence Dashboard",

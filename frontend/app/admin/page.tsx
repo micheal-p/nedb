@@ -13,11 +13,25 @@ interface Company {
 }
 
 const PROFILES = [
-  { value: "executive",   label: "Executive Overview — cross-sector KPIs & national intelligence" },
-  { value: "petroleum",   label: "Petroleum & Gas — crude production, PMS/AGO/LPG sales" },
-  { value: "electricity", label: "Power & Grid — generation, transmission, DisCo performance" },
-  { value: "renewables",  label: "Clean Energy — renewables capacity, gas, biomass metrics" },
-  { value: "fiscal",      label: "Fiscal & Revenue — FAAC contribution, royalties, upstream revenue" },
+  // Agencies & Parastatals
+  { value: "presidency",  label: "Presidency / State House — national energy security brief" },
+  { value: "ecn",         label: "ECN — Energy Commission of Nigeria (policy, all sectors)" },
+  { value: "nerc",        label: "NERC — Electricity Regulatory Commission (market regulation)" },
+  { value: "nuprc",       label: "NUPRC — Upstream Petroleum Regulatory Commission" },
+  { value: "nmdpra",      label: "NMDPRA — Midstream & Downstream Petroleum Regulator" },
+  { value: "nnpcl",       label: "NNPC Limited — operational & commercial intelligence" },
+  { value: "nemic",       label: "NEMIC — Energy Management & Infrastructure" },
+  { value: "nrs",         label: "NRS — Natural Resources Statistics" },
+  { value: "rea",         label: "REA — Rural Electrification Agency (off-grid, renewables)" },
+  { value: "tcn",         label: "TCN — Transmission Company of Nigeria (grid intelligence)" },
+  { value: "firs",        label: "FIRS — Federal Inland Revenue Service (PPT, royalties, FAAC)" },
+  { value: "nbs",         label: "NBS — National Bureau of Statistics (energy sector data)" },
+  // Generic sector profiles
+  { value: "executive",   label: "Executive Overview — cross-sector national intelligence" },
+  { value: "petroleum",   label: "Petroleum & Gas Analyst — crude, PMS/AGO/LPG" },
+  { value: "electricity", label: "Power & Grid Analyst — generation, DisCo performance" },
+  { value: "renewables",  label: "Clean Energy Analyst — renewables, gas, biomass" },
+  { value: "fiscal",      label: "Fiscal & Revenue Analyst — FAAC, royalties, upstream revenue" },
 ];
 
 const EMPTY_USER = { username: "", full_name: "", email: "", role: "staff", agency: "", password: "", dashboard_profile: "executive" };
