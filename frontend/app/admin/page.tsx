@@ -87,8 +87,8 @@ function periodToDate(period: string): string {
   return `${period}-01-01`;
 }
 
-const ENTRY_YEARS = [2020, 2021, 2022, 2023, 2024, 2025];
-const ENTRY_INIT = { series_type_id: "crude_oil_production", year: 2024, period: "", value: "", state: "NGA", region: "", source: "", notes: "" };
+const ENTRY_YEARS = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
+const ENTRY_INIT = { series_type_id: "crude_oil_production", year: 2026, period: "", value: "", state: "NGA", region: "", source: "", notes: "" };
 
 export default function AdminPage() {
   const router = useRouter();
@@ -745,8 +745,8 @@ Content-Type: application/json
 
 {
   "series_type_id": "crude_oil_production",
-  "period":         "2024-06",
-  "period_date":    "2024-06-01",
+  "period":         "2026-06",
+  "period_date":    "2026-06-01",
   "value":          85.4,
   "unit":           "M Barrels",
   "region":         "NGA",
@@ -767,14 +767,14 @@ Content-Type: application/json
   "series_type_id": "electricity_generation",
   "readings": [
     {
-      "period":      "2024-01",
-      "period_date": "2024-01-01",
+      "period":      "2026-01",
+      "period_date": "2026-01-01",
       "value":       2810.3,
       "region":      "NGA"
     },
     {
-      "period":      "2024-02",
-      "period_date": "2024-02-01",
+      "period":      "2026-02",
+      "period_date": "2026-02-01",
       "value":       2790.1
     }
   ]

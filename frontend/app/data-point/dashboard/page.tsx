@@ -511,9 +511,9 @@ export default function Dashboard() {
   const [staffRole, setStaffRole]   = useState("");
   const [profile, setProfile]       = useState<ProfileDef>(PROFILE_MAP.executive);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedYear, setSelectedYear] = useState(2024);
+  const [selectedYear, setSelectedYear] = useState(2026);
   const [dashData, setDashData]     = useState<DashData>({});
-  const [availYears, setAvailYears] = useState<number[]>([2024]);
+  const [availYears, setAvailYears] = useState<number[]>([2026]);
   const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
@@ -698,7 +698,7 @@ export default function Dashboard() {
                 <div className="panel-header">
                   <span className="panel-title">Distribution Companies — ATC&amp;C Loss & Collection Efficiency</span>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>NERC Q4 2024</span>
+                    <span style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>NERC Q4 2025</span>
                     <button onClick={() => downloadTableCSV("disco-performance", ["Company","State","ATC&C Loss (%)","Collection Efficiency (%)","Performance"], DOWNSTREAM_TABLE.map((r) => [r.company, r.state, r.atc, r.collection, r.atc < 40 ? "Above Target" : r.atc < 50 ? "Moderate" : "Critical"]))} style={{ padding: "3px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-strong)", color: "var(--green-deep)", cursor: "pointer" }}>↓ CSV</button>
                   </div>
                 </div>
