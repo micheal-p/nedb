@@ -44,7 +44,15 @@ const EMPTY_CO   = { company: "", oml_blocks: "", operator_type: "IOC JV", secto
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "registry">("users");
+  const [tab, setTab] = useState<"users" | "registry" | "requests">("users");
+
+  // Access requests state
+  interface AccessRequest { id: number; full_name: string; email: string; organisation: string; position: string | null; profile_key: string; justification: string | null; status: string; created_at: string; temp_username: string | null }
+  const [requests, setRequests]       = useState<AccessRequest[]>([]);
+  const [reqLoading, setReqLoading]   = useState(false);
+  const [approveId, setApproveId]     = useState<number | null>(null);
+  const [approvePwd, setApprovePwd]   = useState("");
+  const [approvedUser, setApprovedUser] = useState<string | null>(null);
 
   // Users state
   const [users, setUsers]         = useState<StaffUser[]>([]);
@@ -83,13 +91,22 @@ export default function AdminPage() {
     setRegLoading(false);
   }, []);
 
+  const loadRequests = useCallback(async (status = "pending") => {
+    const token = getToken(); if (!token) return;
+    setReqLoading(true);
+    const r = await fetch(`/api/access-requests?status=${status}`, { headers: { Authorization: `Bearer ${token}` } });
+    setRequests(r.ok ? await r.json() : []);
+    setReqLoading(false);
+  }, []);
+
   useEffect(() => {
     const token = getToken();
     if (!token) { router.replace("/data-point/login?redirect=/admin"); return; }
     if (getRole() !== "admin") { router.replace("/"); return; }
     loadUsers();
     loadCompanies();
-  }, [router, loadUsers, loadCompanies]);
+    loadRequests();
+  }, [router, loadUsers, loadCompanies, loadRequests]);
 
   // ── User actions ──────────────────────────────────────────────
   async function createUser(e: React.FormEvent) {
@@ -116,6 +133,33 @@ export default function AdminPage() {
     await api.resetPassword(resetId, newPwd, token);
     setMsg({ type: "ok", text: "Password reset successfully." });
     setResetId(null); setNewPwd("");
+  }
+
+  // ── Access request actions ────────────────────────────────────
+  async function approveRequest() {
+    if (!approveId || approvePwd.length < 6) return;
+    const token = getToken(); if (!token) return;
+    setSubmitting(true); setMsg(null);
+    try {
+      const r = await fetch(`/api/access-requests/${approveId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "approve", password: approvePwd }),
+      });
+      const data = await r.json();
+      if (!r.ok) { setMsg({ type: "err", text: data.error ?? "Failed to approve" }); return; }
+      setApprovedUser(data.username);
+      setApprovePwd(""); setApproveId(null); loadRequests(); loadUsers();
+    } catch { setMsg({ type: "err", text: "Network error" }); }
+    finally { setSubmitting(false); }
+  }
+
+  async function rejectRequest(id: number) {
+    const token = getToken(); if (!token) return;
+    await fetch(`/api/access-requests/${id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "reject" }),
+    });
+    loadRequests();
   }
 
   // ── Registry actions ──────────────────────────────────────────
@@ -188,6 +232,12 @@ export default function AdminPage() {
         <div style={{ borderBottom: "1px solid var(--border)", marginBottom: "2rem", display: "flex", gap: 0 }}>
           <button style={TAB_STYLE(tab === "users")}    onClick={() => { setTab("users"); setMsg(null); }}>Portal Users</button>
           <button style={TAB_STYLE(tab === "registry")} onClick={() => { setTab("registry"); setMsg(null); }}>Producing Companies Registry</button>
+          <button style={TAB_STYLE(tab === "requests")} onClick={() => { setTab("requests"); loadRequests(); setMsg(null); }}>
+            Access Requests
+            {requests.filter((r) => r.status === "pending").length > 0 && (
+              <span style={{ marginLeft: 6, background: "#C0392B", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: "0.65rem", fontWeight: 700 }}>{requests.filter((r) => r.status === "pending").length}</span>
+            )}
+          </button>
         </div>
 
         {/* Global message */}
@@ -433,6 +483,81 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
+          </>
+        )}
+
+        {/* ── ACCESS REQUESTS TAB ── */}
+        {tab === "requests" && (
+          <>
+            {/* Filter bar */}
+            <div style={{ display: "flex", gap: 8, marginBottom: "1.5rem", alignItems: "center" }}>
+              <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--ink-4)" }}>Show:</span>
+              {["pending","approved","rejected","all"].map((s) => (
+                <button key={s} onClick={() => loadRequests(s)} style={{ padding: "4px 12px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid var(--border)", borderRadius: 4, background: "transparent", color: "var(--ink-4)", cursor: "pointer", textTransform: "capitalize" }}>{s}</button>
+              ))}
+              <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "var(--ink-5)" }}>{requests.length} result{requests.length !== 1 ? "s" : ""}</span>
+            </div>
+
+            {/* Approved user flash */}
+            {approvedUser && (
+              <div style={{ marginBottom: "1.5rem", padding: "1rem 1.25rem", background: "var(--green-strong)", border: "1px solid var(--green-line)", borderRadius: "var(--r-md)" }}>
+                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--green-deep)" }}>Account created successfully</div>
+                <div style={{ fontSize: "0.82rem", color: "var(--green-deep)", marginTop: 4 }}>
+                  Username: <strong style={{ fontFamily: "var(--font-mono)" }}>{approvedUser}</strong> &nbsp;·&nbsp; Share the username + password with the user securely.
+                </div>
+                <button onClick={() => setApprovedUser(null)} style={{ marginTop: 8, fontSize: "0.72rem", color: "var(--green-deep)", background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>Dismiss</button>
+              </div>
+            )}
+
+            {/* Approve modal */}
+            {approveId !== null && (
+              <div style={{ marginBottom: "1.5rem", padding: "1.25rem", background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-2)" }}>
+                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.5rem" }}>Set Initial Password</div>
+                <div style={{ fontSize: "0.78rem", color: "var(--ink-4)", marginBottom: "1rem" }}>An account will be created for this user. Set a temporary password to share with them securely.</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input type="password" value={approvePwd} onChange={(e) => setApprovePwd(e.target.value)} placeholder="Min. 6 characters" style={{ flex: 1, padding: "8px 12px", fontSize: "0.82rem", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)", color: "var(--ink)" }} />
+                  <button onClick={approveRequest} disabled={submitting || approvePwd.length < 6} style={{ padding: "8px 18px", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.82rem", fontWeight: 700, cursor: approvePwd.length >= 6 ? "pointer" : "not-allowed", opacity: approvePwd.length >= 6 ? 1 : 0.5 }}>Create Account</button>
+                  <button onClick={() => { setApproveId(null); setApprovePwd(""); }} style={{ padding: "8px 14px", background: "transparent", border: "1px solid var(--border)", borderRadius: 6, fontSize: "0.82rem", cursor: "pointer" }}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {reqLoading ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)" }}>Loading requests…</div>
+            ) : requests.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)" }}>No access requests found.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {requests.map((req) => (
+                  <div key={req.id} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem", borderLeft: `4px solid ${req.status === "pending" ? "var(--amber)" : req.status === "approved" ? "var(--green)" : "#aaa"}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--ink)" }}>{req.full_name}</span>
+                          <span style={{ fontSize: "0.7rem", color: "var(--ink-5)", fontFamily: "var(--font-mono)" }}>{req.email}</span>
+                          <span className={`tag ${req.status === "pending" ? "tag-amber" : req.status === "approved" ? "tag-green" : ""}`} style={{ fontSize: "0.62rem" }}>{req.status.toUpperCase()}</span>
+                        </div>
+                        <div style={{ fontSize: "0.78rem", color: "var(--ink-4)", marginTop: 4 }}>{req.organisation}{req.position ? ` · ${req.position}` : ""}</div>
+                        <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "0.68rem", fontWeight: 700, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", color: "var(--ink-4)" }}>Profile: {req.profile_key}</span>
+                          {req.temp_username && <span style={{ fontSize: "0.68rem", fontFamily: "var(--font-mono)", background: "var(--green-strong)", border: "1px solid var(--green-line)", borderRadius: 4, padding: "2px 8px", color: "var(--green-deep)" }}>User: {req.temp_username}</span>}
+                        </div>
+                        {req.justification && (
+                          <div style={{ marginTop: 8, fontSize: "0.78rem", color: "var(--ink-4)", background: "var(--surface)", borderRadius: 4, padding: "6px 10px", borderLeft: "2px solid var(--border)", lineHeight: 1.5 }}>{req.justification}</div>
+                        )}
+                        <div style={{ marginTop: 6, fontSize: "0.65rem", color: "var(--ink-5)" }}>Submitted {new Date(req.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                      </div>
+                      {req.status === "pending" && (
+                        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                          <button onClick={() => { setApproveId(req.id); setApprovePwd(""); setApprovedUser(null); }} style={{ padding: "6px 14px", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>Approve →</button>
+                          <button onClick={() => rejectRequest(req.id)} style={{ padding: "6px 12px", background: "transparent", color: "var(--red)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, fontSize: "0.78rem", cursor: "pointer" }}>Reject</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
