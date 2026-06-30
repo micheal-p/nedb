@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   if (!await requireAdmin(req)) return err("admin access required", 403);
   const { data } = await db()
     .from("staff_users")
-    .select("id, username, full_name, email, role, agency, is_active, created_by, created_at, last_login")
+    .select("id, username, full_name, email, role, agency, is_active, dashboard_profile, created_by, created_at, last_login")
     .order("created_at", { ascending: false });
   return ok(data ?? []);
 }

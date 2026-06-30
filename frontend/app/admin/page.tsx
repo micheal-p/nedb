@@ -42,9 +42,57 @@ const PROFILES = [
 const EMPTY_USER = { username: "", full_name: "", email: "", role: "staff", agency: "", password: "", dashboard_profile: "executive" };
 const EMPTY_CO   = { company: "", oml_blocks: "", operator_type: "IOC JV", sector: "Upstream", status: "Active" };
 
+// ── Nigeria geopolitical zones ────────────────────────────────
+const NG_ZONES: Record<string, string[]> = {
+  "North West":    ["Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi", "Sokoto", "Zamfara"],
+  "North East":    ["Adamawa", "Bauchi", "Borno", "Gombe", "Taraba", "Yobe"],
+  "North Central": ["Benue", "FCT (Abuja)", "Kogi", "Kwara", "Nasarawa", "Niger", "Plateau"],
+  "South West":    ["Ekiti", "Lagos", "Ogun", "Ondo", "Osun", "Oyo"],
+  "South East":    ["Abia", "Anambra", "Ebonyi", "Enugu", "Imo"],
+  "South South":   ["Akwa Ibom", "Bayelsa", "Cross River", "Delta", "Edo", "Rivers"],
+};
+const STATE_TO_ZONE: Record<string, string> = {};
+Object.entries(NG_ZONES).forEach(([z, states]) => states.forEach((s) => { STATE_TO_ZONE[s] = z; }));
+const ALL_STATES = Object.values(NG_ZONES).flat().sort();
+
+// ── Series type metadata ──────────────────────────────────────
+const SERIES_META: Record<string, { name: string; unit: string; freq: string; fuel_product?: string }> = {
+  crude_oil_production:   { name: "Crude Oil Production",         unit: "M Barrels",  freq: "monthly"   },
+  natural_gas_production: { name: "Natural Gas Production",       unit: "Bcf",         freq: "monthly"   },
+  pms_sales:              { name: "PMS (Petrol) Sales",           unit: "M Litres",    freq: "monthly",  fuel_product: "PMS" },
+  ago_sales:              { name: "AGO (Diesel) Sales",           unit: "M Litres",    freq: "monthly",  fuel_product: "AGO" },
+  kerosine_sales:         { name: "Kerosene / DPK Sales",         unit: "M Litres",    freq: "monthly",  fuel_product: "DPK" },
+  lpg_sales:              { name: "LPG Sales",                    unit: "MT",          freq: "monthly",  fuel_product: "LPG" },
+  electricity_generation: { name: "Electricity Generation",       unit: "GWh",         freq: "monthly"   },
+  electricity_sent_out:   { name: "Electricity Sent Out",         unit: "GWh",         freq: "monthly"   },
+  electricity_consumption:{ name: "Electricity Consumption",      unit: "GWh",         freq: "monthly"   },
+  renewable_energy:       { name: "Renewable Energy Capacity",    unit: "MW",          freq: "quarterly" },
+  fuelwood_consumption:   { name: "Fuelwood Consumption",         unit: "M m³",        freq: "quarterly" },
+  faac_oil_revenue:       { name: "FAAC Oil Revenue",             unit: "₦ Billion",   freq: "quarterly" },
+  upstream_royalties:     { name: "Upstream Royalties Collected", unit: "₦ Billion",   freq: "quarterly" },
+};
+
+function buildPeriodOptions(freq: string, year: number): string[] {
+  const MONTHS = ["01","02","03","04","05","06","07","08","09","10","11","12"];
+  if (freq === "monthly")   return MONTHS.map((m) => `${year}-${m}`);
+  if (freq === "quarterly") return ["Q1","Q2","Q3","Q4"].map((q) => `${year}-${q}`);
+  return [`${year}`];
+}
+function periodToDate(period: string): string {
+  if (/^\d{4}-\d{2}$/.test(period)) return `${period}-01`;
+  if (/^\d{4}-Q(\d)$/.test(period)) {
+    const q = parseInt(period.split("-Q")[1]);
+    return `${period.split("-")[0]}-${String((q - 1) * 3 + 1).padStart(2, "0")}-01`;
+  }
+  return `${period}-01-01`;
+}
+
+const ENTRY_YEARS = [2020, 2021, 2022, 2023, 2024, 2025];
+const ENTRY_INIT = { series_type_id: "crude_oil_production", year: 2024, period: "", value: "", state: "NGA", region: "", source: "", notes: "" };
+
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "registry" | "requests">("users");
+  const [tab, setTab] = useState<"users" | "registry" | "requests" | "entry">("users");
 
   // Access requests state
   interface AccessRequest { id: number; full_name: string; email: string; organisation: string; position: string | null; profile_key: string; justification: string | null; status: string; created_at: string; temp_username: string | null }
@@ -68,6 +116,15 @@ export default function AdminPage() {
   const [showCoForm, setShowCoForm] = useState(false);
   const [coForm, setCoForm]       = useState(EMPTY_CO);
   const [editId, setEditId]       = useState<number | null>(null);
+
+  // Edit user state
+  const [editUserId, setEditUserId] = useState<number | null>(null);
+  const [editUserForm, setEditUserForm] = useState({ full_name: "", email: "", agency: "", role: "viewer", dashboard_profile: "executive" });
+
+  // Data entry state
+  const [entryForm, setEntryForm]     = useState(ENTRY_INIT);
+  const [entrySubmitting, setEntrySubmitting] = useState(false);
+  const [entryMsg, setEntryMsg]       = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg]              = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -197,6 +254,59 @@ export default function AdminPage() {
     setEditId(c.id); setShowCoForm(true); setMsg(null);
   }
 
+  function startEditUser(u: StaffUser) {
+    setEditUserForm({ full_name: u.full_name, email: u.email ?? "", agency: u.agency ?? "", role: u.role, dashboard_profile: u.dashboard_profile ?? "executive" });
+    setEditUserId(u.id);
+  }
+
+  async function saveEditUser(e: React.FormEvent) {
+    e.preventDefault();
+    const token = getToken(); if (!token || !editUserId) return;
+    setSubmitting(true); setMsg(null);
+    try {
+      const r = await fetch(`/api/admin/users/${editUserId}/edit`, {
+        method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(editUserForm),
+      });
+      if (!r.ok) throw new Error((await r.json()).error ?? "Failed");
+      setMsg({ type: "ok", text: "User updated successfully." });
+      setEditUserId(null); loadUsers();
+    } catch (err) {
+      setMsg({ type: "err", text: err instanceof Error ? err.message : "Failed to update user." });
+    } finally { setSubmitting(false); }
+  }
+
+  async function doManualEntry(e: React.FormEvent) {
+    e.preventDefault();
+    const token = getToken(); if (!token) return;
+    if (!entryForm.period || !entryForm.value) { setEntryMsg({ type: "err", text: "Period and value are required." }); return; }
+    setEntrySubmitting(true); setEntryMsg(null);
+    const meta = SERIES_META[entryForm.series_type_id];
+    const row = {
+      period:      entryForm.period,
+      period_date: periodToDate(entryForm.period),
+      value:       parseFloat(entryForm.value),
+      unit:        meta.unit,
+      region:      entryForm.state === "NGA" ? "NGA" : entryForm.state,
+      source:      entryForm.source || undefined,
+      notes:       entryForm.notes  || undefined,
+      ...(meta.fuel_product ? { fuel_product: meta.fuel_product } : {}),
+    };
+    try {
+      const r = await fetch("/api/upload/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ series_type_id: entryForm.series_type_id, rows: [row] }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error ?? "Failed");
+      setEntryMsg({ type: "ok", text: `Record committed — ${meta.name} · ${entryForm.period} · ${entryForm.value} ${meta.unit}` });
+      setEntryForm((f) => ({ ...f, period: "", value: "", notes: "" }));
+    } catch (err) {
+      setEntryMsg({ type: "err", text: err instanceof Error ? err.message : "Failed to save record." });
+    } finally { setEntrySubmitting(false); }
+  }
+
   const TAB_STYLE = (active: boolean): React.CSSProperties => ({
     padding: "0.5rem 1.25rem", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
     background: active ? "var(--surface-white)" : "transparent",
@@ -231,7 +341,8 @@ export default function AdminPage() {
         {/* Tab bar */}
         <div style={{ borderBottom: "1px solid var(--border)", marginBottom: "2rem", display: "flex", gap: 0 }}>
           <button style={TAB_STYLE(tab === "users")}    onClick={() => { setTab("users"); setMsg(null); }}>Portal Users</button>
-          <button style={TAB_STYLE(tab === "registry")} onClick={() => { setTab("registry"); setMsg(null); }}>Producing Companies Registry</button>
+          <button style={TAB_STYLE(tab === "entry")}    onClick={() => { setTab("entry"); setMsg(null); setEntryMsg(null); }}>Data Entry</button>
+          <button style={TAB_STYLE(tab === "registry")} onClick={() => { setTab("registry"); setMsg(null); }}>Companies Registry</button>
           <button style={TAB_STYLE(tab === "requests")} onClick={() => { setTab("requests"); loadRequests(); setMsg(null); }}>
             Access Requests
             {requests.filter((r) => r.status === "pending").length > 0 && (
@@ -338,6 +449,51 @@ export default function AdminPage() {
               </div>
             )}
 
+            {/* Edit User modal */}
+            {editUserId && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+                <div className="panel" style={{ width: 520, boxShadow: "var(--shadow-3)" }}>
+                  <div className="panel-header"><span className="panel-title">Edit User Profile & Access</span></div>
+                  <div className="panel-body">
+                    <form onSubmit={saveEditUser}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem 1.5rem" }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Full Name</label>
+                          <input className="form-input" required value={editUserForm.full_name} onChange={(e) => setEditUserForm({ ...editUserForm, full_name: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Email</label>
+                          <input className="form-input" type="email" value={editUserForm.email} onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Agency</label>
+                          <input className="form-input" placeholder="ECN, NUPRC…" value={editUserForm.agency} onChange={(e) => setEditUserForm({ ...editUserForm, agency: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Role / Landing Portal</label>
+                          <select className="form-input form-select" value={editUserForm.role} onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}>
+                            <option value="staff">Staff — Upload Portal</option>
+                            <option value="viewer">Viewer — Data Point Dashboard</option>
+                            <option value="admin">Administrator</option>
+                          </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0, gridColumn: "1 / -1" }}>
+                          <label className="form-label">Dashboard Profile (determines which features &amp; data the viewer sees)</label>
+                          <select className="form-input form-select" value={editUserForm.dashboard_profile} onChange={(e) => setEditUserForm({ ...editUserForm, dashboard_profile: e.target.value })}>
+                            {PROFILES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
+                        <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? "Saving…" : "Save Changes"}</button>
+                        <button type="button" className="btn btn-secondary" onClick={() => setEditUserId(null)}>Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="panel">
               <div className="panel-header"><span className="panel-title">All Portal Users ({users.length})</span></div>
               {usersLoading ? (
@@ -346,24 +502,24 @@ export default function AdminPage() {
                 <div className="data-table-wrap" style={{ border: "none", borderRadius: 0 }}>
                   <table className="data-table">
                     <thead>
-                      <tr><th>Full Name</th><th>Username</th><th>Email</th><th>Agency</th><th>Portal</th><th>Status</th><th>Last Login</th><th>Actions</th></tr>
+                      <tr><th>Full Name</th><th>Username</th><th>Agency</th><th>Portal</th><th>Dashboard Profile</th><th>Status</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
                       {users.map((u) => (
                         <tr key={u.id}>
-                          <td className="td-primary">{u.full_name}</td>
-                          <td className="td-mono">{u.username}</td>
-                          <td style={{ fontSize: "0.78rem", color: "var(--ink-3)" }}>{u.email}</td>
+                          <td className="td-primary">{u.full_name}<div style={{ fontSize: "0.68rem", color: "var(--ink-5)", fontFamily: "var(--font-mono)" }}>{u.email}</div></td>
+                          <td className="td-mono" style={{ fontSize: "0.75rem" }}>{u.username}</td>
                           <td style={{ fontSize: "0.78rem" }}>{u.agency || "—"}</td>
                           <td>
                             <span className={`tag ${u.role === "admin" ? "tag-ink" : u.role === "viewer" ? "tag-muted" : "tag-green"}`}>
                               {u.role === "admin" ? "Admin" : u.role === "viewer" ? "Viewer" : "Staff"}
                             </span>
                           </td>
+                          <td style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>{u.dashboard_profile ?? "—"}</td>
                           <td>{u.is_active ? <span className="tag tag-green"><span className="live-dot" style={{ marginRight: 4 }} />Active</span> : <span className="tag tag-red">Deactivated</span>}</td>
-                          <td style={{ fontSize: "0.75rem", color: "var(--ink-4)", fontFamily: "var(--font-mono)" }}>{u.last_login ?? "Never"}</td>
                           <td>
-                            <div style={{ display: "flex", gap: 6 }}>
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                              <button className="btn btn-secondary btn-sm" onClick={() => startEditUser(u)} style={{ fontSize: "0.72rem", padding: "3px 8px" }}>Edit Profile</button>
                               <button className="btn btn-secondary btn-sm" onClick={() => setResetId(u.id)} style={{ fontSize: "0.72rem", padding: "3px 8px" }}>Reset Pwd</button>
                               <button className={`btn btn-sm ${u.is_active ? "btn-secondary" : "btn-primary"}`} onClick={() => toggleUser(u.id)} style={{ fontSize: "0.72rem", padding: "3px 8px" }}>
                                 {u.is_active ? "Deactivate" : "Activate"}
@@ -376,6 +532,146 @@ export default function AdminPage() {
                   </table>
                 </div>
               )}
+            </div>
+          </>
+        )}
+
+        {/* ── DATA ENTRY TAB ── */}
+        {tab === "entry" && (
+          <>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.5rem", fontWeight: 400, color: "var(--ink)", marginBottom: "0.25rem" }}>Manual Data Entry</h1>
+              <p style={{ fontSize: "0.8rem", color: "var(--ink-4)" }}>
+                Enter energy records directly until IoT/automated feeds are ready. Each submission creates an audited upload record.
+              </p>
+            </div>
+
+            {entryMsg && (
+              <div style={{ marginBottom: "1.5rem", padding: "0.875rem 1rem", background: entryMsg.type === "ok" ? "var(--green-strong)" : "var(--red-tint)", border: `1px solid ${entryMsg.type === "ok" ? "var(--green-line)" : "rgba(192,57,43,0.2)"}`, borderRadius: "var(--r-md)", fontSize: "0.82rem", color: entryMsg.type === "ok" ? "var(--green-deep)" : "var(--red)" }}>
+                {entryMsg.text}
+              </div>
+            )}
+
+            <div className="panel">
+              <div className="panel-header"><span className="panel-title">New Record</span></div>
+              <div className="panel-body">
+                <form onSubmit={doManualEntry}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem 1.5rem" }}>
+
+                    {/* Series type → unit auto-fills */}
+                    <div className="form-group" style={{ marginBottom: 0, gridColumn: "1 / -1" }}>
+                      <label className="form-label">Energy Series / Data Type</label>
+                      <select className="form-input form-select" value={entryForm.series_type_id}
+                        onChange={(e) => {
+                          const meta = SERIES_META[e.target.value];
+                          const defaultPeriod = buildPeriodOptions(meta?.freq ?? "monthly", entryForm.year)[0] ?? "";
+                          setEntryForm((f) => ({ ...f, series_type_id: e.target.value, period: defaultPeriod }));
+                        }}>
+                        {Object.entries(SERIES_META).map(([id, m]) => (
+                          <option key={id} value={id}>{m.name} — {m.unit} ({m.freq})</option>
+                        ))}
+                      </select>
+                      <div style={{ fontSize: "0.72rem", color: "var(--green-deep)", fontWeight: 600, marginTop: 4 }}>
+                        Unit: <strong>{SERIES_META[entryForm.series_type_id]?.unit}</strong>
+                        {SERIES_META[entryForm.series_type_id]?.fuel_product && <> · Product: <strong>{SERIES_META[entryForm.series_type_id]?.fuel_product}</strong></>}
+                      </div>
+                    </div>
+
+                    {/* Year → rebuilds period options */}
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Year</label>
+                      <select className="form-input form-select" value={entryForm.year}
+                        onChange={(e) => {
+                          const yr = parseInt(e.target.value);
+                          const meta = SERIES_META[entryForm.series_type_id];
+                          const defaultPeriod = buildPeriodOptions(meta?.freq ?? "monthly", yr)[0] ?? "";
+                          setEntryForm((f) => ({ ...f, year: yr, period: defaultPeriod }));
+                        }}>
+                        {ENTRY_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </div>
+
+                    {/* Period — dynamic based on freq */}
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Period</label>
+                      <select className="form-input form-select" value={entryForm.period}
+                        onChange={(e) => setEntryForm((f) => ({ ...f, period: e.target.value }))}>
+                        {buildPeriodOptions(SERIES_META[entryForm.series_type_id]?.freq ?? "monthly", entryForm.year).map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Value */}
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Value ({SERIES_META[entryForm.series_type_id]?.unit})</label>
+                      <input className="form-input" type="number" step="any" placeholder="e.g. 85.4" required
+                        value={entryForm.value} onChange={(e) => setEntryForm((f) => ({ ...f, value: e.target.value }))} />
+                    </div>
+
+                    {/* State — auto fills region */}
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">State</label>
+                      <select className="form-input form-select" value={entryForm.state}
+                        onChange={(e) => {
+                          const st = e.target.value;
+                          const zone = STATE_TO_ZONE[st] ?? "";
+                          setEntryForm((f) => ({ ...f, state: st, region: zone }));
+                        }}>
+                        <option value="NGA">National (NGA)</option>
+                        {ALL_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+
+                    {/* Region — auto-filled from state, or manual override */}
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Geopolitical Zone</label>
+                      <select className="form-input form-select" value={entryForm.region}
+                        onChange={(e) => setEntryForm((f) => ({ ...f, region: e.target.value }))}>
+                        <option value="">National</option>
+                        {Object.keys(NG_ZONES).map((z) => <option key={z} value={z}>{z}</option>)}
+                      </select>
+                      {entryForm.state !== "NGA" && entryForm.region && (
+                        <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 3 }}>Auto-filled from state</div>
+                      )}
+                    </div>
+
+                    {/* Source */}
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Source Attribution</label>
+                      <input className="form-input" placeholder="NUPRC, NERC, NBS…"
+                        value={entryForm.source} onChange={(e) => setEntryForm((f) => ({ ...f, source: e.target.value }))} />
+                    </div>
+
+                    {/* Notes */}
+                    <div className="form-group" style={{ marginBottom: 0, gridColumn: "2 / -1" }}>
+                      <label className="form-label">Notes (optional)</label>
+                      <input className="form-input" placeholder="Preliminary estimate, provisional, revised…"
+                        value={entryForm.notes} onChange={(e) => setEntryForm((f) => ({ ...f, notes: e.target.value }))} />
+                    </div>
+
+                  </div>
+
+                  {/* Summary line */}
+                  {entryForm.value && entryForm.period && (
+                    <div style={{ marginTop: "1rem", padding: "0.75rem 1rem", background: "var(--green-strong)", border: "1px solid var(--green-line)", borderRadius: "var(--r-md)", fontSize: "0.8rem", color: "var(--green-deep)" }}>
+                      Will commit: <strong>{SERIES_META[entryForm.series_type_id]?.name}</strong> · {entryForm.period} · <strong>{entryForm.value} {SERIES_META[entryForm.series_type_id]?.unit}</strong>
+                      {entryForm.state !== "NGA" ? ` · ${entryForm.state}` : " · National"}
+                      {entryForm.source ? ` · Source: ${entryForm.source}` : ""}
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: "1.25rem", display: "flex", gap: "0.75rem" }}>
+                    <button type="submit" className="btn btn-primary" disabled={entrySubmitting}>
+                      {entrySubmitting ? "Committing…" : "Commit Record"}
+                    </button>
+                    <button type="button" className="btn btn-secondary" onClick={() => { setEntryForm(ENTRY_INIT); setEntryMsg(null); }}>Reset Form</button>
+                  </div>
+                  <p style={{ fontSize: "0.72rem", color: "var(--ink-5)", marginTop: "0.75rem" }}>
+                    Each submission is logged as a manual upload session with your admin account as the attributed source.
+                  </p>
+                </form>
+              </div>
             </div>
           </>
         )}

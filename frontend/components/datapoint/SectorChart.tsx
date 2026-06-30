@@ -50,7 +50,7 @@ function renderCustomLabel(props: { cx?: number; cy?: number; midAngle?: number;
 
 export default function SectorChart({ title, subtitle, source, data, series, unit = "", height = 268, filename, note, defaultType = "line" }: SectorChartProps) {
   const [chartType, setChartType] = useState<ChartType>(defaultType);
-  const [showAll, setShowAll]     = useState(false);
+  // chart type switcher — no pagination needed
 
   function downloadCSV() {
     if (!data.length) return;
@@ -84,7 +84,7 @@ export default function SectorChart({ title, subtitle, source, data, series, uni
     const palette   = ["#0E7A3C","#1D4ED8","#B45309","#7C3AED","#9F1239","#059669","#0369A1","#78350F"];
     slices.forEach((s, i) => { s.color = palette[i % palette.length]; });
     if (chartType === "pie" || chartType === "donut") {
-      return <ChartShell title={title} subtitle={subtitle} chartType={chartType} setChartType={setChartType} showAll={showAll} setShowAll={setShowAll} downloadCSV={downloadCSV} note={note}>
+      return <ChartShell title={title} subtitle={subtitle} chartType={chartType} setChartType={setChartType} downloadCSV={downloadCSV} note={note}>
         <ResponsiveContainer width="100%" height={height}>
           <PieChart>
             <Pie data={slices} cx="50%" cy="50%" innerRadius={chartType === "donut" ? "45%" : 0} outerRadius="75%"
@@ -218,7 +218,7 @@ export default function SectorChart({ title, subtitle, source, data, series, uni
   };
 
   return (
-    <ChartShell title={title} subtitle={subtitle} chartType={chartType} setChartType={setChartType} showAll={showAll} setShowAll={setShowAll} downloadCSV={downloadCSV} note={note}>
+    <ChartShell title={title} subtitle={subtitle} chartType={chartType} setChartType={setChartType} downloadCSV={downloadCSV} note={note}>
       <div className="chart-panel-body" style={{ padding: "0.75rem 0.25rem 0.25rem" }}>
         <ResponsiveContainer width="100%" height={height}>
           {renderChart()}
@@ -229,12 +229,10 @@ export default function SectorChart({ title, subtitle, source, data, series, uni
   );
 }
 
-function ChartShell({ title, subtitle, chartType, setChartType, showAll, setShowAll, downloadCSV, note, children }: {
+function ChartShell({ title, subtitle, chartType, setChartType, downloadCSV, note, children }: {
   title: string; subtitle?: string; chartType: ChartType; setChartType: (t: ChartType) => void;
-  showAll: boolean; setShowAll: React.Dispatch<React.SetStateAction<boolean>>; downloadCSV: () => void; note?: string;
-  children: React.ReactNode;
+  downloadCSV: () => void; note?: string; children: React.ReactNode;
 }) {
-  const visible = showAll ? CHART_TYPES : CHART_TYPES.slice(0, 5);
   return (
     <div className="chart-panel">
       <div className="chart-panel-head" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
@@ -242,21 +240,18 @@ function ChartShell({ title, subtitle, chartType, setChartType, showAll, setShow
           <div className="chart-panel-title">{title}</div>
           {subtitle && <div className="chart-panel-sub">{subtitle}</div>}
         </div>
-        <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
-          {visible.map((t) => (
+        <div style={{ display: "flex", gap: 3, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+          {CHART_TYPES.map((t) => (
             <button key={t.id} onClick={() => setChartType(t.id)} title={t.label} style={{
-              height: 28, padding: "0 8px", fontSize: "0.72rem", fontWeight: 700,
+              height: 26, padding: "0 7px", fontSize: "0.68rem", fontWeight: 700,
               border: "1px solid var(--border)", borderRadius: 4,
               background: chartType === t.id ? "var(--ink)" : "transparent",
               color: chartType === t.id ? "#fff" : "var(--ink-4)", cursor: "pointer",
             }}>
-              <span>{t.icon}</span>
+              <span title={t.label}>{t.icon}</span>
             </button>
           ))}
-          <button onClick={() => setShowAll((v) => !v)} style={{ height: 28, padding: "0 6px", fontSize: "0.65rem", border: "1px solid var(--border)", borderRadius: 4, background: "transparent", color: "var(--ink-5)", cursor: "pointer" }}>
-            {showAll ? "−" : "+"}
-          </button>
-          <button onClick={downloadCSV} style={{ height: 28, padding: "0 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-strong)", color: "var(--green-deep)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+          <button onClick={downloadCSV} style={{ height: 26, padding: "0 10px", fontSize: "0.68rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-strong)", color: "var(--green-deep)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             CSV
           </button>

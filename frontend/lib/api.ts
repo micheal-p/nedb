@@ -81,6 +81,7 @@ export interface StaffUser {
   created_by: string;
   created_at: string;
   last_login: string | null;
+  dashboard_profile?: string;
 }
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {

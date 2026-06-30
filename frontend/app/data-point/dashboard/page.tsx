@@ -11,44 +11,29 @@ const SectorChart = dynamic(() => import("@/components/datapoint/SectorChart"), 
 const NigeriaMap  = dynamic(() => import("@/components/datapoint/NigeriaMap"),  { ssr: false });
 const ApexAI      = dynamic(() => import("@/components/datapoint/ApexAI"),      { ssr: false });
 
-// ── Mock time-series data generator ───────────────────────────
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const QUARTERS = ["Q1","Q2","Q3","Q4"];
+// ── Real data types ────────────────────────────────────────────
+type SeriesRow = { period: string; value: number; unit?: string };
+type DashData  = Record<string, SeriesRow[]>;
 
-function mkMonthly(base: number, trend: number, noise: number, year: number) {
-  return MONTHS.map((m, i) => ({
-    period: `${m} ${year}`,
-    value: Math.round(base + trend * i + (Math.random() - 0.5) * noise),
-  }));
-}
-function mkQuarterly(values: number[], year: number) {
-  return QUARTERS.map((q, i) => ({ period: `${q} ${year}`, value: values[i] }));
-}
-function mkMulti(keys: string[], base: number[], trend: number[], noise: number, year: number) {
-  return MONTHS.map((m, i) => ({
-    period: `${m} ${year}`,
-    ...Object.fromEntries(keys.map((k, j) => [k, Math.round(base[j] + trend[j] * i + (Math.random() - 0.5) * noise)])),
-  }));
+function mergeSeries(pairs: { data: SeriesRow[]; key: string }[]): { period: string; [key: string]: string | number }[] {
+  const map = new Map<string, { period: string; [key: string]: string | number }>();
+  for (const { data, key } of pairs) {
+    for (const row of data) {
+      if (!map.has(row.period)) map.set(row.period, { period: row.period });
+      map.get(row.period)![key] = row.value;
+    }
+  }
+  return [...map.values()].sort((a, b) => a.period.localeCompare(b.period));
 }
 
-const YEARS = [2020, 2021, 2022, 2023, 2024];
-
-function buildData(year: number) {
-  const offset = year - 2020;
-  return {
-    crude:        mkMonthly(72 + offset * 2.8, 0.9, 4, year),
-    pms:          mkMonthly(1680 + offset * 28, 1.4, 30, year),
-    ago:          mkMonthly(540 + offset * 18, 1.1, 20, year),
-    lpg:          mkMonthly(160 + offset * 12, 0.9, 10, year),
-    generation:   mkMonthly(2800 + offset * 90, 2.2, 60, year),
-    sentOut:      mkMonthly(2490 + offset * 82, 2.0, 55, year),
-    renewable:    mkQuarterly([1480 + offset*90, 1550+offset*95, 1640+offset*100, 1720+offset*110], year),
-    gas:          mkMonthly(148 + offset * 10, 1.1, 8, year),
-    fuelwood:     mkQuarterly([18200-offset*120, 17900-offset*130, 17600-offset*140, 17200-offset*150], year),
-    downstream:   mkMulti(["pms","ago","lpg"], [1680+offset*28, 540+offset*18, 160+offset*12], [1.4,1.1,0.9], 20, year),
-    faac:         mkQuarterly([640+offset*42, 680+offset*45, 720+offset*48, 760+offset*50], year),
-    royalties:    mkQuarterly([88+offset*8, 92+offset*9, 96+offset*9, 102+offset*10], year),
-  };
+function EmptyChart({ seriesName }: { seriesName: string }) {
+  return (
+    <div style={{ height: 180, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.5rem", color: "var(--ink-5)" }}>
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--ink-4)" }}>No data for {seriesName}</div>
+      <div style={{ fontSize: "0.72rem" }}>Add records via Admin → Data Entry</div>
+    </div>
+  );
 }
 
 // ── Profile definitions ────────────────────────────────────────
@@ -489,16 +474,20 @@ function downloadTableCSV(filename: string, headers: string[], rows: (string | n
 }
 
 // ── Period navigator ───────────────────────────────────────────
-function PeriodNav({ year, setYear }: { year: number; setYear: (y: number) => void }) {
+function PeriodNav({ year, setYear, availYears, loading }: { year: number; setYear: (y: number) => void; availYears: number[]; loading?: boolean }) {
+  const years = availYears.length ? availYears : [year];
+  const minY  = Math.min(...years);
+  const maxY  = Math.max(...years);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: "1.25rem" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: "1.25rem", flexWrap: "wrap" }}>
       <span style={{ fontSize: "0.72rem", color: "var(--ink-4)", fontWeight: 600, marginRight: 4 }}>Period</span>
-      <button onClick={() => setYear(Math.max(2020, year - 1))} disabled={year <= 2020} style={{ width: 28, height: 28, border: "1px solid var(--border)", borderRadius: 4, background: "transparent", cursor: year > 2020 ? "pointer" : "not-allowed", color: "var(--ink-4)", fontSize: "0.85rem" }}>‹</button>
-      {YEARS.map((y) => (
+      <button onClick={() => setYear(Math.max(minY, year - 1))} disabled={year <= minY} style={{ width: 28, height: 28, border: "1px solid var(--border)", borderRadius: 4, background: "transparent", cursor: year > minY ? "pointer" : "not-allowed", color: "var(--ink-4)", fontSize: "0.85rem" }}>‹</button>
+      {years.map((y) => (
         <button key={y} onClick={() => setYear(y)} style={{ height: 28, padding: "0 10px", border: `1px solid ${y === year ? "var(--green)" : "var(--border)"}`, borderRadius: 4, background: y === year ? "var(--green)" : "transparent", color: y === year ? "#fff" : "var(--ink-4)", fontSize: "0.75rem", fontWeight: y === year ? 700 : 400, cursor: "pointer" }}>{y}</button>
       ))}
-      <button onClick={() => setYear(Math.min(2024, year + 1))} disabled={year >= 2024} style={{ width: 28, height: 28, border: "1px solid var(--border)", borderRadius: 4, background: "transparent", cursor: year < 2024 ? "pointer" : "not-allowed", color: "var(--ink-4)", fontSize: "0.85rem" }}>›</button>
-      <span style={{ marginLeft: 8, fontSize: "0.7rem", color: "var(--ink-5)", fontStyle: "italic" }}>Sample data — real records populate as uploads are committed</span>
+      <button onClick={() => setYear(Math.min(maxY, year + 1))} disabled={year >= maxY} style={{ width: 28, height: 28, border: "1px solid var(--border)", borderRadius: 4, background: "transparent", cursor: year < maxY ? "pointer" : "not-allowed", color: "var(--ink-4)", fontSize: "0.85rem" }}>›</button>
+      {loading && <span style={{ marginLeft: 8, fontSize: "0.7rem", color: "var(--ink-5)", fontStyle: "italic" }}>Loading…</span>}
+      {!loading && !availYears.length && <span style={{ marginLeft: 8, fontSize: "0.7rem", color: "var(--amber)", fontStyle: "italic" }}>No records yet — add data via Admin → Data Entry</span>}
     </div>
   );
 }
@@ -523,6 +512,9 @@ export default function Dashboard() {
   const [profile, setProfile]       = useState<ProfileDef>(PROFILE_MAP.executive);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState(2024);
+  const [dashData, setDashData]     = useState<DashData>({});
+  const [availYears, setAvailYears] = useState<number[]>([2024]);
+  const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn()) { router.replace("/data-point/login?redirect=/data-point/dashboard"); return; }
@@ -537,7 +529,20 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, [router]);
 
-  const data = buildData(selectedYear);
+  useEffect(() => {
+    setDataLoading(true);
+    fetch(`/api/dashboard-data?year=${selectedYear}`)
+      .then((r) => r.json())
+      .then((payload) => {
+        setDashData(payload.series ?? {});
+        if (payload.years?.length) setAvailYears(payload.years);
+      })
+      .catch(() => {})
+      .finally(() => setDataLoading(false));
+  }, [selectedYear]);
+
+  // Convenience aliases — empty array if not yet uploaded
+  const s = (id: string): SeriesRow[] => dashData[id] ?? [];
 
   function logout() { clearTokens(); router.replace("/data-point/login"); }
   function navigate(id: string) { setView(id); setSidebarOpen(false); }
@@ -643,9 +648,9 @@ export default function Dashboard() {
           {/* ── OVERVIEW ── */}
           {view === "overview" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-              <PeriodNav year={selectedYear} setYear={setSelectedYear} />
+              <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.25rem" }}>
-                <SectorChart title="Crude Oil Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC" data={data.crude} series={[{ key: "value", label: "Production", color: profile.color }]} unit="M Barrels" filename="crude-oil-production" />
+                {s("crude_oil_production").length ? <SectorChart title="Crude Oil Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC" data={s("crude_oil_production")} series={[{ key: "value", label: "Production", color: profile.color }]} unit="M Barrels" filename="crude-oil-production" /> : <EmptyChart seriesName="Crude Oil Production" />}
                 <div className="panel">
                   <div className="panel-header">
                     <span className="panel-title">Anomaly Feed</span>
@@ -662,7 +667,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <NigeriaMap metric="electricity_access" title="Electricity Access Rate by State" unit="%" colorLow="#FEF3C7" colorHigh="#0E7A3C" higherIsBetter={true} />
-              <SectorChart title="Downstream Products — Multi-series" subtitle={`PMS · AGO · LPG monthly volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={data.downstream} series={[{ key: "pms", label: "PMS", color: "#0E7A3C" }, { key: "ago", label: "AGO", color: "#1D4ED8" }, { key: "lpg", label: "LPG", color: "#B45309" }]} unit="M Litres" filename="downstream-products" />
+              {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Multi-series" subtitle={`PMS · AGO · LPG monthly volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS", color: "#0E7A3C" }, { key: "ago", label: "AGO", color: "#1D4ED8" }, { key: "lpg", label: "LPG", color: "#B45309" }]} unit="M Litres" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
               <div>
                 <div className="sec-hd" style={{ marginBottom: "1rem" }}>
                   <h2>Fiscal Intelligence Panels</h2>
@@ -687,8 +692,8 @@ export default function Dashboard() {
           {/* ── DOWNSTREAM ── */}
           {view === "downstream" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-              <PeriodNav year={selectedYear} setYear={setSelectedYear} />
-              <SectorChart title="Downstream Products — Monthly Trend" subtitle={`PMS · AGO · LPG volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={data.downstream} series={[{ key: "pms", label: "PMS (M L)", color: "#0E7A3C" }, { key: "ago", label: "AGO (M L)", color: "#1D4ED8" }, { key: "lpg", label: "LPG (MT)", color: "#B45309" }]} unit="" filename="downstream-products" />
+              <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
+              {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Monthly Trend" subtitle={`PMS · AGO · LPG volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS (M L)", color: "#0E7A3C" }, { key: "ago", label: "AGO (M L)", color: "#1D4ED8" }, { key: "lpg", label: "LPG (MT)", color: "#B45309" }]} unit="" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
               <div className="panel">
                 <div className="panel-header">
                   <span className="panel-title">Distribution Companies — ATC&amp;C Loss & Collection Efficiency</span>
@@ -719,10 +724,10 @@ export default function Dashboard() {
           {/* ── UPSTREAM ── */}
           {view === "upstream" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-              <PeriodNav year={selectedYear} setYear={setSelectedYear} />
+              <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-                <SectorChart title="Crude Oil Production" subtitle={`Monthly barrels · ${selectedYear}`} source="NUPRC" data={data.crude} series={[{ key: "value", label: "Production", color: "#78350F" }]} unit="M Barrels" filename="crude-oil-production" />
-                <SectorChart title="Natural Gas Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC / NNPCL" data={data.gas} series={[{ key: "value", label: "Gas", color: "#0E7A3C" }]} unit="Bcf" filename="natural-gas-production" />
+                {s("crude_oil_production").length ? <SectorChart title="Crude Oil Production" subtitle={`Monthly barrels · ${selectedYear}`} source="NUPRC" data={s("crude_oil_production")} series={[{ key: "value", label: "Production", color: "#78350F" }]} unit="M Barrels" filename="crude-oil-production" /> : <EmptyChart seriesName="Crude Oil Production" />}
+                {s("natural_gas_production").length ? <SectorChart title="Natural Gas Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC / NNPCL" data={s("natural_gas_production")} series={[{ key: "value", label: "Gas", color: "#0E7A3C" }]} unit="Bcf" filename="natural-gas-production" /> : <EmptyChart seriesName="Natural Gas Production" />}
               </div>
               <NigeriaMap metric="crude_production" title="Crude Oil Production by State" unit="M Barrels" colorLow="#FEF3C7" colorHigh="#78350F" higherIsBetter={true} />
               <div className="panel">
@@ -754,8 +759,8 @@ export default function Dashboard() {
           {/* ── POWER ── */}
           {view === "power" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-              <PeriodNav year={selectedYear} setYear={setSelectedYear} />
-              <SectorChart title="Electricity Generation vs. Sent Out" subtitle={`Monthly GWh · ${selectedYear}`} source="NERC / TCN" data={data.generation.map((g, i) => ({ period: g.period, generation: g.value, sent_out: data.sentOut[i]?.value ?? 0 }))} series={[{ key: "generation", label: "Generation (GWh)", color: "#1D4ED8" }, { key: "sent_out", label: "Sent Out (GWh)", color: "#0E7A3C" }]} unit="GWh" filename="electricity-generation" />
+              <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
+              {(s("electricity_generation").length || s("electricity_sent_out").length) ? <SectorChart title="Electricity Generation vs. Sent Out" subtitle={`Monthly GWh · ${selectedYear}`} source="NERC / TCN" data={mergeSeries([{ data: s("electricity_generation"), key: "generation" }, { data: s("electricity_sent_out"), key: "sent_out" }])} series={[{ key: "generation", label: "Generation (GWh)", color: "#1D4ED8" }, { key: "sent_out", label: "Sent Out (GWh)", color: "#0E7A3C" }]} unit="GWh" filename="electricity-generation" /> : <EmptyChart seriesName="Electricity Generation" />}
               <NigeriaMap metric="atc_loss" title="ATC&C Loss Rate by State" unit="%" colorLow="#DCFCE7" colorHigh="#C0392B" higherIsBetter={false} />
               <div className="panel">
                 <div className="panel-header">
@@ -783,10 +788,10 @@ export default function Dashboard() {
           {/* ── RENEWABLE ── */}
           {view === "renewable" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-              <PeriodNav year={selectedYear} setYear={setSelectedYear} />
+              <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-                <SectorChart title="Renewable Energy Capacity" subtitle={`Quarterly installed MW · ${selectedYear}`} source="REA / NERC" data={data.renewable} series={[{ key: "value", label: "Capacity (MW)", color: "#059669" }]} unit="MW" filename="renewable-capacity" />
-                <SectorChart title="Fuelwood Consumption" subtitle={`Quarterly volumes · ${selectedYear}`} source="ECN / NBS" data={data.fuelwood} series={[{ key: "value", label: "Fuelwood (M m³)", color: "#78350F" }]} unit="M m³" filename="fuelwood-consumption" />
+                {s("renewable_energy").length ? <SectorChart title="Renewable Energy Capacity" subtitle={`Quarterly installed MW · ${selectedYear}`} source="REA / NERC" data={s("renewable_energy")} series={[{ key: "value", label: "Capacity (MW)", color: "#059669" }]} unit="MW" filename="renewable-capacity" /> : <EmptyChart seriesName="Renewable Energy" />}
+                {s("fuelwood_consumption").length ? <SectorChart title="Fuelwood Consumption" subtitle={`Quarterly volumes · ${selectedYear}`} source="ECN / NBS" data={s("fuelwood_consumption")} series={[{ key: "value", label: "Fuelwood (M m³)", color: "#78350F" }]} unit="M m³" filename="fuelwood-consumption" /> : <EmptyChart seriesName="Fuelwood Consumption" />}
               </div>
               <NigeriaMap metric="offgrid_penetration" title="Off-Grid Dependence by State" unit="%" colorLow="#D1FAE5" colorHigh="#065F46" higherIsBetter={false} />
               <div className="panel" style={{ padding: "1.25rem 1.5rem" }}>
@@ -806,10 +811,10 @@ export default function Dashboard() {
           {/* ── REVENUE ── */}
           {view === "revenue" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-              <PeriodNav year={selectedYear} setYear={setSelectedYear} />
+              <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-                <SectorChart title="Oil Revenue — FAAC Contribution" subtitle={`Quarterly ₦B · ${selectedYear}`} source="RMAFC / CBN" data={data.faac} series={[{ key: "value", label: "FAAC Oil Revenue (₦B)", color: "#7C3AED" }]} unit="₦B" filename="faac-oil-revenue" />
-                <SectorChart title="Upstream Royalties Collected" subtitle={`Quarterly ₦B · ${selectedYear}`} source="NUPRC / FIRS" data={data.royalties} series={[{ key: "value", label: "Royalties (₦B)", color: "#9F1239" }]} unit="₦B" filename="upstream-royalties" />
+                {s("faac_oil_revenue").length ? <SectorChart title="Oil Revenue — FAAC Contribution" subtitle={`Quarterly ₦B · ${selectedYear}`} source="RMAFC / CBN" data={s("faac_oil_revenue")} series={[{ key: "value", label: "FAAC Oil Revenue (₦B)", color: "#7C3AED" }]} unit="₦B" filename="faac-oil-revenue" /> : <EmptyChart seriesName="FAAC Oil Revenue" />}
+                {s("upstream_royalties").length ? <SectorChart title="Upstream Royalties Collected" subtitle={`Quarterly ₦B · ${selectedYear}`} source="NUPRC / FIRS" data={s("upstream_royalties")} series={[{ key: "value", label: "Royalties (₦B)", color: "#9F1239" }]} unit="₦B" filename="upstream-royalties" /> : <EmptyChart seriesName="Upstream Royalties" />}
               </div>
               <div style={{ padding: "0.875rem 1rem", background: "var(--amber-tint)", border: "1px solid rgba(180,83,0.2)", borderRadius: "var(--r-md)", fontSize: "0.82rem", color: "var(--amber)" }}>
                 Revenue Portal under active development. Producing companies registry is live. Financial flow data will be published upon completion of agency data agreements.
@@ -820,7 +825,7 @@ export default function Dashboard() {
 
           {/* ── ENERGY BRIEF (Presidency / Reporting profiles) ── */}
           {view === "brief" && (
-            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis} alerts={profile.alerts} selectedYear={selectedYear} setSelectedYear={setSelectedYear} />
+            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis} alerts={profile.alerts} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availYears={availYears} dataLoading={dataLoading} />
           )}
 
         </div>
@@ -835,9 +840,10 @@ export default function Dashboard() {
 interface KPI { label: string; value: string; unit: string; change: string; up: boolean; period: string }
 interface Alert { level: string; msg: string; time: string }
 
-function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, selectedYear, setSelectedYear }: {
+function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, selectedYear, setSelectedYear, availYears, dataLoading }: {
   staffName: string; profileLabel: string; roleTitle: string;
   kpis: KPI[]; alerts: Alert[]; selectedYear: number; setSelectedYear: (y: number) => void;
+  availYears: number[]; dataLoading: boolean;
 }) {
   const [classification, setClassification] = useState("FOR OFFICIAL USE ONLY");
   const briefDate = new Date().toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" });
@@ -858,7 +864,7 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
       {/* Controls toolbar — screen only */}
       <div className="no-print" style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1rem", background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)" }}>
         <div style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "var(--ink)" }}>Energy Brief — Print-Ready Report</div>
-        <PeriodNav year={selectedYear} setYear={setSelectedYear} />
+        <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
         <select value={classification} onChange={(e) => setClassification(e.target.value)} style={{ padding: "4px 8px", fontSize: "0.72rem", border: "1px solid var(--border)", borderRadius: 4, background: "var(--surface)", color: "var(--ink)", cursor: "pointer" }}>
           <option>FOR OFFICIAL USE ONLY</option>
           <option>CONFIDENTIAL</option>
