@@ -61,5 +61,28 @@ export async function GET(req: NextRequest) {
     summary[key] = { count: rows.length, latest: rows[rows.length - 1]?.value, unit: rows[rows.length - 1]?.unit };
   }
 
-  return NextResponse.json({ series: grouped, years, summary, year });
+  // State-level map: latest value per series × state (region != 'NGA' and not null)
+  const { data: stateRows } = await db()
+    .from("energy_records")
+    .select("series_type_id, region, value, period_date")
+    .not("region", "in", '("NGA","","national")')
+    .not("region", "is", null)
+    .order("period_date");
+
+  // For each series+region keep only the latest record's value
+  const latestPerRegion: Record<string, { date: string; value: number }> = {};
+  for (const row of stateRows ?? []) {
+    const key = `${row.series_type_id}::${row.region}`;
+    if (!latestPerRegion[key] || row.period_date > latestPerRegion[key].date) {
+      latestPerRegion[key] = { date: row.period_date as string, value: Number(row.value) };
+    }
+  }
+  const stateMap: Record<string, Record<string, number>> = {};
+  for (const [key, { value }] of Object.entries(latestPerRegion)) {
+    const [seriesId, region] = key.split("::");
+    if (!stateMap[seriesId]) stateMap[seriesId] = {};
+    stateMap[seriesId][region] = value;
+  }
+
+  return NextResponse.json({ series: grouped, years, summary, year, stateMap });
 }

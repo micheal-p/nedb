@@ -44,8 +44,64 @@ interface Alert  { level: string; msg: string; time: string }
 interface ProfileDef {
   label: string; roleTitle: string; color: string; accent: string;
   persona: string; defaultView: string; navOrder: string[];
-  kpis:   KPIDef[];
-  alerts: Alert[];
+  kpis: KPIDef[];
+}
+
+const SERIES_LABELS: Record<string, string> = {
+  crude_oil_production:   "Crude oil production",
+  natural_gas_production: "Natural gas production",
+  pms_sales:              "PMS sales volume",
+  ago_sales:              "AGO (diesel) sales",
+  kerosine_sales:         "Kerosene (DPK) sales",
+  lpg_sales:              "LPG sales",
+  electricity_generation: "Electricity generation",
+  electricity_sent_out:   "Electricity sent out",
+  electricity_consumption:"Electricity consumption",
+  renewable_energy:       "Renewable energy capacity",
+  fuelwood_consumption:   "Fuelwood consumption",
+  faac_oil_revenue:       "FAAC oil revenue",
+  upstream_royalties:     "Upstream royalties",
+};
+
+function computeAnomalies(data: DashData): Alert[] {
+  const alerts: Alert[] = [];
+  for (const [id, rows] of Object.entries(data)) {
+    if (!rows.length) continue;
+    const label  = SERIES_LABELS[id] ?? id;
+    const latest = rows[rows.length - 1];
+
+    if (rows.length >= 4) {
+      const window3 = rows.slice(-4, -1);
+      const avg3    = window3.reduce((s, r) => s + r.value, 0) / window3.length;
+      if (avg3 !== 0) {
+        const dev = ((latest.value - avg3) / Math.abs(avg3)) * 100;
+        if (Math.abs(dev) >= 15) {
+          const dir = dev > 0 ? "above" : "below";
+          alerts.push({
+            level: Math.abs(dev) >= 25 ? "high" : "medium",
+            msg:   `${label} is ${Math.abs(dev).toFixed(0)}% ${dir} its 3-period rolling average.`,
+            time:  latest.period,
+          });
+        }
+      }
+    }
+
+    if (rows.length >= 3) {
+      const [r0, r1, r2] = rows.slice(-3);
+      if (r0.value > r1.value && r1.value > r2.value && r0.value !== 0) {
+        const drop = ((r0.value - r2.value) / r0.value) * 100;
+        if (drop > 5) {
+          alerts.push({
+            level: drop > 20 ? "medium" : "low",
+            msg:   `${label} declining 3 consecutive periods (−${drop.toFixed(1)}% cumulative).`,
+            time:  r2.period,
+          });
+        }
+      }
+    }
+  }
+  const ord: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  return alerts.sort((a, b) => (ord[a.level] ?? 3) - (ord[b.level] ?? 3));
 }
 
 function fmtKpiValue(v: number): string {
@@ -83,12 +139,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
       { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
     ],
-    alerts: [
-      { level: "high",   msg: "National crude production still 18% below OPEC+ quota.", time: "Today" },
-      { level: "high",   msg: "Power sector market shortfall at ₦4.1T — investor risk.", time: "2 days ago" },
-      { level: "medium", msg: "LPG penetration at 18.4% — below 25% Decade of Gas target.", time: "3 days ago" },
-      { level: "low",    msg: "Renewable energy capacity grew 18.4% YoY.", time: "1 week ago" },
-    ],
   },
   ecn: {
     label: "ECN — Energy Commission of Nigeria", roleTitle: "ECN National Energy Policy Intelligence",
@@ -100,12 +150,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
       { label: "Fuelwood Consumption", series: "fuelwood_consumption",   unit: "M m³",  higherIsBetter: false },
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
-    ],
-    alerts: [
-      { level: "medium", msg: "Energy efficiency target for 2025 at risk — Q3 consumption up 4%.", time: "3 days ago" },
-      { level: "medium", msg: "Renewable data for Q4 not yet submitted by 4 state agencies.", time: "4 days ago" },
-      { level: "low",    msg: "Gas flaring down 6% YoY — improving utilisation.", time: "1 week ago" },
-      { level: "low",    msg: "Biomass reconciliation pending for 7 northern states.", time: "1 week ago" },
     ],
   },
   nerc: {
@@ -119,12 +163,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
       { label: "Upstream Royalties",     series: "upstream_royalties",     unit: "₦ Billion" },
     ],
-    alerts: [
-      { level: "high",   msg: "Abuja DisCo ATC&C exceeded 40% threshold — 3rd consecutive month.", time: "2 hours ago" },
-      { level: "high",   msg: "Kano DisCo collection below 65% — regulatory trigger breached.", time: "1 day ago" },
-      { level: "medium", msg: "NBET payment shortfall up ₦12B vs. previous month.", time: "4 days ago" },
-      { level: "low",    msg: "3 DisCos yet to submit November generation data.", time: "2 days ago" },
-    ],
   },
   nuprc: {
     label: "NUPRC — Upstream Petroleum Regulator", roleTitle: "NUPRC Upstream Petroleum Regulatory Dashboard",
@@ -136,12 +174,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
       { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
       { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
-    ],
-    alerts: [
-      { level: "high",   msg: "OML 25 royalty remittance overdue 45 days — enforcement pending.", time: "Today" },
-      { level: "medium", msg: "Production still 18% below OPEC+ quota.", time: "2 days ago" },
-      { level: "medium", msg: "3 marginal field operators missed Q4 reporting deadline.", time: "3 days ago" },
-      { level: "low",    msg: "Q4 crude lifting schedule: 3 cargoes deferred.", time: "5 days ago" },
     ],
   },
   nmdpra: {
@@ -155,12 +187,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "LPG Sales",           series: "lpg_sales",     unit: "MT" },
       { label: "Kerosene (DPK) Sales",series: "kerosine_sales",unit: "M Litres" },
     ],
-    alerts: [
-      { level: "high",   msg: "PMS stock below 14-day buffer — supply stress risk.", time: "Yesterday" },
-      { level: "medium", msg: "AGO price differential widening — arbitrage risk.", time: "4 days ago" },
-      { level: "medium", msg: "4 depot operators non-compliant with Q4 stock reporting.", time: "3 days ago" },
-      { level: "low",    msg: "Dangote Refinery at 38.4% nameplate capacity.", time: "1 week ago" },
-    ],
   },
   nnpcl: {
     label: "NNPC Limited", roleTitle: "NNPC Limited Operational Intelligence Dashboard",
@@ -172,12 +198,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
       { label: "PMS (Petrol) Sales",   series: "pms_sales",              unit: "M Litres" },
       { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
-    ],
-    alerts: [
-      { level: "medium", msg: "JV cash calls shortfall — OML 21 production at risk.", time: "2 days ago" },
-      { level: "medium", msg: "Gas flaring above threshold in OML 58 — TCO exposure.", time: "3 days ago" },
-      { level: "low",    msg: "NLNG Train 7 FID timeline pushed to Q2 2025.", time: "5 days ago" },
-      { level: "low",    msg: "Equity crude lifting plan Q1 2025 submitted to NUPRC.", time: "1 week ago" },
     ],
   },
   nemic: {
@@ -191,12 +211,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
       { label: "Fuelwood Consumption",   series: "fuelwood_consumption",   unit: "M m³", higherIsBetter: false },
     ],
-    alerts: [
-      { level: "high",   msg: "Kaduna corridor lines at 94% utilisation — overload risk.", time: "6 hours ago" },
-      { level: "high",   msg: "Afam IV maintenance overdue — reliability risk.", time: "1 day ago" },
-      { level: "medium", msg: "Escravos–Lagos pipeline integrity inspection deferred to Q2 2025.", time: "3 days ago" },
-      { level: "low",    msg: "Solar mini-grid rollout at 68% of REA 2024 target.", time: "1 week ago" },
-    ],
   },
   nrs: {
     label: "NRS — Natural Resources Statistics", roleTitle: "NRS Natural Resources Statistical Dashboard",
@@ -208,12 +222,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
       { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
       { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
-    ],
-    alerts: [
-      { level: "medium", msg: "3 agencies yet to submit Q4 2024 data.", time: "2 days ago" },
-      { level: "medium", msg: "Biomass methodology revision pending ECN sign-off.", time: "4 days ago" },
-      { level: "low",    msg: "Crude CAGR updated following NUPRC Q4 reconciliation.", time: "3 days ago" },
-      { level: "low",    msg: "NBS energy statistics annual report reconciliation scheduled.", time: "1 week ago" },
     ],
   },
   rea: {
@@ -227,12 +235,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Fuelwood Consumption", series: "fuelwood_consumption", unit: "M m³", higherIsBetter: false },
       { label: "Electricity Generation",series: "electricity_generation",unit: "GWh" },
     ],
-    alerts: [
-      { level: "medium", msg: "Mini-grid rollout at 68% of 2024 target — 66 sites behind.", time: "3 days ago" },
-      { level: "medium", msg: "FiT obligations for wind projects missed Q3 deadline.", time: "1 week ago" },
-      { level: "low",    msg: "NREEEP Phase 2 ahead of target in Katsina and Sokoto.", time: "5 days ago" },
-      { level: "low",    msg: "World Bank off-grid funding tranche released.", time: "1 week ago" },
-    ],
   },
   tcn: {
     label: "TCN — Transmission Company of Nigeria", roleTitle: "TCN Grid Transmission Intelligence Dashboard",
@@ -244,12 +246,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Electricity Generation",series: "electricity_generation", unit: "GWh" },
       { label: "Electricity Consumed",  series: "electricity_consumption",unit: "GWh" },
       { label: "Renewable Capacity",    series: "renewable_energy",       unit: "MW" },
-    ],
-    alerts: [
-      { level: "high",   msg: "Kaduna corridor at 94% utilisation — overload risk.", time: "6 hours ago" },
-      { level: "high",   msg: "System frequency below 49.5 Hz on 4 occasions this week.", time: "1 day ago" },
-      { level: "medium", msg: "330kV Benin–Onitsha maintenance — rerouting required.", time: "3 days ago" },
-      { level: "low",    msg: "Ikeja West substation expansion 74% complete.", time: "5 days ago" },
     ],
   },
   firs: {
@@ -263,12 +259,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Crude Oil Produced", series: "crude_oil_production",   unit: "M Barrels" },
       { label: "Natural Gas",        series: "natural_gas_production", unit: "Bcf" },
     ],
-    alerts: [
-      { level: "high",   msg: "PPT audit for 2 IOC JVs — ₦38B in dispute.", time: "4 days ago" },
-      { level: "medium", msg: "FAAC oil revenue 12% below Q4 budget projection.", time: "2 days ago" },
-      { level: "medium", msg: "3 E&P companies yet to file Q4 PPT self-assessment.", time: "5 days ago" },
-      { level: "low",    msg: "FIRS energy sector audit programme 2025 published.", time: "1 week ago" },
-    ],
   },
   nbs: {
     label: "NBS — National Bureau of Statistics", roleTitle: "NBS Energy Sector Statistical Dashboard",
@@ -280,12 +270,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
       { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
       { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
-    ],
-    alerts: [
-      { level: "medium", msg: "Q4 GDP energy contribution pending NUPRC reconciliation.", time: "3 days ago" },
-      { level: "medium", msg: "Energy CPI sub-index +12.4% YoY — inflation signal.", time: "4 days ago" },
-      { level: "low",    msg: "Energy statistics annual report 2023 for public consultation.", time: "5 days ago" },
-      { level: "low",    msg: "Biomass methodology revision pending ECN sign-off.", time: "1 week ago" },
     ],
   },
   executive: {
@@ -299,12 +283,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "PMS (Petrol) Sales",     series: "pms_sales",              unit: "M Litres" },
       { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
     ],
-    alerts: [
-      { level: "high",   msg: "Abuja DisCo ATC&C loss exceeded 40% threshold for 3rd consecutive month.", time: "2 hours ago" },
-      { level: "medium", msg: "Natural gas production shows 18% deviation from 3-month rolling average.", time: "6 hours ago" },
-      { level: "medium", msg: "PMS national stock below 14-day buffer — potential supply stress.", time: "Yesterday" },
-      { level: "low",    msg: "Crude oil production CAGR updated following NUPRC Q4 reconciliation.", time: "3 days ago" },
-    ],
   },
   petroleum: {
     label: "Petroleum & Gas Analyst", roleTitle: "Petroleum & Upstream Intelligence Dashboard",
@@ -316,12 +294,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "PMS (Petrol) Sales",   series: "pms_sales",            unit: "M Litres" },
       { label: "AGO (Diesel) Sales",   series: "ago_sales",            unit: "M Litres" },
       { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
-    ],
-    alerts: [
-      { level: "high",   msg: "PMS stock below 14-day buffer — supply stress.", time: "Yesterday" },
-      { level: "medium", msg: "Crude CAGR updated following NUPRC Q4 reconciliation.", time: "3 days ago" },
-      { level: "medium", msg: "AGO price differential widening — arbitrage risk.", time: "4 days ago" },
-      { level: "low",    msg: "NNPCL Q4 crude lifting: 3 cargoes deferred.", time: "5 days ago" },
     ],
   },
   electricity: {
@@ -335,12 +307,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Electricity Consumed",   series: "electricity_consumption",unit: "GWh" },
       { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
     ],
-    alerts: [
-      { level: "high",   msg: "Abuja DisCo ATC&C exceeded 40% — 3rd consecutive month.", time: "2 hours ago" },
-      { level: "high",   msg: "Frequency dropped below 49.5 Hz on 4 occasions this week.", time: "1 day ago" },
-      { level: "medium", msg: "November generation data not yet submitted by 3 DisCos.", time: "2 days ago" },
-      { level: "low",    msg: "NBET shortfall up ₦12B vs. previous month.", time: "4 days ago" },
-    ],
   },
   renewables: {
     label: "Clean Energy Analyst", roleTitle: "Renewables & Clean Energy Intelligence Dashboard",
@@ -353,12 +319,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Fuelwood Consumption", series: "fuelwood_consumption",   unit: "M m³", higherIsBetter: false },
       { label: "LPG Sales",            series: "lpg_sales",              unit: "MT" },
     ],
-    alerts: [
-      { level: "medium", msg: "Gas production shows 18% deviation from rolling average.", time: "6 hours ago" },
-      { level: "medium", msg: "Off-grid solar certification pending for REA Q4 sites.", time: "3 days ago" },
-      { level: "low",    msg: "Biomass reconciliation pending for 7 northern states.", time: "5 days ago" },
-      { level: "low",    msg: "FiT payments for wind projects missed Q3 deadline.", time: "1 week ago" },
-    ],
   },
   fiscal: {
     label: "Fiscal & Revenue Analyst", roleTitle: "Fiscal Revenue Intelligence Dashboard",
@@ -370,12 +330,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Upstream Royalties", series: "upstream_royalties",     unit: "₦ Billion" },
       { label: "Crude Oil Produced", series: "crude_oil_production",   unit: "M Barrels" },
       { label: "Natural Gas",        series: "natural_gas_production", unit: "Bcf" },
-    ],
-    alerts: [
-      { level: "high",   msg: "OML 25 royalty remittance overdue 45 days.", time: "Today" },
-      { level: "medium", msg: "FAAC oil revenue 12% below Q4 budget projection.", time: "2 days ago" },
-      { level: "medium", msg: "PPT audit for 2 IOC JVs — ₦38B in dispute.", time: "4 days ago" },
-      { level: "low",    msg: "2024 marginal field signature bonus schedule published.", time: "1 week ago" },
     ],
   },
 
@@ -391,12 +345,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
       { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
     ],
-    alerts: [
-      { level: "high",   msg: "NUPRC issued 3 new OML licenses — bid round open until Mar 2025.", time: "1 day ago" },
-      { level: "medium", msg: "PIGB fiscal terms: 30% PPT on non-PSC onshore blocks.", time: "3 days ago" },
-      { level: "medium", msg: "Exchange rate stabilised — CBN FX window at ₦1,580/$.", time: "4 days ago" },
-      { level: "low",    msg: "NNPCL strategic divestment plan: 4 non-core assets listed.", time: "1 week ago" },
-    ],
   },
   investor_capital: {
     label: "Capital Markets", roleTitle: "Energy Sector Capital Markets Intelligence Dashboard",
@@ -408,12 +356,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
       { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
       { label: "Electricity Generation",series: "electricity_generation",unit: "GWh" },
-    ],
-    alerts: [
-      { level: "high",   msg: "NNPCL IPO roadshow scheduled Q1 2025 — investor registration open.", time: "Today" },
-      { level: "medium", msg: "Seplat AGO acquisition adds ~30kbopd net production.", time: "2 days ago" },
-      { level: "medium", msg: "FGN petroleum revenue bond issuance 2025 — indicative $500M.", time: "4 days ago" },
-      { level: "low",    msg: "Fitch affirmed Nigeria B energy sovereign outlook 'Stable'.", time: "1 week ago" },
     ],
   },
   investor_infra: {
@@ -427,12 +369,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
       { label: "FAAC Oil Revenue",       series: "faac_oil_revenue",       unit: "₦ Billion" },
     ],
-    alerts: [
-      { level: "high",   msg: "World Bank $500M DISREP financing for DisCo privatisation round.", time: "2 days ago" },
-      { level: "high",   msg: "NERC approved 40% tariff uplift for Band A customers.", time: "3 days ago" },
-      { level: "medium", msg: "Afam IV acquisition tender — 986MW gas plant.", time: "5 days ago" },
-      { level: "low",    msg: "ATC&C improvement trajectory: 3 DisCos below 40% threshold.", time: "1 week ago" },
-    ],
   },
   investor_renewable: {
     label: "Renewable Investors", roleTitle: "Clean Energy Investment Intelligence Dashboard",
@@ -444,12 +380,6 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
       { label: "Fuelwood Consumption", series: "fuelwood_consumption", unit: "M m³", higherIsBetter: false },
       { label: "Electricity Generation",series: "electricity_generation",unit: "GWh" },
-    ],
-    alerts: [
-      { level: "high",   msg: "REA issued RFP for 200 mini-grid sites — deadline Feb 2025.", time: "1 day ago" },
-      { level: "medium", msg: "World Bank Distributed Access fund: $150M available.", time: "3 days ago" },
-      { level: "medium", msg: "FiT obligations for wind projects missed Q3 payment deadline.", time: "5 days ago" },
-      { level: "low",    msg: "NREEEP Phase 2 ahead of target in Katsina and Sokoto.", time: "1 week ago" },
     ],
   },
 };
@@ -538,6 +468,7 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState(2026);
   const [dashData, setDashData]     = useState<DashData>({});
+  const [stateMap, setStateMap]     = useState<Record<string, Record<string, number>>>({});
   const [availYears, setAvailYears] = useState<number[]>([2026]);
   const [dataLoading, setDataLoading] = useState(false);
 
@@ -560,6 +491,7 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((payload) => {
         setDashData(payload.series ?? {});
+        setStateMap(payload.stateMap ?? {});
         if (payload.years?.length) setAvailYears(payload.years);
       })
       .catch(() => {})
@@ -679,21 +611,29 @@ export default function Dashboard() {
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.25rem" }}>
                 {s("crude_oil_production").length ? <SectorChart title="Crude Oil Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC" data={s("crude_oil_production")} series={[{ key: "value", label: "Production", color: profile.color }]} unit="M Barrels" filename="crude-oil-production" /> : <EmptyChart seriesName="Crude Oil Production" />}
                 <div className="panel">
+                  {(() => { const liveAlerts = computeAnomalies(dashData); const highCount = liveAlerts.filter((a) => a.level === "high").length; return (<>
                   <div className="panel-header">
                     <span className="panel-title">Anomaly Feed</span>
-                    <span className="tag tag-red" style={{ fontSize: "0.6rem" }}>{profile.alerts.filter((a) => a.level === "high").length} High</span>
+                    {liveAlerts.length > 0 && <span className="tag tag-red" style={{ fontSize: "0.6rem" }}>{highCount} High</span>}
                   </div>
                   <div className="panel-body" style={{ padding: "0 1.25rem" }}>
-                    {profile.alerts.map((a, i) => (
+                    {liveAlerts.length ? liveAlerts.map((a, i) => (
                       <div key={i} className="alert-row">
                         <span className={`alert-dot ${a.level}`} />
                         <div className="alert-body">{a.msg}<div className="alert-time">{a.time}</div></div>
                       </div>
-                    ))}
+                    )) : (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.4rem", padding: "1.5rem 0", color: "var(--ink-5)" }}>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--ink-4)" }}>No anomalies detected</div>
+                        <div style={{ fontSize: "0.7rem", textAlign: "center", lineHeight: 1.4 }}>Upload energy records to enable live anomaly monitoring.</div>
+                      </div>
+                    )}
                   </div>
+                  </>)})()}
                 </div>
               </div>
-              <NigeriaMap metric="electricity_access" title="Electricity Access Rate by State" unit="%" colorLow="#FEF3C7" colorHigh="#0E7A3C" higherIsBetter={true} />
+              <NigeriaMap stateData={stateMap["electricity_generation"] ?? {}} id="electricity-access" title="Electricity Generation by State" unit="GWh" colorLow="#FEF3C7" colorHigh="#0E7A3C" higherIsBetter={true} source="NERC / ECN" />
               {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Multi-series" subtitle={`PMS · AGO · LPG monthly volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS", color: "#0E7A3C" }, { key: "ago", label: "AGO", color: "#1D4ED8" }, { key: "lpg", label: "LPG", color: "#B45309" }]} unit="M Litres" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
               <div>
                 <div className="sec-hd" style={{ marginBottom: "1rem" }}>
@@ -756,7 +696,7 @@ export default function Dashboard() {
                 {s("crude_oil_production").length ? <SectorChart title="Crude Oil Production" subtitle={`Monthly barrels · ${selectedYear}`} source="NUPRC" data={s("crude_oil_production")} series={[{ key: "value", label: "Production", color: "#78350F" }]} unit="M Barrels" filename="crude-oil-production" /> : <EmptyChart seriesName="Crude Oil Production" />}
                 {s("natural_gas_production").length ? <SectorChart title="Natural Gas Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC / NNPCL" data={s("natural_gas_production")} series={[{ key: "value", label: "Gas", color: "#0E7A3C" }]} unit="Bcf" filename="natural-gas-production" /> : <EmptyChart seriesName="Natural Gas Production" />}
               </div>
-              <NigeriaMap metric="crude_production" title="Crude Oil Production by State" unit="M Barrels" colorLow="#FEF3C7" colorHigh="#78350F" higherIsBetter={true} />
+              <NigeriaMap stateData={stateMap["crude_oil_production"] ?? {}} id="crude-production" title="Crude Oil Production by State" unit="M Barrels" colorLow="#FEF3C7" colorHigh="#78350F" higherIsBetter={true} source="NUPRC" />
               <div className="panel">
                 <div className="panel-header">
                   <span className="panel-title">OML Block Performance Summary</span>
@@ -788,7 +728,7 @@ export default function Dashboard() {
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               {(s("electricity_generation").length || s("electricity_sent_out").length) ? <SectorChart title="Electricity Generation vs. Sent Out" subtitle={`Monthly GWh · ${selectedYear}`} source="NERC / TCN" data={mergeSeries([{ data: s("electricity_generation"), key: "generation" }, { data: s("electricity_sent_out"), key: "sent_out" }])} series={[{ key: "generation", label: "Generation (GWh)", color: "#1D4ED8" }, { key: "sent_out", label: "Sent Out (GWh)", color: "#0E7A3C" }]} unit="GWh" filename="electricity-generation" /> : <EmptyChart seriesName="Electricity Generation" />}
-              <NigeriaMap metric="atc_loss" title="ATC&C Loss Rate by State" unit="%" colorLow="#DCFCE7" colorHigh="#C0392B" higherIsBetter={false} />
+              <NigeriaMap stateData={stateMap["electricity_sent_out"] ?? {}} id="atc-loss" title="Electricity Sent Out by State" unit="GWh" colorLow="#DCFCE7" colorHigh="#1D4ED8" higherIsBetter={true} source="TCN / NERC" />
               <div className="panel">
                 <div className="panel-header">
                   <span className="panel-title">Distribution Companies — ATC&amp;C Loss & Collection Efficiency</span>
@@ -820,7 +760,7 @@ export default function Dashboard() {
                 {s("renewable_energy").length ? <SectorChart title="Renewable Energy Capacity" subtitle={`Quarterly installed MW · ${selectedYear}`} source="REA / NERC" data={s("renewable_energy")} series={[{ key: "value", label: "Capacity (MW)", color: "#059669" }]} unit="MW" filename="renewable-capacity" /> : <EmptyChart seriesName="Renewable Energy" />}
                 {s("fuelwood_consumption").length ? <SectorChart title="Fuelwood Consumption" subtitle={`Quarterly volumes · ${selectedYear}`} source="ECN / NBS" data={s("fuelwood_consumption")} series={[{ key: "value", label: "Fuelwood (M m³)", color: "#78350F" }]} unit="M m³" filename="fuelwood-consumption" /> : <EmptyChart seriesName="Fuelwood Consumption" />}
               </div>
-              <NigeriaMap metric="offgrid_penetration" title="Off-Grid Dependence by State" unit="%" colorLow="#D1FAE5" colorHigh="#065F46" higherIsBetter={false} />
+              <NigeriaMap stateData={stateMap["renewable_energy"] ?? {}} id="renewable-capacity" title="Renewable Energy Capacity by State" unit="MW" colorLow="#D1FAE5" colorHigh="#065F46" higherIsBetter={true} source="REA / ECN" />
               <div className="panel" style={{ padding: "1.25rem 1.5rem" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1rem" }}>
                   {[{ label: "Off-Grid Connections", value: "2.4M", unit: "Households", change: "+18.2%", up: true },{ label: "Mini-Grids Deployed", value: "214", unit: "Sites", change: "+62 vs 2023", up: true },{ label: "LPG Penetration", value: "18.4%", unit: "HH", change: "+2.1pp", up: true }].map((m) => (
@@ -852,7 +792,7 @@ export default function Dashboard() {
 
           {/* ── ENERGY BRIEF (Presidency / Reporting profiles) ── */}
           {view === "brief" && (
-            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis.map((d) => computeKPI(d, dashData))} alerts={profile.alerts} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availYears={availYears} dataLoading={dataLoading} />
+            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis.map((d) => computeKPI(d, dashData))} alerts={computeAnomalies(dashData)} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availYears={availYears} dataLoading={dataLoading} />
           )}
 
         </div>
