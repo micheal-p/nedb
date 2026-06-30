@@ -92,7 +92,12 @@ const ENTRY_INIT = { series_type_id: "crude_oil_production", year: 2024, period:
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "registry" | "requests" | "entry">("users");
+  const [tab, setTab] = useState<"users" | "registry" | "requests" | "entry" | "iot">("users");
+  const [copied, setCopied] = useState<string | null>(null);
+
+  function copyToClipboard(text: string, label: string) {
+    navigator.clipboard.writeText(text).then(() => { setCopied(label); setTimeout(() => setCopied(null), 2000); });
+  }
 
   // Access requests state
   interface AccessRequest { id: number; full_name: string; email: string; organisation: string; position: string | null; profile_key: string; justification: string | null; status: string; created_at: string; temp_username: string | null }
@@ -342,6 +347,7 @@ export default function AdminPage() {
         <div style={{ borderBottom: "1px solid var(--border)", marginBottom: "2rem", display: "flex", gap: 0 }}>
           <button style={TAB_STYLE(tab === "users")}    onClick={() => { setTab("users"); setMsg(null); }}>Portal Users</button>
           <button style={TAB_STYLE(tab === "entry")}    onClick={() => { setTab("entry"); setMsg(null); setEntryMsg(null); }}>Data Entry</button>
+          <button style={TAB_STYLE(tab === "iot")}      onClick={() => { setTab("iot"); setMsg(null); }}>IoT / API</button>
           <button style={TAB_STYLE(tab === "registry")} onClick={() => { setTab("registry"); setMsg(null); }}>Companies Registry</button>
           <button style={TAB_STYLE(tab === "requests")} onClick={() => { setTab("requests"); loadRequests(); setMsg(null); }}>
             Access Requests
@@ -671,6 +677,141 @@ export default function AdminPage() {
                     Each submission is logged as a manual upload session with your admin account as the attributed source.
                   </p>
                 </form>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── IOT / API TAB ── */}
+        {tab === "iot" && (
+          <>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "0.25rem" }}>
+                <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.5rem", fontWeight: 400, color: "var(--ink)", margin: 0 }}>IoT & EOM Telemetry Integration</h1>
+                <span className="tag tag-amber" style={{ fontSize: "0.65rem" }}>Device Management — Coming Soon</span>
+              </div>
+              <p style={{ fontSize: "0.8rem", color: "var(--ink-4)" }}>
+                Energy Operation Management (EOM) systems and IoT field devices post readings directly to this API. Data lands in real-time on the Data Point dashboard.
+              </p>
+            </div>
+
+            {/* Ingest endpoint card */}
+            <div className="panel" style={{ marginBottom: "1.5rem" }}>
+              <div className="panel-header"><span className="panel-title">Ingest Endpoint</span><span className="tag tag-green"><span className="live-dot" style={{ marginRight: 4 }} />Active</span></div>
+              <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+
+                <div>
+                  <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>POST Endpoint</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <code style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 14px", fontSize: "0.82rem", fontFamily: "var(--font-mono)", color: "var(--ink)" }}>
+                      https://nedb.vercel.app/api/iot/ingest
+                    </code>
+                    <button onClick={() => copyToClipboard("https://nedb.vercel.app/api/iot/ingest", "url")} style={{ padding: "8px 14px", border: "1px solid var(--border)", borderRadius: 6, background: copied === "url" ? "var(--green)" : "var(--surface)", color: copied === "url" ? "#fff" : "var(--ink-4)", fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap", transition: "0.15s" }}>
+                      {copied === "url" ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>API Key — share with device operators only</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <code style={{ flex: 1, background: "var(--ink)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 14px", fontSize: "0.78rem", fontFamily: "var(--font-mono)", color: "var(--green)", letterSpacing: "0.04em" }}>
+                      Add <strong style={{ color: "#fff" }}>IOT_API_KEY</strong> to your Vercel environment variables
+                    </code>
+                    <button onClick={() => copyToClipboard("X-API-Key", "key")} style={{ padding: "8px 14px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)", color: "var(--ink-4)", fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap" }}>
+                      Copy Header
+                    </button>
+                  </div>
+                  <p style={{ fontSize: "0.7rem", color: "var(--amber)", marginTop: 6 }}>Set IOT_API_KEY in Vercel → Settings → Environment Variables. Never expose this in client code.</p>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Authentication Header</div>
+                  <code style={{ display: "block", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 14px", fontSize: "0.78rem", fontFamily: "var(--font-mono)", color: "var(--ink)" }}>
+                    X-API-Key: {"<your-iot-api-key>"}
+                  </code>
+                </div>
+              </div>
+            </div>
+
+            {/* Payload examples */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", marginBottom: "1.5rem" }}>
+              <div className="panel">
+                <div className="panel-header"><span className="panel-title">Single Reading</span><span style={{ fontSize: "0.68rem", color: "var(--ink-5)" }}>e.g. one monthly figure</span></div>
+                <div className="panel-body">
+                  <pre style={{ margin: 0, fontSize: "0.72rem", fontFamily: "var(--font-mono)", color: "var(--ink-3)", background: "var(--surface)", borderRadius: 6, padding: "1rem", overflowX: "auto", lineHeight: 1.6 }}>{`POST /api/iot/ingest
+X-API-Key: <key>
+Content-Type: application/json
+
+{
+  "series_type_id": "crude_oil_production",
+  "period":         "2024-06",
+  "period_date":    "2024-06-01",
+  "value":          85.4,
+  "unit":           "M Barrels",
+  "region":         "NGA",
+  "source":         "NUPRC Field Station",
+  "device_id":      "EOM-OML23-001"
+}`}</pre>
+                </div>
+              </div>
+
+              <div className="panel">
+                <div className="panel-header"><span className="panel-title">Batch Reading</span><span style={{ fontSize: "0.68rem", color: "var(--ink-5)" }}>up to 100 rows per call</span></div>
+                <div className="panel-body">
+                  <pre style={{ margin: 0, fontSize: "0.72rem", fontFamily: "var(--font-mono)", color: "var(--ink-3)", background: "var(--surface)", borderRadius: 6, padding: "1rem", overflowX: "auto", lineHeight: 1.6 }}>{`POST /api/iot/ingest
+X-API-Key: <key>
+Content-Type: application/json
+
+{
+  "series_type_id": "electricity_generation",
+  "readings": [
+    {
+      "period":      "2024-01",
+      "period_date": "2024-01-01",
+      "value":       2810.3,
+      "region":      "NGA"
+    },
+    {
+      "period":      "2024-02",
+      "period_date": "2024-02-01",
+      "value":       2790.1
+    }
+  ]
+}`}</pre>
+                </div>
+              </div>
+            </div>
+
+            {/* Supported series */}
+            <div className="panel" style={{ marginBottom: "1.5rem" }}>
+              <div className="panel-header"><span className="panel-title">Supported Series Types</span></div>
+              <div className="data-table-wrap" style={{ border: "none", borderRadius: 0 }}>
+                <table className="data-table">
+                  <thead><tr><th>series_type_id</th><th>Series Name</th><th>Default Unit</th><th>Frequency</th></tr></thead>
+                  <tbody>
+                    {Object.entries(SERIES_META).map(([id, m]) => (
+                      <tr key={id}>
+                        <td className="td-mono" style={{ fontSize: "0.72rem", color: "var(--green)" }}>{id}</td>
+                        <td className="td-primary">{m.name}</td>
+                        <td style={{ fontSize: "0.78rem", fontFamily: "var(--font-mono)" }}>{m.unit}</td>
+                        <td><span className="tag tag-muted" style={{ fontSize: "0.62rem" }}>{m.freq}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Device management — coming soon */}
+            <div className="panel">
+              <div className="panel-header"><span className="panel-title">Registered Devices</span><span className="tag tag-amber">Coming Soon</span></div>
+              <div className="panel-body" style={{ textAlign: "center", padding: "2.5rem", color: "var(--ink-5)" }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ opacity: 0.25, marginBottom: "1rem" }}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+                <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--ink-4)", marginBottom: 6 }}>Device Registry Coming Soon</div>
+                <div style={{ fontSize: "0.78rem", maxWidth: 400, margin: "0 auto" }}>
+                  Register EOM devices by name, assign series types, view last-seen timestamps, and rotate API keys per device. The ingest endpoint is live and ready — devices can post data now using the key above.
+                </div>
               </div>
             </div>
           </>
