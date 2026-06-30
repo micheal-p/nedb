@@ -37,11 +37,36 @@ function EmptyChart({ seriesName }: { seriesName: string }) {
 }
 
 // ── Profile definitions ────────────────────────────────────────
+interface KPIDef { label: string; series: string; unit: string; higherIsBetter?: boolean }
+interface KPI    { label: string; value: string; unit: string; change: string; up: boolean; period: string }
+interface Alert  { level: string; msg: string; time: string }
+
 interface ProfileDef {
   label: string; roleTitle: string; color: string; accent: string;
   persona: string; defaultView: string; navOrder: string[];
-  kpis:   { label: string; value: string; unit: string; change: string; up: boolean; period: string }[];
-  alerts: { level: string; msg: string; time: string }[];
+  kpis:   KPIDef[];
+  alerts: Alert[];
+}
+
+function fmtKpiValue(v: number): string {
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + "T";
+  if (v >= 1_000)     return (v / 1_000).toFixed(1) + "K";
+  if (v < 10)         return v.toFixed(2);
+  return v.toFixed(1);
+}
+
+function computeKPI(def: KPIDef, data: DashData): KPI {
+  const rows = data[def.series] ?? [];
+  if (!rows.length) return { label: def.label, value: "—", unit: def.unit, change: "", up: true, period: "No data yet" };
+  const latest = rows[rows.length - 1];
+  const prev   = rows.length >= 2 ? rows[rows.length - 2] : null;
+  let change = ""; let up = true;
+  if (prev && prev.value !== 0) {
+    const pct = ((latest.value - prev.value) / Math.abs(prev.value)) * 100;
+    change = Math.abs(pct).toFixed(1) + "%";
+    up = def.higherIsBetter !== false ? pct >= 0 : pct <= 0;
+  }
+  return { label: def.label, value: fmtKpiValue(latest.value), unit: def.unit, change, up, period: latest.period };
 }
 
 const ALL_NAV = ["overview","downstream","upstream","midstream","power","renewable","bioenergy","revenue","faac"];
@@ -53,10 +78,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Strategic energy intelligence for the Presidency. Cross-sector overview covering national energy security, production benchmarks and fiscal performance.",
     defaultView: "overview", navOrder: ALL_NAV,
     kpis: [
-      { label: "Crude Oil Production",    value: "85.1M", unit: "Barrels",  change: "+13.3%", up: true,  period: "Dec 2024" },
-      { label: "Energy Access Rate",      value: "57.4%", unit: "Pop.",     change: "+2.1pp", up: true,  period: "2024" },
-      { label: "Oil Revenue (FAAC)",      value: "₦2.8T", unit: "",         change: "+9.3%",  up: true,  period: "Q4 2024" },
-      { label: "Electricity Generation",  value: "3,241", unit: "GWh",      change: "+4.1%",  up: true,  period: "Q4 2024" },
+      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Oil Revenue (FAAC)",     series: "faac_oil_revenue",       unit: "₦ Billion" },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
     ],
     alerts: [
       { level: "high",   msg: "National crude production still 18% below OPEC+ quota.", time: "Today" },
@@ -71,10 +96,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "All-sector energy intelligence for ECN leadership. Policy monitoring across petroleum, electricity, gas, renewables and biomass sectors.",
     defaultView: "overview", navOrder: ALL_NAV,
     kpis: [
-      { label: "National Energy Mix",   value: "57.4%", unit: "Fossil",  change: "-2.3pp", up: true,  period: "2024" },
-      { label: "Renewable Capacity",    value: "2,014", unit: "MW",      change: "+18.4%", up: true,  period: "2024" },
-      { label: "Natural Gas Produced",  value: "196.4", unit: "Bcf",     change: "+7.8%",  up: true,  period: "Q4 2024" },
-      { label: "Fuelwood Consumption",  value: "71.2M", unit: "m³",      change: "-3.1%",  up: true,  period: "2024" },
+      { label: "Renewable Capacity",   series: "renewable_energy",       unit: "MW" },
+      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
+      { label: "Fuelwood Consumption", series: "fuelwood_consumption",   unit: "M m³",  higherIsBetter: false },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
     ],
     alerts: [
       { level: "medium", msg: "Energy efficiency target for 2025 at risk — Q3 consumption up 4%.", time: "3 days ago" },
@@ -89,10 +114,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Regulatory intelligence for NERC. DisCo compliance, market settlement, tariff performance and grid reliability monitoring.",
     defaultView: "downstream", navOrder: ["downstream","power","midstream","overview","upstream","renewable","bioenergy","faac","revenue"],
     kpis: [
-      { label: "Avg ATC&C Loss",       value: "46.2%",  unit: "",   change: "-1.8pp", up: true,  period: "Q4 2024" },
-      { label: "Collection Efficiency",value: "73.5%",  unit: "",   change: "+2.1pp", up: true,  period: "Q4 2024" },
-      { label: "Market Shortfall",     value: "₦4.1T",  unit: "",   change: "Cumul.", up: false, period: "FY 2024" },
-      { label: "Installed Capacity",   value: "12,522", unit: "MW", change: "+3.2%",  up: true,  period: "Q4 2024" },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
+      { label: "Upstream Royalties",     series: "upstream_royalties",     unit: "₦ Billion" },
     ],
     alerts: [
       { level: "high",   msg: "Abuja DisCo ATC&C exceeded 40% threshold — 3rd consecutive month.", time: "2 hours ago" },
@@ -107,10 +132,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Upstream regulatory intelligence for NUPRC. Crude oil production, OML block performance, licensing, royalty compliance and flare reduction monitoring.",
     defaultView: "upstream", navOrder: ["upstream","revenue","overview","downstream","midstream","faac","power","renewable","bioenergy"],
     kpis: [
-      { label: "Crude Oil Production", value: "85.1M", unit: "Barrels", change: "+13.3%", up: true, period: "Dec 2024" },
-      { label: "Gas Flared",           value: "1.84",  unit: "Bcf",     change: "-6.1%",  up: true, period: "Q4 2024" },
-      { label: "Active OML Blocks",    value: "79",    unit: "",        change: "+3",      up: true, period: "2024" },
-      { label: "Royalty Compliance",   value: "84.2%", unit: "",        change: "+5.1pp",  up: true, period: "Q4 2024" },
+      { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
+      { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
+      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
     ],
     alerts: [
       { level: "high",   msg: "OML 25 royalty remittance overdue 45 days — enforcement pending.", time: "Today" },
@@ -125,10 +150,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Midstream and downstream regulatory intelligence. Refinery throughput, product distribution, pipeline performance and retail compliance.",
     defaultView: "downstream", navOrder: ["downstream","midstream","overview","upstream","revenue","power","renewable","bioenergy","faac"],
     kpis: [
-      { label: "PMS Sales Volume",    value: "1.82B",  unit: "Litres",   change: "-2.3%",  up: false, period: "Q3 2024" },
-      { label: "AGO (Diesel) Sales",  value: "624M",   unit: "Litres",   change: "+5.1%",  up: true,  period: "Q3 2024" },
-      { label: "LPG Consumption",     value: "214K",   unit: "MT",       change: "+11.2%", up: true,  period: "Q3 2024" },
-      { label: "Refinery Throughput", value: "38.4%",  unit: "Capacity", change: "+12pp",  up: true,  period: "Q4 2024" },
+      { label: "PMS (Petrol) Sales",  series: "pms_sales",     unit: "M Litres" },
+      { label: "AGO (Diesel) Sales",  series: "ago_sales",     unit: "M Litres" },
+      { label: "LPG Sales",           series: "lpg_sales",     unit: "MT" },
+      { label: "Kerosene (DPK) Sales",series: "kerosine_sales",unit: "M Litres" },
     ],
     alerts: [
       { level: "high",   msg: "PMS stock below 14-day buffer — supply stress risk.", time: "Yesterday" },
@@ -143,10 +168,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Operational and commercial intelligence for NNPC Limited. Production performance, equity crude, gas monetisation and downstream operations.",
     defaultView: "upstream", navOrder: ["upstream","downstream","midstream","revenue","overview","power","renewable","bioenergy","faac"],
     kpis: [
-      { label: "Equity Crude Lifted",  value: "42.3M", unit: "Barrels", change: "+8.7%",  up: true, period: "Dec 2024" },
-      { label: "Gas Monetised",        value: "114.2", unit: "Bcf",     change: "+12.1%", up: true, period: "Q4 2024" },
-      { label: "Refinery Throughput",  value: "38.4%", unit: "Cap.",    change: "+12pp",  up: true, period: "Q4 2024" },
-      { label: "Downstream Revenue",   value: "₦1.4T", unit: "",        change: "+18.3%", up: true, period: "Q4 2024" },
+      { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
+      { label: "PMS (Petrol) Sales",   series: "pms_sales",              unit: "M Litres" },
+      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
     ],
     alerts: [
       { level: "medium", msg: "JV cash calls shortfall — OML 21 production at risk.", time: "2 days ago" },
@@ -161,10 +186,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Infrastructure and management intelligence. Energy infrastructure investment, grid capacity, emergency response and critical asset monitoring.",
     defaultView: "power", navOrder: ["power","midstream","renewable","overview","downstream","upstream","bioenergy","faac","revenue"],
     kpis: [
-      { label: "Grid Installed Cap.",  value: "12,522", unit: "MW",    change: "+3.2%",  up: true,  period: "Q4 2024" },
-      { label: "Transmission Cap.",    value: "7,801",  unit: "MW",    change: "+1.8%",  up: true,  period: "Q4 2024" },
-      { label: "Critical Assets",      value: "14",     unit: "Flags", change: "+3",      up: false, period: "Q4 2024" },
-      { label: "Infra. Investment",    value: "₦284B",  unit: "",      change: "+22.1%", up: true,  period: "2024" },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
+      { label: "Fuelwood Consumption",   series: "fuelwood_consumption",   unit: "M m³", higherIsBetter: false },
     ],
     alerts: [
       { level: "high",   msg: "Kaduna corridor lines at 94% utilisation — overload risk.", time: "6 hours ago" },
@@ -179,10 +204,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Statistical intelligence for natural resources reporting. Production volumes, consumption trends, cross-sector comparisons and data quality monitoring.",
     defaultView: "overview", navOrder: ALL_NAV,
     kpis: [
-      { label: "Series Tracked",      value: "12",    unit: "Active",     change: "",       up: true,  period: "2025" },
-      { label: "Records in DB",       value: "4,820", unit: "Rows",       change: "+312",   up: true,  period: "This month" },
-      { label: "Data Completeness",   value: "76.4%", unit: "",           change: "+4.1pp", up: true,  period: "Q4 2024" },
-      { label: "Agencies Reporting",  value: "9",     unit: "of 12",      change: "",       up: false, period: "Q4 2024" },
+      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
     ],
     alerts: [
       { level: "medium", msg: "3 agencies yet to submit Q4 2024 data.", time: "2 days ago" },
@@ -197,10 +222,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Rural electrification and off-grid intelligence. Mini-grid rollout, solar penetration, off-grid connections and clean energy access by state.",
     defaultView: "renewable", navOrder: ["renewable","bioenergy","power","overview","downstream","upstream","midstream","faac","revenue"],
     kpis: [
-      { label: "Off-Grid Connections", value: "2.4M",  unit: "Households", change: "+18.2%", up: true, period: "2024" },
-      { label: "Mini-Grids Deployed",  value: "214",   unit: "Sites",      change: "+62",    up: true, period: "2024" },
-      { label: "Renewable Capacity",   value: "2,014", unit: "MW",         change: "+18.4%", up: true, period: "2024" },
-      { label: "LPG Penetration",      value: "18.4%", unit: "Households", change: "+2.1pp", up: true, period: "2024" },
+      { label: "Renewable Capacity",   series: "renewable_energy",     unit: "MW" },
+      { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
+      { label: "Fuelwood Consumption", series: "fuelwood_consumption", unit: "M m³", higherIsBetter: false },
+      { label: "Electricity Generation",series: "electricity_generation",unit: "GWh" },
     ],
     alerts: [
       { level: "medium", msg: "Mini-grid rollout at 68% of 2024 target — 66 sites behind.", time: "3 days ago" },
@@ -215,10 +240,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Transmission grid intelligence for TCN management. Grid capacity, wheeling capacity, system stability, constraint management and capital projects.",
     defaultView: "power", navOrder: ["power","midstream","downstream","overview","upstream","renewable","bioenergy","faac","revenue"],
     kpis: [
-      { label: "System Sent Out",      value: "2,890",  unit: "GWh",    change: "+3.8%",  up: true, period: "Q4 2024" },
-      { label: "Wheeling Capacity",    value: "7,801",  unit: "MW",     change: "+1.8%",  up: true, period: "Q4 2024" },
-      { label: "Transmission Losses",  value: "8.4%",   unit: "",       change: "-0.6pp", up: true, period: "Q4 2024" },
-      { label: "Freq. Excursions",     value: "4",      unit: "Events", change: "-2",     up: true, period: "This week" },
+      { label: "Electricity Sent Out",  series: "electricity_sent_out",   unit: "GWh" },
+      { label: "Electricity Generation",series: "electricity_generation", unit: "GWh" },
+      { label: "Electricity Consumed",  series: "electricity_consumption",unit: "GWh" },
+      { label: "Renewable Capacity",    series: "renewable_energy",       unit: "MW" },
     ],
     alerts: [
       { level: "high",   msg: "Kaduna corridor at 94% utilisation — overload risk.", time: "6 hours ago" },
@@ -233,10 +258,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Energy sector tax and revenue intelligence. Petroleum Profit Tax, royalties, CITA from energy companies and FAAC energy contribution tracking.",
     defaultView: "revenue", navOrder: ["revenue","faac","upstream","overview","downstream","midstream","power","renewable","bioenergy"],
     kpis: [
-      { label: "PPT Collected",         value: "₦289B", unit: "", change: "+6.8%",  up: true, period: "Q4 2024" },
-      { label: "Upstream Royalties",    value: "₦412B", unit: "", change: "+14.1%", up: true, period: "Q4 2024" },
-      { label: "CITA (Energy)",         value: "₦74B",  unit: "", change: "+9.2%",  up: true, period: "Q4 2024" },
-      { label: "Oil Revenue (FAAC)",    value: "₦2.8T", unit: "", change: "+9.3%",  up: true, period: "Q4 2024" },
+      { label: "FAAC Oil Revenue",   series: "faac_oil_revenue",       unit: "₦ Billion" },
+      { label: "Upstream Royalties", series: "upstream_royalties",     unit: "₦ Billion" },
+      { label: "Crude Oil Produced", series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Natural Gas",        series: "natural_gas_production", unit: "Bcf" },
     ],
     alerts: [
       { level: "high",   msg: "PPT audit for 2 IOC JVs — ₦38B in dispute.", time: "4 days ago" },
@@ -251,10 +276,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Energy sector statistical intelligence for NBS. Cross-sector data validation, trend analysis and national accounts reconciliation.",
     defaultView: "overview", navOrder: ALL_NAV,
     kpis: [
-      { label: "Crude Oil (GDP Wt.)", value: "5.4%",   unit: "of GDP", change: "+0.3pp", up: true,  period: "Q4 2024" },
-      { label: "Energy Sector CPI",   value: "184.2",  unit: "Index",  change: "+12.4%", up: false, period: "Dec 2024" },
-      { label: "Data Completeness",   value: "76.4%",  unit: "",       change: "+4.1pp", up: true,  period: "Q4 2024" },
-      { label: "Natural Gas Prod.",   value: "196.4",  unit: "Bcf",    change: "+7.8%",  up: true,  period: "Q4 2024" },
+      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
     ],
     alerts: [
       { level: "medium", msg: "Q4 GDP energy contribution pending NUPRC reconciliation.", time: "3 days ago" },
@@ -269,10 +294,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Cross-sector overview for executive leadership and national policy decision-makers.",
     defaultView: "overview", navOrder: ["overview","downstream","revenue","upstream","power","midstream","renewable","bioenergy","faac"],
     kpis: [
-      { label: "Crude Oil Production",   value: "85.1M", unit: "Barrels", change: "+13.3%", up: true,  period: "Dec 2024" },
-      { label: "Electricity Generation", value: "3,241", unit: "GWh",     change: "+4.1%",  up: true,  period: "Q4 2024" },
-      { label: "PMS Sales Volume",       value: "1.82B", unit: "Litres",  change: "-2.3%",  up: false, period: "Q3 2024" },
-      { label: "Natural Gas Produced",   value: "196.4", unit: "Bcf",     change: "+7.8%",  up: true,  period: "Q4 2024" },
+      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "PMS (Petrol) Sales",     series: "pms_sales",              unit: "M Litres" },
+      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
     ],
     alerts: [
       { level: "high",   msg: "Abuja DisCo ATC&C loss exceeded 40% threshold for 3rd consecutive month.", time: "2 hours ago" },
@@ -287,10 +312,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Upstream crude production, downstream product distribution and retail sales analytics.",
     defaultView: "downstream", navOrder: ["downstream","upstream","revenue","overview","midstream","power","renewable","bioenergy","faac"],
     kpis: [
-      { label: "Crude Oil Production", value: "85.1M", unit: "Barrels", change: "+13.3%", up: true,  period: "Dec 2024" },
-      { label: "PMS Sales Volume",     value: "1.82B", unit: "Litres",  change: "-2.3%",  up: false, period: "Q3 2024" },
-      { label: "AGO (Diesel) Sales",   value: "624M",  unit: "Litres",  change: "+5.1%",  up: true,  period: "Q3 2024" },
-      { label: "LPG Consumption",      value: "214K",  unit: "MT",      change: "+11.2%", up: true,  period: "Q3 2024" },
+      { label: "Crude Oil Production", series: "crude_oil_production", unit: "M Barrels" },
+      { label: "PMS (Petrol) Sales",   series: "pms_sales",            unit: "M Litres" },
+      { label: "AGO (Diesel) Sales",   series: "ago_sales",            unit: "M Litres" },
+      { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
     ],
     alerts: [
       { level: "high",   msg: "PMS stock below 14-day buffer — supply stress.", time: "Yesterday" },
@@ -305,10 +330,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Generation capacity, grid transmission, distribution losses and market financial settlement.",
     defaultView: "power", navOrder: ["power","downstream","midstream","overview","upstream","renewable","bioenergy","faac","revenue"],
     kpis: [
-      { label: "Electricity Generation", value: "3,241",  unit: "GWh", change: "+4.1%",  up: true,  period: "Q4 2024" },
-      { label: "System Sent Out",        value: "2,890",  unit: "GWh", change: "+3.8%",  up: true,  period: "Q4 2024" },
-      { label: "Avg ATC&C Loss",         value: "46.2%",  unit: "",    change: "-1.8pp", up: true,  period: "Q4 2024" },
-      { label: "Market Shortfall",       value: "₦4.1T",  unit: "",    change: "Cumul.", up: false, period: "FY 2024" },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
+      { label: "Electricity Consumed",   series: "electricity_consumption",unit: "GWh" },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
     ],
     alerts: [
       { level: "high",   msg: "Abuja DisCo ATC&C exceeded 40% — 3rd consecutive month.", time: "2 hours ago" },
@@ -323,10 +348,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Renewable capacity, natural gas production, biomass and clean energy transition metrics.",
     defaultView: "renewable", navOrder: ["renewable","bioenergy","overview","power","upstream","downstream","midstream","faac","revenue"],
     kpis: [
-      { label: "Natural Gas Produced",  value: "196.4", unit: "Bcf",        change: "+7.8%",  up: true, period: "Q4 2024" },
-      { label: "Renewable Capacity",    value: "2,014", unit: "MW",          change: "+18.4%", up: true, period: "2024" },
-      { label: "Fuelwood Consumption",  value: "71.2M", unit: "m³",          change: "-3.1%",  up: true, period: "2024" },
-      { label: "LPG Penetration",       value: "18.4%", unit: "Households",  change: "+2.1pp", up: true, period: "2024" },
+      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
+      { label: "Renewable Capacity",   series: "renewable_energy",       unit: "MW" },
+      { label: "Fuelwood Consumption", series: "fuelwood_consumption",   unit: "M m³", higherIsBetter: false },
+      { label: "LPG Sales",            series: "lpg_sales",              unit: "MT" },
     ],
     alerts: [
       { level: "medium", msg: "Gas production shows 18% deviation from rolling average.", time: "6 hours ago" },
@@ -341,10 +366,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "FAAC energy contribution, upstream revenue flows, royalty collections and producing company financial intelligence.",
     defaultView: "revenue", navOrder: ["revenue","faac","upstream","overview","downstream","midstream","power","renewable","bioenergy"],
     kpis: [
-      { label: "Oil Revenue (FAAC)",  value: "₦2.8T", unit: "", change: "+9.3%",  up: true, period: "Q4 2024" },
-      { label: "Upstream Royalties",  value: "₦412B", unit: "", change: "+14.1%", up: true, period: "Q4 2024" },
-      { label: "PPT Collected",       value: "₦289B", unit: "", change: "+6.8%",  up: true, period: "Q4 2024" },
-      { label: "Signature Bonuses",   value: "$340M",  unit: "", change: "FY 2024",up: true, period: "2024" },
+      { label: "FAAC Oil Revenue",   series: "faac_oil_revenue",       unit: "₦ Billion" },
+      { label: "Upstream Royalties", series: "upstream_royalties",     unit: "₦ Billion" },
+      { label: "Crude Oil Produced", series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Natural Gas",        series: "natural_gas_production", unit: "Bcf" },
     ],
     alerts: [
       { level: "high",   msg: "OML 25 royalty remittance overdue 45 days.", time: "Today" },
@@ -361,10 +386,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Investment-grade intelligence for international energy companies and sovereign wealth funds evaluating Nigeria upstream, midstream and power sector assets.",
     defaultView: "upstream", navOrder: ["upstream","revenue","overview","power","downstream","renewable","midstream","bioenergy","faac"],
     kpis: [
-      { label: "Crude Production CAGR",   value: "+4.2%", unit: "5-yr",    change: "2020-2024", up: true,  period: "Annual" },
-      { label: "Proved Reserves",         value: "36.9B", unit: "Barrels", change: "EIA 2024",  up: true,  period: "2024" },
-      { label: "FDI in Energy",           value: "$3.8B", unit: "",        change: "+21%",      up: true,  period: "2024" },
-      { label: "Regulatory Risk Index",   value: "54",    unit: "/100",    change: "+6pts",     up: true,  period: "2024" },
+      { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
+      { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
+      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
     ],
     alerts: [
       { level: "high",   msg: "NUPRC issued 3 new OML licenses — bid round open until Mar 2025.", time: "1 day ago" },
@@ -379,10 +404,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Financial intelligence for portfolio investors, equity analysts and fixed income managers tracking Nigerian energy sector assets and revenue flows.",
     defaultView: "revenue", navOrder: ["revenue","faac","overview","upstream","downstream","power","renewable","midstream","bioenergy"],
     kpis: [
-      { label: "Oil Revenue (FAAC)",    value: "₦2.8T", unit: "",        change: "+9.3%",  up: true,  period: "Q4 2024" },
-      { label: "Seplat EV / EBITDA",   value: "4.2×",  unit: "",        change: "-0.3×",  up: false, period: "FY 2024" },
-      { label: "NNPCL Dividend Yield",  value: "N/A",   unit: "",        change: "Pre-IPO", up: false, period: "2024" },
-      { label: "Energy GDP Weight",     value: "5.4%",  unit: "of GDP",  change: "+0.3pp", up: true,  period: "Q4 2024" },
+      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
+      { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
+      { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Electricity Generation",series: "electricity_generation",unit: "GWh" },
     ],
     alerts: [
       { level: "high",   msg: "NNPCL IPO roadshow scheduled Q1 2025 — investor registration open.", time: "Today" },
@@ -397,10 +422,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Due diligence intelligence for IPPs, GenCo acquirers, DisCo investors and infrastructure funds evaluating Nigerian power sector assets.",
     defaultView: "power", navOrder: ["power","revenue","downstream","overview","upstream","renewable","midstream","bioenergy","faac"],
     kpis: [
-      { label: "Installed Capacity",   value: "12,522", unit: "MW",    change: "+3.2%",    up: true,  period: "Q4 2024" },
-      { label: "Avg Tariff (Band A)",  value: "₦206",   unit: "/kWh",  change: "+18.4%",   up: true,  period: "2024" },
-      { label: "Market Shortfall",     value: "₦4.1T",  unit: "Cum.",  change: "FY 2024",  up: false, period: "2024" },
-      { label: "DisCo Avg ATC&C",      value: "46.2%",  unit: "",      change: "-1.8pp",   up: true,  period: "Q4 2024" },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
+      { label: "FAAC Oil Revenue",       series: "faac_oil_revenue",       unit: "₦ Billion" },
     ],
     alerts: [
       { level: "high",   msg: "World Bank $500M DISREP financing for DisCo privatisation round.", time: "2 days ago" },
@@ -415,10 +440,10 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     persona: "Investment intelligence for solar, wind, mini-grid and clean energy developers. Capacity gap analysis, FiT obligations, REA pipeline and off-grid market intelligence.",
     defaultView: "renewable", navOrder: ["renewable","overview","power","revenue","upstream","downstream","midstream","bioenergy","faac"],
     kpis: [
-      { label: "Off-Grid Market Gap",   value: "65M",   unit: "People",   change: "Unelectrified", up: false, period: "2024" },
-      { label: "Renewable Capacity",    value: "2,014", unit: "MW",       change: "+18.4%",        up: true,  period: "2024" },
-      { label: "Solar IRR Potential",   value: "18-22%",unit: "",         change: "USD terms",     up: true,  period: "2024" },
-      { label: "FiT Tariff (Solar)",    value: "₦80",   unit: "/kWh",     change: "NERC 2024",     up: true,  period: "2024" },
+      { label: "Renewable Capacity",   series: "renewable_energy",     unit: "MW" },
+      { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
+      { label: "Fuelwood Consumption", series: "fuelwood_consumption", unit: "M m³", higherIsBetter: false },
+      { label: "Electricity Generation",series: "electricity_generation",unit: "GWh" },
     ],
     alerts: [
       { level: "high",   msg: "REA issued RFP for 200 mini-grid sites — deadline Feb 2025.", time: "1 day ago" },
@@ -634,15 +659,17 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* KPI strip */}
+          {/* KPI strip — computed live from dashData */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "1px", background: "var(--border)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden", marginBottom: "1.5rem" }}>
-            {profile.kpis.map((m) => (
+            {profile.kpis.map((def) => { const m = computeKPI(def, dashData); return (
               <div key={m.label} className="metric-card" style={{ border: "none", borderRadius: 0 }}>
                 <div className="mc-label">{m.label}</div>
-                <div className="mc-value">{m.value}{m.unit && <span style={{ fontSize: "0.75rem", color: "var(--ink-4)", fontFamily: "var(--font-sans)", marginLeft: 4 }}>{m.unit}</span>}</div>
-                <div className={`mc-trend ${m.up ? "up" : "down"}`}>{m.up && m.change ? "+" : ""}{m.change}{m.period && <span style={{ fontWeight: 400, color: "var(--ink-5)" }}> · {m.period}</span>}</div>
+                <div className="mc-value">{m.value}{m.unit && m.value !== "—" && <span style={{ fontSize: "0.75rem", color: "var(--ink-4)", fontFamily: "var(--font-sans)", marginLeft: 4 }}>{m.unit}</span>}</div>
+                <div className={`mc-trend ${m.up ? "up" : "down"}`} style={{ color: m.value === "—" ? "var(--ink-5)" : undefined }}>
+                  {m.value === "—" ? "Upload data to populate" : <>{m.change && (m.up ? "+" : "−")}{m.change}{m.period && <span style={{ fontWeight: 400, color: "var(--ink-5)" }}> · {m.period}</span>}</>}
+                </div>
               </div>
-            ))}
+            ); })}
           </div>
 
           {/* ── OVERVIEW ── */}
@@ -825,7 +852,7 @@ export default function Dashboard() {
 
           {/* ── ENERGY BRIEF (Presidency / Reporting profiles) ── */}
           {view === "brief" && (
-            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis} alerts={profile.alerts} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availYears={availYears} dataLoading={dataLoading} />
+            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis.map((d) => computeKPI(d, dashData))} alerts={profile.alerts} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availYears={availYears} dataLoading={dataLoading} />
           )}
 
         </div>
@@ -837,8 +864,6 @@ export default function Dashboard() {
 }
 
 // ── Presidency Energy Brief ────────────────────────────────────
-interface KPI { label: string; value: string; unit: string; change: string; up: boolean; period: string }
-interface Alert { level: string; msg: string; time: string }
 
 function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, selectedYear, setSelectedYear, availYears, dataLoading }: {
   staffName: string; profileLabel: string; roleTitle: string;
