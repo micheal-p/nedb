@@ -8,6 +8,8 @@ import dynamic from "next/dynamic";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 
 const SectorChart = dynamic(() => import("@/components/datapoint/SectorChart"), { ssr: false });
+const NigeriaMap  = dynamic(() => import("@/components/datapoint/NigeriaMap"),  { ssr: false });
+const ApexAI      = dynamic(() => import("@/components/datapoint/ApexAI"),      { ssr: false });
 
 // ── Mock time-series data generator ───────────────────────────
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -366,19 +368,94 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
       { level: "low",    msg: "2024 marginal field signature bonus schedule published.", time: "1 week ago" },
     ],
   },
+
+  // ── Investor profiles ──────────────────────────────────────────
+  investor_fdi: {
+    label: "FDI Intelligence", roleTitle: "Foreign Direct Investment Intelligence Dashboard",
+    color: "#1B2A4A", accent: "rgba(27,42,74,0.06)",
+    persona: "Investment-grade intelligence for international energy companies and sovereign wealth funds evaluating Nigeria upstream, midstream and power sector assets.",
+    defaultView: "upstream", navOrder: ["upstream","revenue","overview","power","downstream","renewable","midstream","bioenergy","faac"],
+    kpis: [
+      { label: "Crude Production CAGR",   value: "+4.2%", unit: "5-yr",    change: "2020-2024", up: true,  period: "Annual" },
+      { label: "Proved Reserves",         value: "36.9B", unit: "Barrels", change: "EIA 2024",  up: true,  period: "2024" },
+      { label: "FDI in Energy",           value: "$3.8B", unit: "",        change: "+21%",      up: true,  period: "2024" },
+      { label: "Regulatory Risk Index",   value: "54",    unit: "/100",    change: "+6pts",     up: true,  period: "2024" },
+    ],
+    alerts: [
+      { level: "high",   msg: "NUPRC issued 3 new OML licenses — bid round open until Mar 2025.", time: "1 day ago" },
+      { level: "medium", msg: "PIGB fiscal terms: 30% PPT on non-PSC onshore blocks.", time: "3 days ago" },
+      { level: "medium", msg: "Exchange rate stabilised — CBN FX window at ₦1,580/$.", time: "4 days ago" },
+      { level: "low",    msg: "NNPCL strategic divestment plan: 4 non-core assets listed.", time: "1 week ago" },
+    ],
+  },
+  investor_capital: {
+    label: "Capital Markets", roleTitle: "Energy Sector Capital Markets Intelligence Dashboard",
+    color: "#0C4A6E", accent: "rgba(12,74,110,0.06)",
+    persona: "Financial intelligence for portfolio investors, equity analysts and fixed income managers tracking Nigerian energy sector assets and revenue flows.",
+    defaultView: "revenue", navOrder: ["revenue","faac","overview","upstream","downstream","power","renewable","midstream","bioenergy"],
+    kpis: [
+      { label: "Oil Revenue (FAAC)",    value: "₦2.8T", unit: "",        change: "+9.3%",  up: true,  period: "Q4 2024" },
+      { label: "Seplat EV / EBITDA",   value: "4.2×",  unit: "",        change: "-0.3×",  up: false, period: "FY 2024" },
+      { label: "NNPCL Dividend Yield",  value: "N/A",   unit: "",        change: "Pre-IPO", up: false, period: "2024" },
+      { label: "Energy GDP Weight",     value: "5.4%",  unit: "of GDP",  change: "+0.3pp", up: true,  period: "Q4 2024" },
+    ],
+    alerts: [
+      { level: "high",   msg: "NNPCL IPO roadshow scheduled Q1 2025 — investor registration open.", time: "Today" },
+      { level: "medium", msg: "Seplat AGO acquisition adds ~30kbopd net production.", time: "2 days ago" },
+      { level: "medium", msg: "FGN petroleum revenue bond issuance 2025 — indicative $500M.", time: "4 days ago" },
+      { level: "low",    msg: "Fitch affirmed Nigeria B energy sovereign outlook 'Stable'.", time: "1 week ago" },
+    ],
+  },
+  investor_infra: {
+    label: "Infrastructure / Power", roleTitle: "Power & Infrastructure Investor Intelligence Dashboard",
+    color: "#B45309", accent: "rgba(180,83,9,0.06)",
+    persona: "Due diligence intelligence for IPPs, GenCo acquirers, DisCo investors and infrastructure funds evaluating Nigerian power sector assets.",
+    defaultView: "power", navOrder: ["power","revenue","downstream","overview","upstream","renewable","midstream","bioenergy","faac"],
+    kpis: [
+      { label: "Installed Capacity",   value: "12,522", unit: "MW",    change: "+3.2%",    up: true,  period: "Q4 2024" },
+      { label: "Avg Tariff (Band A)",  value: "₦206",   unit: "/kWh",  change: "+18.4%",   up: true,  period: "2024" },
+      { label: "Market Shortfall",     value: "₦4.1T",  unit: "Cum.",  change: "FY 2024",  up: false, period: "2024" },
+      { label: "DisCo Avg ATC&C",      value: "46.2%",  unit: "",      change: "-1.8pp",   up: true,  period: "Q4 2024" },
+    ],
+    alerts: [
+      { level: "high",   msg: "World Bank $500M DISREP financing for DisCo privatisation round.", time: "2 days ago" },
+      { level: "high",   msg: "NERC approved 40% tariff uplift for Band A customers.", time: "3 days ago" },
+      { level: "medium", msg: "Afam IV acquisition tender — 986MW gas plant.", time: "5 days ago" },
+      { level: "low",    msg: "ATC&C improvement trajectory: 3 DisCos below 40% threshold.", time: "1 week ago" },
+    ],
+  },
+  investor_renewable: {
+    label: "Renewable Investors", roleTitle: "Clean Energy Investment Intelligence Dashboard",
+    color: "#059669", accent: "rgba(5,150,105,0.06)",
+    persona: "Investment intelligence for solar, wind, mini-grid and clean energy developers. Capacity gap analysis, FiT obligations, REA pipeline and off-grid market intelligence.",
+    defaultView: "renewable", navOrder: ["renewable","overview","power","revenue","upstream","downstream","midstream","bioenergy","faac"],
+    kpis: [
+      { label: "Off-Grid Market Gap",   value: "65M",   unit: "People",   change: "Unelectrified", up: false, period: "2024" },
+      { label: "Renewable Capacity",    value: "2,014", unit: "MW",       change: "+18.4%",        up: true,  period: "2024" },
+      { label: "Solar IRR Potential",   value: "18-22%",unit: "",         change: "USD terms",     up: true,  period: "2024" },
+      { label: "FiT Tariff (Solar)",    value: "₦80",   unit: "/kWh",     change: "NERC 2024",     up: true,  period: "2024" },
+    ],
+    alerts: [
+      { level: "high",   msg: "REA issued RFP for 200 mini-grid sites — deadline Feb 2025.", time: "1 day ago" },
+      { level: "medium", msg: "World Bank Distributed Access fund: $150M available.", time: "3 days ago" },
+      { level: "medium", msg: "FiT obligations for wind projects missed Q3 payment deadline.", time: "5 days ago" },
+      { level: "low",    msg: "NREEEP Phase 2 ahead of target in Katsina and Sokoto.", time: "1 week ago" },
+    ],
+  },
 };
 
 // ── Sidebar nav items ──────────────────────────────────────────
 const NAV_ITEMS: Record<string, { label: string; section: string }> = {
-  overview:   { label: "Overview",            section: "National Intelligence" },
-  downstream: { label: "Downstream Markets",  section: "Energy Sectors" },
-  upstream:   { label: "Upstream Petroleum",  section: "Energy Sectors" },
-  midstream:  { label: "Midstream",           section: "Energy Sectors" },
-  power:      { label: "Power Generation",    section: "Energy Sectors" },
-  renewable:  { label: "Renewable Energy",    section: "Energy Sectors" },
-  bioenergy:  { label: "Bioenergy & Biomass", section: "Energy Sectors" },
-  revenue:    { label: "Revenue Portal",      section: "Fiscal Analysis" },
-  faac:       { label: "FAAC Contribution",   section: "Fiscal Analysis" },
+  overview:   { label: "Overview",              section: "National Intelligence" },
+  brief:      { label: "Energy Brief (PDF)",    section: "National Intelligence" },
+  downstream: { label: "Downstream Markets",    section: "Energy Sectors" },
+  upstream:   { label: "Upstream Petroleum",    section: "Energy Sectors" },
+  midstream:  { label: "Midstream",             section: "Energy Sectors" },
+  power:      { label: "Power Generation",      section: "Energy Sectors" },
+  renewable:  { label: "Renewable Energy",      section: "Energy Sectors" },
+  bioenergy:  { label: "Bioenergy & Biomass",   section: "Energy Sectors" },
+  revenue:    { label: "Revenue Portal",        section: "Fiscal Analysis" },
+  faac:       { label: "FAAC Contribution",     section: "Fiscal Analysis" },
 };
 const SOON_VIEWS = new Set(["midstream", "bioenergy", "faac"]);
 
@@ -584,6 +661,7 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+              <NigeriaMap metric="electricity_access" title="Electricity Access Rate by State" unit="%" colorLow="#FEF3C7" colorHigh="#0E7A3C" higherIsBetter={true} />
               <SectorChart title="Downstream Products — Multi-series" subtitle={`PMS · AGO · LPG monthly volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={data.downstream} series={[{ key: "pms", label: "PMS", color: "#0E7A3C" }, { key: "ago", label: "AGO", color: "#1D4ED8" }, { key: "lpg", label: "LPG", color: "#B45309" }]} unit="M Litres" filename="downstream-products" />
               <div>
                 <div className="sec-hd" style={{ marginBottom: "1rem" }}>
@@ -646,6 +724,7 @@ export default function Dashboard() {
                 <SectorChart title="Crude Oil Production" subtitle={`Monthly barrels · ${selectedYear}`} source="NUPRC" data={data.crude} series={[{ key: "value", label: "Production", color: "#78350F" }]} unit="M Barrels" filename="crude-oil-production" />
                 <SectorChart title="Natural Gas Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC / NNPCL" data={data.gas} series={[{ key: "value", label: "Gas", color: "#0E7A3C" }]} unit="Bcf" filename="natural-gas-production" />
               </div>
+              <NigeriaMap metric="crude_production" title="Crude Oil Production by State" unit="M Barrels" colorLow="#FEF3C7" colorHigh="#78350F" higherIsBetter={true} />
               <div className="panel">
                 <div className="panel-header">
                   <span className="panel-title">OML Block Performance Summary</span>
@@ -677,6 +756,7 @@ export default function Dashboard() {
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} />
               <SectorChart title="Electricity Generation vs. Sent Out" subtitle={`Monthly GWh · ${selectedYear}`} source="NERC / TCN" data={data.generation.map((g, i) => ({ period: g.period, generation: g.value, sent_out: data.sentOut[i]?.value ?? 0 }))} series={[{ key: "generation", label: "Generation (GWh)", color: "#1D4ED8" }, { key: "sent_out", label: "Sent Out (GWh)", color: "#0E7A3C" }]} unit="GWh" filename="electricity-generation" />
+              <NigeriaMap metric="atc_loss" title="ATC&C Loss Rate by State" unit="%" colorLow="#DCFCE7" colorHigh="#C0392B" higherIsBetter={false} />
               <div className="panel">
                 <div className="panel-header">
                   <span className="panel-title">Distribution Companies — ATC&amp;C Loss & Collection Efficiency</span>
@@ -708,6 +788,7 @@ export default function Dashboard() {
                 <SectorChart title="Renewable Energy Capacity" subtitle={`Quarterly installed MW · ${selectedYear}`} source="REA / NERC" data={data.renewable} series={[{ key: "value", label: "Capacity (MW)", color: "#059669" }]} unit="MW" filename="renewable-capacity" />
                 <SectorChart title="Fuelwood Consumption" subtitle={`Quarterly volumes · ${selectedYear}`} source="ECN / NBS" data={data.fuelwood} series={[{ key: "value", label: "Fuelwood (M m³)", color: "#78350F" }]} unit="M m³" filename="fuelwood-consumption" />
               </div>
+              <NigeriaMap metric="offgrid_penetration" title="Off-Grid Dependence by State" unit="%" colorLow="#D1FAE5" colorHigh="#065F46" higherIsBetter={false} />
               <div className="panel" style={{ padding: "1.25rem 1.5rem" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1rem" }}>
                   {[{ label: "Off-Grid Connections", value: "2.4M", unit: "Households", change: "+18.2%", up: true },{ label: "Mini-Grids Deployed", value: "214", unit: "Sites", change: "+62 vs 2023", up: true },{ label: "LPG Penetration", value: "18.4%", unit: "HH", change: "+2.1pp", up: true }].map((m) => (
@@ -730,15 +811,164 @@ export default function Dashboard() {
                 <SectorChart title="Oil Revenue — FAAC Contribution" subtitle={`Quarterly ₦B · ${selectedYear}`} source="RMAFC / CBN" data={data.faac} series={[{ key: "value", label: "FAAC Oil Revenue (₦B)", color: "#7C3AED" }]} unit="₦B" filename="faac-oil-revenue" />
                 <SectorChart title="Upstream Royalties Collected" subtitle={`Quarterly ₦B · ${selectedYear}`} source="NUPRC / FIRS" data={data.royalties} series={[{ key: "value", label: "Royalties (₦B)", color: "#9F1239" }]} unit="₦B" filename="upstream-royalties" />
               </div>
-              <div style={{ padding: "0.875rem 1rem", background: "var(--amber-tint)", border: "1px solid rgba(180,83,9,0.2)", borderRadius: "var(--r-md)", fontSize: "0.82rem", color: "var(--amber)" }}>
+              <div style={{ padding: "0.875rem 1rem", background: "var(--amber-tint)", border: "1px solid rgba(180,83,0.2)", borderRadius: "var(--r-md)", fontSize: "0.82rem", color: "var(--amber)" }}>
                 Revenue Portal under active development. Producing companies registry is live. Financial flow data will be published upon completion of agency data agreements.
               </div>
               <RevenueRegistryTable />
             </div>
           )}
 
+          {/* ── ENERGY BRIEF (Presidency / Reporting profiles) ── */}
+          {view === "brief" && (
+            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis} alerts={profile.alerts} selectedYear={selectedYear} setSelectedYear={setSelectedYear} />
+          )}
+
         </div>
       </div>
+
+      <ApexAI currentView={view} profileLabel={profile.label} />
+    </div>
+  );
+}
+
+// ── Presidency Energy Brief ────────────────────────────────────
+interface KPI { label: string; value: string; unit: string; change: string; up: boolean; period: string }
+interface Alert { level: string; msg: string; time: string }
+
+function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, selectedYear, setSelectedYear }: {
+  staffName: string; profileLabel: string; roleTitle: string;
+  kpis: KPI[]; alerts: Alert[]; selectedYear: number; setSelectedYear: (y: number) => void;
+}) {
+  const [classification, setClassification] = useState("FOR OFFICIAL USE ONLY");
+  const briefDate = new Date().toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" });
+
+  function printBrief() {
+    window.print();
+  }
+
+  const STATS = [
+    { section: "Petroleum Sector",  items: [{ label: "Crude Oil Production (Dec 2024)", value: "85.1M Barrels", trend: "+13.3% YoY", status: "positive" }, { label: "Natural Gas Produced (Q4 2024)", value: "196.4 Bcf", trend: "+7.8% YoY", status: "positive" }, { label: "PMS National Sales", value: "1.82B Litres", trend: "-2.3% QoQ", status: "negative" }, { label: "AGO (Diesel) Sales", value: "624M Litres", trend: "+5.1% QoQ", status: "positive" }]},
+    { section: "Electricity Sector", items: [{ label: "Installed Generation Capacity", value: "12,522 MW", trend: "+3.2% YoY", status: "positive" }, { label: "Electricity Generation (Q4)", value: "3,241 GWh", trend: "+4.1% YoY", status: "positive" }, { label: "Avg. ATC&C Loss (National)", value: "46.2%", trend: "-1.8pp YoY", status: "positive" }, { label: "Power Sector Market Shortfall", value: "₦4.1 Trillion", trend: "Cumulative FY2024", status: "negative" }]},
+    { section: "Revenue & Fiscal",   items: [{ label: "Oil Revenue — FAAC (Q4 2024)", value: "₦2.8 Trillion", trend: "+9.3% YoY", status: "positive" }, { label: "Upstream Royalties Collected", value: "₦412 Billion", trend: "+14.1% YoY", status: "positive" }, { label: "PPT (Petroleum Profit Tax)", value: "₦289 Billion", trend: "+6.8% YoY", status: "positive" }, { label: "FDI in Energy Sector", value: "$3.8 Billion", trend: "+21% YoY", status: "positive" }]},
+    { section: "Clean Energy Transition", items: [{ label: "Renewable Energy Capacity", value: "2,014 MW", trend: "+18.4% YoY", status: "positive" }, { label: "Off-Grid Connections", value: "2.4M Households", trend: "+18.2% YoY", status: "positive" }, { label: "LPG Household Penetration", value: "18.4%", trend: "+2.1pp YoY", status: "positive" }, { label: "Fuelwood Consumption", value: "71.2M m³", trend: "-3.1% YoY", status: "positive" }]},
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      {/* Controls toolbar — screen only */}
+      <div className="no-print" style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1rem", background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)" }}>
+        <div style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "var(--ink)" }}>Energy Brief — Print-Ready Report</div>
+        <PeriodNav year={selectedYear} setYear={setSelectedYear} />
+        <select value={classification} onChange={(e) => setClassification(e.target.value)} style={{ padding: "4px 8px", fontSize: "0.72rem", border: "1px solid var(--border)", borderRadius: 4, background: "var(--surface)", color: "var(--ink)", cursor: "pointer" }}>
+          <option>FOR OFFICIAL USE ONLY</option>
+          <option>CONFIDENTIAL</option>
+          <option>RESTRICTED</option>
+          <option>UNCLASSIFIED</option>
+        </select>
+        <button onClick={printBrief} style={{ padding: "6px 16px", fontSize: "0.78rem", fontWeight: 700, background: "var(--ink)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print / Save PDF
+        </button>
+      </div>
+
+      {/* The printable brief */}
+      <div id="energy-brief" style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
+
+        {/* Header */}
+        <div style={{ background: "#1B2A4A", color: "#fff", padding: "2rem 2.5rem" }} className="brief-header">
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "1.5rem", marginBottom: "1.5rem" }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "1.5rem" }}>🇳🇬</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: "0.25rem" }}>Federal Republic of Nigeria</div>
+              <div style={{ fontSize: "1.4rem", fontFamily: "var(--font-serif)", fontWeight: 400, lineHeight: 1.2, color: "#fff", marginBottom: "0.25rem" }}>National Energy Data Bank</div>
+              <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.6)" }}>Energy Commission of Nigeria — Intelligence Directorate</div>
+            </div>
+            <div style={{ textAlign: "right", flexShrink: 0 }}>
+              <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", marginBottom: "0.25rem" }}>CLASSIFICATION</div>
+              <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#FFD700", letterSpacing: "0.06em" }}>{classification}</div>
+            </div>
+          </div>
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.15)", paddingTop: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: "1rem", fontWeight: 700, color: "#fff" }}>{roleTitle}</div>
+              <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)", marginTop: "0.2rem" }}>Reporting Period: {selectedYear} &nbsp;·&nbsp; Prepared for: {staffName} ({profileLabel})</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.4)" }}>Date Issued</div>
+              <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#fff" }}>{briefDate}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Executive Summary */}
+        <div style={{ padding: "1.5rem 2.5rem", borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
+          <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.75rem" }}>Executive Summary</div>
+          <p style={{ fontSize: "0.85rem", color: "var(--ink)", lineHeight: 1.7, maxWidth: 780 }}>
+            Nigeria&apos;s energy sector posted improved performance in {selectedYear}, with crude oil production recovering to <strong>85.1M barrels/month</strong> (+13.3% YoY) and electricity generation reaching <strong>3,241 GWh</strong> in Q4. Revenue flows strengthened, with FAAC oil contributions rising to <strong>₦2.8 trillion</strong> in Q4 2024. The clean energy transition gained momentum — renewable capacity grew <strong>18.4% YoY</strong> to 2,014 MW. Critical challenges persist: national ATC&amp;C losses remain elevated at 46.2% and the cumulative power sector market shortfall reached ₦4.1 trillion in FY2024.
+          </p>
+        </div>
+
+        {/* KPI strip */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "1px solid var(--border)" }}>
+          {kpis.map((m) => (
+            <div key={m.label} style={{ padding: "1.25rem", borderRight: "1px solid var(--border)" }}>
+              <div style={{ fontSize: "0.62rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.4rem" }}>{m.label}</div>
+              <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--ink)", fontFamily: "var(--font-mono)", lineHeight: 1 }}>{m.value}</div>
+              {m.unit && <div style={{ fontSize: "0.68rem", color: "var(--ink-4)", marginTop: 2 }}>{m.unit}</div>}
+              <div style={{ fontSize: "0.72rem", fontWeight: 600, color: m.up ? "var(--green)" : "var(--red)", marginTop: 4 }}>{m.change} &nbsp;<span style={{ fontWeight: 400, color: "var(--ink-5)" }}>{m.period}</span></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Sector-by-sector stats */}
+        <div style={{ padding: "1.5rem 2.5rem" }}>
+          {STATS.map((sec) => (
+            <div key={sec.section} style={{ marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#1B2A4A", textTransform: "uppercase", letterSpacing: "0.1em", borderBottom: "2px solid #1B2A4A", paddingBottom: "0.4rem", marginBottom: "0.875rem" }}>{sec.section}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                {sec.items.map((item) => (
+                  <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0.5rem 0.75rem", background: item.status === "negative" ? "rgba(192,57,43,0.04)" : "var(--surface)", borderRadius: 4, border: "1px solid var(--border)" }}>
+                    <span style={{ fontSize: "0.75rem", color: "var(--ink-4)" }}>{item.label}</span>
+                    <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "1rem" }}>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--ink)", fontFamily: "var(--font-mono)" }}>{item.value}</div>
+                      <div style={{ fontSize: "0.65rem", color: item.status === "positive" ? "var(--green)" : "var(--red)", fontWeight: 600 }}>{item.trend}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Alerts / Advisories */}
+        <div style={{ padding: "0 2.5rem 1.5rem" }}>
+          <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#9F1239", textTransform: "uppercase", letterSpacing: "0.1em", borderBottom: "2px solid #9F1239", paddingBottom: "0.4rem", marginBottom: "0.875rem" }}>Priority Advisories</div>
+          {alerts.map((a, i) => (
+            <div key={i} style={{ display: "flex", gap: "0.75rem", alignItems: "baseline", padding: "0.5rem 0", borderBottom: i < alerts.length - 1 ? "1px solid var(--border)" : "none" }}>
+              <span style={{ fontSize: "0.65rem", fontWeight: 700, minWidth: 60, color: a.level === "high" ? "#9F1239" : a.level === "medium" ? "#B45309" : "var(--ink-4)", textTransform: "uppercase" }}>{a.level}</span>
+              <span style={{ fontSize: "0.78rem", color: "var(--ink)", flex: 1 }}>{a.msg}</span>
+              <span style={{ fontSize: "0.65rem", color: "var(--ink-5)", flexShrink: 0 }}>{a.time}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", padding: "1rem 2.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: "0.65rem", color: "var(--ink-5)" }}>NEDB · Energy Commission of Nigeria · This document is classified <strong>{classification}</strong> and is intended solely for the named recipient.</div>
+          <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", fontFamily: "var(--font-mono)" }}>NEDB-{selectedYear}-{Math.floor(Math.random() * 9000 + 1000)}</div>
+        </div>
+      </div>
+
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          .dash-sidebar, .dash-topbar, .dash-sidebar-backdrop { display: none !important; }
+          .dash-main { margin: 0 !important; }
+          .dash-content { padding: 0 !important; }
+          #energy-brief { border: none !important; border-radius: 0 !important; }
+          body { background: white !important; }
+        }
+      `}</style>
     </div>
   );
 }

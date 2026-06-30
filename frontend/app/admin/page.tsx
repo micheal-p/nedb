@@ -32,6 +32,11 @@ const PROFILES = [
   { value: "electricity", label: "Power & Grid Analyst — generation, DisCo performance" },
   { value: "renewables",  label: "Clean Energy Analyst — renewables, gas, biomass" },
   { value: "fiscal",      label: "Fiscal & Revenue Analyst — FAAC, royalties, upstream revenue" },
+  // Investor profiles
+  { value: "investor_fdi",       label: "Investor — FDI Intelligence (IOCs, sovereign wealth funds)" },
+  { value: "investor_capital",   label: "Investor — Capital Markets (equities, fixed income)" },
+  { value: "investor_infra",     label: "Investor — Infrastructure / Power Sector (IPPs, DisCo acquirers)" },
+  { value: "investor_renewable", label: "Investor — Renewable Energy (solar, wind, mini-grid developers)" },
 ];
 
 const EMPTY_USER = { username: "", full_name: "", email: "", role: "staff", agency: "", password: "", dashboard_profile: "executive" };
