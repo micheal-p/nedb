@@ -11,12 +11,13 @@ function deleteCookie(name: string) {
   document.cookie = `${name}=; path=/; max-age=0`;
 }
 
-export function saveTokens(token: string, refreshToken: string, fullName?: string, role?: string) {
+export function saveTokens(token: string, refreshToken: string, fullName?: string, role?: string, dashboardProfile?: string) {
   setCookie(COOKIE_TOKEN, token, 15 * 60);
   try {
     localStorage.setItem(LS_REFRESH, refreshToken);
-    if (fullName) localStorage.setItem("nedb_name", fullName);
-    if (role) localStorage.setItem("nedb_role", role);
+    if (fullName)          localStorage.setItem("nedb_name", fullName);
+    if (role)              localStorage.setItem("nedb_role", role);
+    if (dashboardProfile)  localStorage.setItem("nedb_profile", dashboardProfile);
   } catch {}
 }
 
@@ -26,6 +27,10 @@ export function getFullName(): string {
 
 export function getRole(): string {
   try { return localStorage.getItem("nedb_role") ?? ""; } catch { return ""; }
+}
+
+export function getDashboardProfile(): string {
+  try { return localStorage.getItem("nedb_profile") ?? "executive"; } catch { return "executive"; }
 }
 
 export function getToken(): string | null {

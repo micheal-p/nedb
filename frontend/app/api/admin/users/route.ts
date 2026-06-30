@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return err("admin access required", 403);
 
   const body = await req.json().catch(() => null);
-  const { username, full_name, email, role, agency, password } = body ?? {};
+  const { username, full_name, email, role, agency, password, dashboard_profile } = body ?? {};
   if (!username || !full_name || !email || !password) return err("username, full_name, email, password required", 400);
   if (password.length < 8) return err("password must be at least 8 characters", 400);
 
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     password_hash: hash,
     created_by: admin.full_name,
     is_active: true,
+    dashboard_profile: dashboard_profile ?? "executive",
   }).select("id, username, full_name, role").single();
 
   if (error) {

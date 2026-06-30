@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 
   const { data: staff } = await db()
     .from("staff_users")
-    .select("username, full_name, role, password_hash, is_active")
+    .select("username, full_name, role, dashboard_profile, password_hash, is_active")
     .eq("username", username)
     .single();
 
@@ -27,5 +27,7 @@ export async function POST(req: NextRequest) {
     .update({ last_login: new Date().toISOString() })
     .eq("username", username);
 
-  return ok(await signTokenPair(username, staff.full_name, staff.role));
+  const profile = staff.dashboard_profile ?? "executive";
+  const tokens  = await signTokenPair(username, staff.full_name, staff.role, profile);
+  return ok({ ...tokens, dashboard_profile: profile });
 }

@@ -7,13 +7,14 @@ function accessSecret()  { return new TextEncoder().encode(process.env.JWT_SECRE
 function refreshSecret() { return new TextEncoder().encode(process.env.JWT_REFRESH_SECRET!); }
 
 export interface AuthClaims extends JWTPayload {
-  username:  string;
-  full_name: string;
-  role:      string;
+  username:          string;
+  full_name:         string;
+  role:              string;
+  dashboard_profile: string;
 }
 
-export async function signTokenPair(username: string, fullName: string, role: string) {
-  const payload = { username, full_name: fullName, role, sub: username };
+export async function signTokenPair(username: string, fullName: string, role: string, dashboardProfile = "executive") {
+  const payload = { username, full_name: fullName, role, dashboard_profile: dashboardProfile, sub: username };
   const expiresAt = new Date(Date.now() + ACCESS_TTL * 1000);
 
   const token = await new SignJWT(payload)

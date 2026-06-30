@@ -67,6 +67,7 @@ export interface TokenPair {
   expires_at: string;
   full_name: string;
   role: string;
+  dashboard_profile: string;
 }
 
 export interface StaffUser {
@@ -150,7 +151,7 @@ export const api = {
   listStaff: (token: string) =>
     request<StaffUser[]>("/api/admin/users", { headers: authHeaders(token) }),
 
-  createStaff: (data: { username: string; full_name: string; email: string; role: string; agency: string; password: string }, token: string) =>
+  createStaff: (data: { username: string; full_name: string; email: string; role: string; agency: string; password: string; dashboard_profile?: string }, token: string) =>
     request<{ id: number; username: string }>("/api/admin/users", {
       method: "POST",
       headers: authHeaders(token),

@@ -34,7 +34,7 @@ function LoginForm() {
     setError("");
     try {
       const result = await api.login(username, password);
-      saveTokens(result.token, result.refresh_token, result.full_name, result.role);
+      saveTokens(result.token, result.refresh_token, result.full_name, result.role, result.dashboard_profile);
       router.push(explicitRedirect ?? defaultRedirect(result.role));
     } catch {
       setError("Invalid credentials. Contact the NEDB administrator if you need access.");

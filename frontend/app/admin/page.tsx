@@ -12,7 +12,15 @@ interface Company {
   operator_type: string; sector: string; status: string; created_by: string | null;
 }
 
-const EMPTY_USER = { username: "", full_name: "", email: "", role: "staff", agency: "", password: "" };
+const PROFILES = [
+  { value: "executive",   label: "Executive Overview — cross-sector KPIs & national intelligence" },
+  { value: "petroleum",   label: "Petroleum & Gas — crude production, PMS/AGO/LPG sales" },
+  { value: "electricity", label: "Power & Grid — generation, transmission, DisCo performance" },
+  { value: "renewables",  label: "Clean Energy — renewables capacity, gas, biomass metrics" },
+  { value: "fiscal",      label: "Fiscal & Revenue — FAAC contribution, royalties, upstream revenue" },
+];
+
+const EMPTY_USER = { username: "", full_name: "", email: "", role: "staff", agency: "", password: "", dashboard_profile: "executive" };
 const EMPTY_CO   = { company: "", oml_blocks: "", operator_type: "IOC JV", sector: "Upstream", status: "Active" };
 
 export default function AdminPage() {
@@ -215,6 +223,17 @@ export default function AdminPage() {
                           <option value="admin">Administrator — full access to all areas</option>
                         </select>
                       </div>
+                      {userForm.role === "viewer" && (
+                        <div className="form-group" style={{ marginBottom: 0, gridColumn: "1 / -1" }}>
+                          <label className="form-label">Dashboard Profile</label>
+                          <select className="form-input form-select" value={userForm.dashboard_profile} onChange={(e) => setUserForm({ ...userForm, dashboard_profile: e.target.value })}>
+                            {PROFILES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                          </select>
+                          <p style={{ fontSize: "0.72rem", color: "var(--ink-4)", marginTop: "0.4rem" }}>
+                            Determines which personalised dashboard the viewer sees after login.
+                          </p>
+                        </div>
+                      )}
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label className="form-label">Temporary Password</label>
                         <input className="form-input" type="password" placeholder="Min. 8 characters" required minLength={8} value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} />
