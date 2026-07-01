@@ -399,25 +399,6 @@ const NAV_ITEMS: Record<string, { label: string; section: string }> = {
 };
 const SOON_VIEWS = new Set(["midstream", "bioenergy", "faac"]);
 
-const DOWNSTREAM_TABLE = [
-  { company: "Abuja DisCo",         atc: 42.3, collection: 78.2, state: "FCT"    },
-  { company: "Eko DisCo",           atc: 38.1, collection: 82.5, state: "Lagos"  },
-  { company: "Ikeja DisCo",         atc: 35.7, collection: 85.1, state: "Lagos"  },
-  { company: "Ibadan DisCo",        atc: 51.2, collection: 68.4, state: "Oyo"    },
-  { company: "Enugu DisCo",         atc: 48.6, collection: 71.3, state: "Enugu"  },
-  { company: "Port Harcourt DisCo", atc: 44.9, collection: 74.7, state: "Rivers" },
-  { company: "Kano DisCo",          atc: 55.3, collection: 62.1, state: "Kano"   },
-  { company: "Kaduna DisCo",        atc: 53.8, collection: 65.9, state: "Kaduna" },
-];
-
-const OML_TABLE = [
-  { block: "OML 60-63", operator: "NUIMS / NNPCL",  prod: 124.2, royalty: 14.2, status: "Active" },
-  { block: "OML 11",    operator: "Shell SPDC",      prod: 88.4,  royalty: 9.8,  status: "Active" },
-  { block: "OML 130",   operator: "TotalEnergies",   prod: 76.1,  royalty: 8.4,  status: "Active" },
-  { block: "OML 4,38,41", operator: "Seplat Energy", prod: 52.8,  royalty: 5.9,  status: "Active" },
-  { block: "OML 29",    operator: "Aiteo E&P",       prod: 44.6,  royalty: 5.0,  status: "Active" },
-  { block: "OML 49",    operator: "Chevron Nigeria",  prod: 38.2,  royalty: 4.3,  status: "Active" },
-];
 
 function downloadTableCSV(filename: string, headers: string[], rows: (string | number)[][]) {
   const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
@@ -663,26 +644,13 @@ export default function Dashboard() {
               {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Monthly Trend" subtitle={`PMS · AGO · LPG volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS (M L)", color: "#0E7A3C" }, { key: "ago", label: "AGO (M L)", color: "#1D4ED8" }, { key: "lpg", label: "LPG (MT)", color: "#B45309" }]} unit="" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
               <div className="panel">
                 <div className="panel-header">
-                  <span className="panel-title">Distribution Companies — ATC&amp;C Loss & Collection Efficiency</span>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>NERC Q4 2025</span>
-                    <button onClick={() => downloadTableCSV("disco-performance", ["Company","State","ATC&C Loss (%)","Collection Efficiency (%)","Performance"], DOWNSTREAM_TABLE.map((r) => [r.company, r.state, r.atc, r.collection, r.atc < 40 ? "Above Target" : r.atc < 50 ? "Moderate" : "Critical"]))} style={{ padding: "3px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-strong)", color: "var(--green-deep)", cursor: "pointer" }}>↓ CSV</button>
-                  </div>
+                  <span className="panel-title">Distribution Companies — ATC&amp;C Performance</span>
+                  <span style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>Awaiting NERC data submission</span>
                 </div>
-                <div className="data-table-wrap" style={{ border: "none", borderRadius: 0 }}>
-                  <table className="data-table">
-                    <thead><tr><th>#</th><th>Distribution Company</th><th>State</th><th className="td-num">ATC&amp;C Loss (%)</th><th className="td-num">Collection Efficiency (%)</th><th>Performance</th></tr></thead>
-                    <tbody>{DOWNSTREAM_TABLE.map((row, i) => (
-                      <tr key={row.company}>
-                        <td style={{ color: "var(--ink-5)", fontSize: "0.72rem" }}>{i + 1}</td>
-                        <td className="td-primary">{row.company}</td>
-                        <td>{row.state}</td>
-                        <td className="td-num td-mono" style={{ color: row.atc > 50 ? "var(--red)" : row.atc > 40 ? "var(--amber)" : "var(--green)" }}>{row.atc.toFixed(1)}%</td>
-                        <td className="td-num td-mono" style={{ color: row.collection >= 80 ? "var(--green)" : row.collection >= 70 ? "var(--amber)" : "var(--red)" }}>{row.collection.toFixed(1)}%</td>
-                        <td><span className={`tag ${row.atc < 40 ? "tag-green" : row.atc < 50 ? "tag-amber" : "tag-red"}`}>{row.atc < 40 ? "Above Target" : row.atc < 50 ? "Moderate" : "Critical"}</span></td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2.5rem 1rem", gap: "0.5rem", color: "var(--ink-5)" }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.25 }}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                  <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--ink-4)" }}>No DisCo performance data yet</div>
+                  <div style={{ fontSize: "0.72rem", textAlign: "center", maxWidth: 380, lineHeight: 1.5 }}>ATC&amp;C loss and collection efficiency records will appear here once submitted by NERC or uploaded via Admin → Data Entry.</div>
                 </div>
               </div>
             </div>
@@ -700,24 +668,12 @@ export default function Dashboard() {
               <div className="panel">
                 <div className="panel-header">
                   <span className="panel-title">OML Block Performance Summary</span>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>NUPRC · {selectedYear}</span>
-                    <button onClick={() => downloadTableCSV("oml-performance", ["OML Block","Operator","Production (M Bbls)","Royalty (₦B)","Status"], OML_TABLE.map((r) => [r.block, r.operator, r.prod, r.royalty, r.status]))} style={{ padding: "3px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-strong)", color: "var(--green-deep)", cursor: "pointer" }}>↓ CSV</button>
-                  </div>
+                  <span style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>Awaiting NUPRC data submission</span>
                 </div>
-                <div className="data-table-wrap" style={{ border: "none", borderRadius: 0 }}>
-                  <table className="data-table">
-                    <thead><tr><th>OML Block(s)</th><th>Operator</th><th className="td-num">Production (M Bbls)</th><th className="td-num">Royalty (₦B)</th><th>Status</th></tr></thead>
-                    <tbody>{OML_TABLE.map((row) => (
-                      <tr key={row.block}>
-                        <td className="td-primary td-mono" style={{ fontSize: "0.75rem" }}>{row.block}</td>
-                        <td>{row.operator}</td>
-                        <td className="td-num td-mono">{row.prod.toFixed(1)}</td>
-                        <td className="td-num td-mono">{row.royalty.toFixed(1)}</td>
-                        <td><span className="live-dot" style={{ marginRight: 6 }} />{row.status}</td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2.5rem 1rem", gap: "0.5rem", color: "var(--ink-5)" }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.25 }}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                  <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--ink-4)" }}>No OML block data yet</div>
+                  <div style={{ fontSize: "0.72rem", textAlign: "center", maxWidth: 380, lineHeight: 1.5 }}>Block-level production and royalty records will appear here once NUPRC data is submitted or uploaded via Admin → Data Entry.</div>
                 </div>
               </div>
             </div>
@@ -731,22 +687,13 @@ export default function Dashboard() {
               <NigeriaMap stateData={stateMap["electricity_sent_out"] ?? {}} id="atc-loss" title="Electricity Sent Out by State" unit="GWh" colorLow="#DCFCE7" colorHigh="#1D4ED8" higherIsBetter={true} source="TCN / NERC" />
               <div className="panel">
                 <div className="panel-header">
-                  <span className="panel-title">Distribution Companies — ATC&amp;C Loss & Collection Efficiency</span>
-                  <button onClick={() => downloadTableCSV("disco-performance", ["Company","State","ATC&C Loss (%)","Collection Efficiency (%)","Performance"], DOWNSTREAM_TABLE.map((r) => [r.company, r.state, r.atc, r.collection, r.atc < 40 ? "Above Target" : r.atc < 50 ? "Moderate" : "Critical"]))} style={{ padding: "3px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-strong)", color: "var(--green-deep)", cursor: "pointer" }}>↓ CSV</button>
+                  <span className="panel-title">Distribution Companies — ATC&amp;C Performance</span>
+                  <span style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>Awaiting NERC data submission</span>
                 </div>
-                <div className="data-table-wrap" style={{ border: "none", borderRadius: 0 }}>
-                  <table className="data-table">
-                    <thead><tr><th>DisCo</th><th>State</th><th className="td-num">ATC&amp;C (%)</th><th className="td-num">Collection (%)</th><th>Rating</th></tr></thead>
-                    <tbody>{DOWNSTREAM_TABLE.map((row) => (
-                      <tr key={row.company}>
-                        <td className="td-primary">{row.company}</td>
-                        <td>{row.state}</td>
-                        <td className="td-num td-mono" style={{ color: row.atc > 50 ? "var(--red)" : row.atc > 40 ? "var(--amber)" : "var(--green)" }}>{row.atc.toFixed(1)}%</td>
-                        <td className="td-num td-mono" style={{ color: row.collection >= 80 ? "var(--green)" : row.collection >= 70 ? "var(--amber)" : "var(--red)" }}>{row.collection.toFixed(1)}%</td>
-                        <td><span className={`tag ${row.atc < 40 ? "tag-green" : row.atc < 50 ? "tag-amber" : "tag-red"}`}>{row.atc < 40 ? "Good" : row.atc < 50 ? "Moderate" : "Critical"}</span></td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2.5rem 1rem", gap: "0.5rem", color: "var(--ink-5)" }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.25 }}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                  <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--ink-4)" }}>No DisCo performance data yet</div>
+                  <div style={{ fontSize: "0.72rem", textAlign: "center", maxWidth: 380, lineHeight: 1.5 }}>ATC&amp;C loss and collection efficiency records will appear here once submitted by NERC or uploaded via Admin → Data Entry.</div>
                 </div>
               </div>
             </div>
@@ -763,13 +710,21 @@ export default function Dashboard() {
               <NigeriaMap stateData={stateMap["renewable_energy"] ?? {}} id="renewable-capacity" title="Renewable Energy Capacity by State" unit="MW" colorLow="#D1FAE5" colorHigh="#065F46" higherIsBetter={true} source="REA / ECN" />
               <div className="panel" style={{ padding: "1.25rem 1.5rem" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1rem" }}>
-                  {[{ label: "Off-Grid Connections", value: "2.4M", unit: "Households", change: "+18.2%", up: true },{ label: "Mini-Grids Deployed", value: "214", unit: "Sites", change: "+62 vs 2023", up: true },{ label: "LPG Penetration", value: "18.4%", unit: "HH", change: "+2.1pp", up: true }].map((m) => (
+                  {([
+                    { label: "Renewable Capacity",   series: "renewable_energy",     unit: "MW" },
+                    { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
+                    { label: "Fuelwood Consumption", series: "fuelwood_consumption", unit: "M m³", higherIsBetter: false },
+                  ] as KPIDef[]).map((def) => { const m = computeKPI(def, dashData); return (
                     <div key={m.label}>
                       <div className="kpi-label">{m.label}</div>
-                      <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--ink)", fontFamily: "var(--font-mono)", marginTop: 4 }}>{m.value} <span style={{ fontSize: "0.75rem", color: "var(--ink-4)", fontFamily: "var(--font-sans)" }}>{m.unit}</span></div>
-                      <div style={{ fontSize: "0.75rem", color: m.up ? "var(--green)" : "var(--red)", fontWeight: 600, marginTop: 2 }}>+{m.change}</div>
+                      <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--ink)", fontFamily: "var(--font-mono)", marginTop: 4 }}>
+                        {m.value} {m.value !== "—" && <span style={{ fontSize: "0.75rem", color: "var(--ink-4)", fontFamily: "var(--font-sans)" }}>{m.unit}</span>}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: m.value === "—" ? "var(--ink-5)" : m.up ? "var(--green)" : "var(--red)", fontWeight: 600, marginTop: 2 }}>
+                        {m.value === "—" ? "Upload data to populate" : `${m.change ? (m.up ? "+" : "−") + m.change : ""} · ${m.period}`}
+                      </div>
                     </div>
-                  ))}
+                  );})}
                 </div>
               </div>
             </div>
@@ -792,7 +747,7 @@ export default function Dashboard() {
 
           {/* ── ENERGY BRIEF (Presidency / Reporting profiles) ── */}
           {view === "brief" && (
-            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis.map((d) => computeKPI(d, dashData))} alerts={computeAnomalies(dashData)} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availYears={availYears} dataLoading={dataLoading} />
+            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis.map((d) => computeKPI(d, dashData))} alerts={computeAnomalies(dashData)} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availYears={availYears} dataLoading={dataLoading} dashData={dashData} />
           )}
 
         </div>
@@ -805,10 +760,10 @@ export default function Dashboard() {
 
 // ── Presidency Energy Brief ────────────────────────────────────
 
-function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, selectedYear, setSelectedYear, availYears, dataLoading }: {
+function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, selectedYear, setSelectedYear, availYears, dataLoading, dashData }: {
   staffName: string; profileLabel: string; roleTitle: string;
   kpis: KPI[]; alerts: Alert[]; selectedYear: number; setSelectedYear: (y: number) => void;
-  availYears: number[]; dataLoading: boolean;
+  availYears: number[]; dataLoading: boolean; dashData: DashData;
 }) {
   const [classification, setClassification] = useState("FOR OFFICIAL USE ONLY");
   const briefDate = new Date().toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" });
@@ -817,11 +772,31 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
     window.print();
   }
 
-  const STATS = [
-    { section: "Petroleum Sector",  items: [{ label: "Crude Oil Production (Dec 2024)", value: "85.1M Barrels", trend: "+13.3% YoY", status: "positive" }, { label: "Natural Gas Produced (Q4 2024)", value: "196.4 Bcf", trend: "+7.8% YoY", status: "positive" }, { label: "PMS National Sales", value: "1.82B Litres", trend: "-2.3% QoQ", status: "negative" }, { label: "AGO (Diesel) Sales", value: "624M Litres", trend: "+5.1% QoQ", status: "positive" }]},
-    { section: "Electricity Sector", items: [{ label: "Installed Generation Capacity", value: "12,522 MW", trend: "+3.2% YoY", status: "positive" }, { label: "Electricity Generation (Q4)", value: "3,241 GWh", trend: "+4.1% YoY", status: "positive" }, { label: "Avg. ATC&C Loss (National)", value: "46.2%", trend: "-1.8pp YoY", status: "positive" }, { label: "Power Sector Market Shortfall", value: "₦4.1 Trillion", trend: "Cumulative FY2024", status: "negative" }]},
-    { section: "Revenue & Fiscal",   items: [{ label: "Oil Revenue — FAAC (Q4 2024)", value: "₦2.8 Trillion", trend: "+9.3% YoY", status: "positive" }, { label: "Upstream Royalties Collected", value: "₦412 Billion", trend: "+14.1% YoY", status: "positive" }, { label: "PPT (Petroleum Profit Tax)", value: "₦289 Billion", trend: "+6.8% YoY", status: "positive" }, { label: "FDI in Energy Sector", value: "$3.8 Billion", trend: "+21% YoY", status: "positive" }]},
-    { section: "Clean Energy Transition", items: [{ label: "Renewable Energy Capacity", value: "2,014 MW", trend: "+18.4% YoY", status: "positive" }, { label: "Off-Grid Connections", value: "2.4M Households", trend: "+18.2% YoY", status: "positive" }, { label: "LPG Household Penetration", value: "18.4%", trend: "+2.1pp YoY", status: "positive" }, { label: "Fuelwood Consumption", value: "71.2M m³", trend: "-3.1% YoY", status: "positive" }]},
+  const STAT_DEFS: { section: string; items: KPIDef[] }[] = [
+    { section: "Petroleum Sector",      items: [
+      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
+      { label: "PMS National Sales",     series: "pms_sales",              unit: "M Litres" },
+      { label: "AGO (Diesel) Sales",     series: "ago_sales",              unit: "M Litres" },
+    ]},
+    { section: "Electricity Sector",    items: [
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
+      { label: "Electricity Consumed",   series: "electricity_consumption",unit: "GWh" },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
+    ]},
+    { section: "Revenue & Fiscal",      items: [
+      { label: "FAAC Oil Revenue",       series: "faac_oil_revenue",       unit: "₦ Billion" },
+      { label: "Upstream Royalties",     series: "upstream_royalties",     unit: "₦ Billion" },
+      { label: "LPG Sales",              series: "lpg_sales",              unit: "MT" },
+      { label: "Kerosene Sales",         series: "kerosine_sales",         unit: "M Litres" },
+    ]},
+    { section: "Clean Energy & Biomass",items: [
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
+      { label: "LPG Sales",              series: "lpg_sales",              unit: "MT" },
+      { label: "Fuelwood Consumption",   series: "fuelwood_consumption",   unit: "M m³", higherIsBetter: false },
+      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
+    ]},
   ];
 
   return (
@@ -874,9 +849,17 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
         {/* Executive Summary */}
         <div style={{ padding: "1.5rem 2.5rem", borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
           <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.75rem" }}>Executive Summary</div>
-          <p style={{ fontSize: "0.85rem", color: "var(--ink)", lineHeight: 1.7, maxWidth: 780 }}>
-            Nigeria&apos;s energy sector posted improved performance in {selectedYear}, with crude oil production recovering to <strong>85.1M barrels/month</strong> (+13.3% YoY) and electricity generation reaching <strong>3,241 GWh</strong> in Q4. Revenue flows strengthened, with FAAC oil contributions rising to <strong>₦2.8 trillion</strong> in Q4 2024. The clean energy transition gained momentum — renewable capacity grew <strong>18.4% YoY</strong> to 2,014 MW. Critical challenges persist: national ATC&amp;C losses remain elevated at 46.2% and the cumulative power sector market shortfall reached ₦4.1 trillion in FY2024.
-          </p>
+          {kpis.some((k) => k.value !== "—") ? (
+            <p style={{ fontSize: "0.85rem", color: "var(--ink)", lineHeight: 1.7, maxWidth: 780 }}>
+              Nigeria energy sector intelligence brief for {selectedYear}.{" "}
+              {kpis.filter((k) => k.value !== "—").map((k) => `${k.label}: ${k.value} ${k.unit}${k.change ? ` (${k.up ? "+" : "−"}${k.change})` : ""}`).join("; ")}.{" "}
+              {alerts.length > 0 ? `${alerts.filter((a) => a.level === "high").length} high-priority anomalies detected from committed data.` : "No anomalies detected in committed data."}
+            </p>
+          ) : (
+            <p style={{ fontSize: "0.85rem", color: "var(--ink-5)", lineHeight: 1.7, maxWidth: 780, fontStyle: "italic" }}>
+              Executive summary will populate automatically once energy records are uploaded for {selectedYear}. Use Admin → Data Entry to commit data.
+            </p>
+          )}
         </div>
 
         {/* KPI strip */}
@@ -891,21 +874,23 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
           ))}
         </div>
 
-        {/* Sector-by-sector stats */}
+        {/* Sector-by-sector stats — computed from live data */}
         <div style={{ padding: "1.5rem 2.5rem" }}>
-          {STATS.map((sec) => (
+          {STAT_DEFS.map((sec) => (
             <div key={sec.section} style={{ marginBottom: "1.5rem" }}>
               <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#1B2A4A", textTransform: "uppercase", letterSpacing: "0.1em", borderBottom: "2px solid #1B2A4A", paddingBottom: "0.4rem", marginBottom: "0.875rem" }}>{sec.section}</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-                {sec.items.map((item) => (
-                  <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0.5rem 0.75rem", background: item.status === "negative" ? "rgba(192,57,43,0.04)" : "var(--surface)", borderRadius: 4, border: "1px solid var(--border)" }}>
-                    <span style={{ fontSize: "0.75rem", color: "var(--ink-4)" }}>{item.label}</span>
+                {sec.items.map((def) => { const m = computeKPI(def, dashData); const hasVal = m.value !== "—"; return (
+                  <div key={def.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0.5rem 0.75rem", background: hasVal && !m.up ? "rgba(192,57,43,0.04)" : "var(--surface)", borderRadius: 4, border: "1px solid var(--border)" }}>
+                    <span style={{ fontSize: "0.75rem", color: "var(--ink-4)" }}>{def.label}</span>
                     <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "1rem" }}>
-                      <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--ink)", fontFamily: "var(--font-mono)" }}>{item.value}</div>
-                      <div style={{ fontSize: "0.65rem", color: item.status === "positive" ? "var(--green)" : "var(--red)", fontWeight: 600 }}>{item.trend}</div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 700, color: hasVal ? "var(--ink)" : "var(--ink-5)", fontFamily: "var(--font-mono)" }}>{m.value}{hasVal ? ` ${def.unit}` : ""}</div>
+                      <div style={{ fontSize: "0.65rem", color: !hasVal ? "var(--ink-5)" : m.up ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
+                        {!hasVal ? "No data" : m.change ? `${m.up ? "+" : "−"}${m.change} · ${m.period}` : m.period}
+                      </div>
                     </div>
                   </div>
-                ))}
+                );})}
               </div>
             </div>
           ))}
