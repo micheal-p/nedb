@@ -301,7 +301,7 @@ export default function UploadPage() {
 
                     {/* Row entry form */}
                     <form onSubmit={addRow}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem 1rem" }}>
+                      <div className="upload-entry-grid">
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label">Period *</label>
                           <select className="form-input form-select" value={rowForm.period}

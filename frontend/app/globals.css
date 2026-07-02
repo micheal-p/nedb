@@ -1021,6 +1021,87 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   color: #fff;
 }
 
+/* Mobile drawer auth section */
+.mobile-auth-section {
+  padding: 0.875rem 1.25rem 1.25rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.mobile-auth-name {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.38);
+  padding: 0 2px 4px;
+}
+.mobile-auth-btn {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  border: none;
+  letter-spacing: 0.01em;
+}
+.mobile-auth-btn--portal {
+  background: rgba(14,122,60,0.18);
+  color: #6ee7a0;
+  border: 1px solid rgba(14,122,60,0.35);
+}
+.mobile-auth-btn--portal:hover { background: rgba(14,122,60,0.28); }
+.mobile-auth-btn--logout {
+  background: rgba(220,38,38,0.1);
+  color: #fca5a5;
+  border: 1px solid rgba(220,38,38,0.22);
+}
+.mobile-auth-btn--logout:hover { background: rgba(220,38,38,0.18); }
+.mobile-auth-btn--login {
+  background: var(--green);
+  color: #fff;
+}
+.mobile-auth-btn--login:hover { background: var(--green-deep); }
+
+/* Upload form: 3-col → 2-col → 1-col */
+.upload-entry-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.75rem 1rem;
+}
+
+/* ── Admin header responsive ──────────────────────────────────── */
+.admin-header-actions-desktop { display: flex; }
+.admin-header-hamburger       { display: none !important; }
+.admin-header-dropdown {
+  background: var(--ink);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 0.5rem 0;
+}
+.admin-header-item {
+  display: block;
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.75);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.admin-header-item:hover           { background: rgba(255,255,255,0.06); color: #fff; }
+.admin-header-item--logout         { color: #fca5a5 !important; }
+.admin-header-item--logout:hover   { background: rgba(220,38,38,0.1); }
+
+@media (max-width: 640px) {
+  .admin-header-actions-desktop { display: none !important; }
+  .admin-header-hamburger       { display: flex !important; }
+}
+
 /* ── Dashboard mobile sidebar overlay ────────────────────────── */
 .dash-sidebar-backdrop {
   display: none;
@@ -1083,16 +1164,21 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
     position: fixed;
     left: -100%;
     top: 0;
+    width: 80vw;
+    max-width: 280px;
     height: 100dvh;
     z-index: 300;
     transition: left 0.25s ease;
     box-shadow: var(--shadow-3);
+    overflow-x: hidden; /* prevent sidebar contents leaking right */
   }
   .dash-sidebar.is-open     { left: 0; }
   .dash-sidebar-backdrop.is-open { display: block; }
   .mob-sidebar-toggle       { display: flex; }
   .dash-content { padding: 1.25rem; }
-  .dash-topbar  { padding-left: max(1rem, env(safe-area-inset-left)); }
+  .dash-topbar  { padding-left: max(1rem, env(safe-area-inset-left)); gap: 0.5rem; }
+  /* Hide verbose topbar chips on mobile to prevent overflow */
+  .topbar-subtitle { display: none !important; }
 
   /* Upload */
   .upload-grid  { grid-template-columns: 1fr; }
@@ -1123,6 +1209,9 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   .admin-tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .admin-tab-bar button { white-space: nowrap; flex-shrink: 0; }
   .data-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Upload manual entry: 3-col → 2-col on tablets */
+  .upload-entry-grid { grid-template-columns: 1fr 1fr; }
 }
 
 /* ── 640px — most phones in portrait ─────────────────────────── */
@@ -1145,6 +1234,10 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   .site-footer              { padding-left: 1.25rem; padding-right: 1.25rem; }
 
   .data-table { font-size: 0.75rem; }
+
+  /* Upload entry form: 1-col on phones */
+  .upload-entry-grid { grid-template-columns: 1fr; }
+  .upload-entry-grid .form-group[style*="gridColumn"] { grid-column: 1 !important; }
   .data-table thead th,
   .data-table tbody td { padding: 0.5rem 0.75rem; }
 

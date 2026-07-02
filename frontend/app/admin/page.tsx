@@ -94,6 +94,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"users" | "registry" | "requests" | "entry" | "iot">("users");
   const [copied, setCopied] = useState<string | null>(null);
+  const [headerOpen, setHeaderOpen] = useState(false);
 
   function copyToClipboard(text: string, label: string) {
     navigator.clipboard.writeText(text).then(() => { setCopied(label); setTimeout(() => setCopied(null), 2000); });
@@ -380,8 +381,8 @@ export default function AdminPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface)" }}>
       {/* Header */}
-      <div style={{ background: "var(--ink)", borderBottom: "3px solid var(--green)", padding: "0 1rem" }}>
-        <div style={{ maxWidth: "var(--max-w)", margin: "0 auto", minHeight: 60, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", padding: "0.5rem 0" }}>
+      <div style={{ background: "var(--ink)", borderBottom: "3px solid var(--green)" }}>
+        <div style={{ maxWidth: "var(--max-w)", margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 1.25rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <CoatOfArms size={32} />
             <div>
@@ -389,12 +390,32 @@ export default function AdminPage() {
               <div style={{ fontSize: "0.58rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Energy Commission</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          {/* Desktop actions */}
+          <div className="admin-header-actions-desktop" style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <Link href="/upload" className="btn btn-ghost btn-sm">Upload Data</Link>
             <Link href="/data-point/dashboard" className="btn btn-ghost btn-sm">Dashboard</Link>
-            <button onClick={() => { import("@/lib/auth").then(m => { m.clearTokens(); window.location.href = "/"; }); }} className="btn btn-ghost btn-sm" style={{ color: "rgba(255,255,255,0.55)" }}>Log Out</button>
+            <button onClick={() => { import("@/lib/auth").then(m => { m.clearTokens(); window.location.href = "/"; }); }} className="btn btn-ghost btn-sm" style={{ color: "#fca5a5" }}>Log Out</button>
           </div>
+          {/* Mobile hamburger */}
+          <button
+            className="admin-header-hamburger"
+            onClick={() => setHeaderOpen(o => !o)}
+            aria-label="Menu"
+            style={{ display: "none", flexDirection: "column", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 8 }}
+          >
+            <span style={{ display: "block", width: 20, height: 2, background: "#fff", transition: "0.2s", transform: headerOpen ? "rotate(45deg) translate(0,6px)" : "none" }} />
+            <span style={{ display: "block", width: 20, height: 2, background: "#fff", transition: "0.2s", opacity: headerOpen ? 0 : 1 }} />
+            <span style={{ display: "block", width: 20, height: 2, background: "#fff", transition: "0.2s", transform: headerOpen ? "rotate(-45deg) translate(0,-6px)" : "none" }} />
+          </button>
         </div>
+        {/* Mobile dropdown */}
+        {headerOpen && (
+          <div className="admin-header-dropdown">
+            <Link href="/upload" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Upload Data</Link>
+            <Link href="/data-point/dashboard" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Dashboard</Link>
+            <button onClick={() => { import("@/lib/auth").then(m => { m.clearTokens(); window.location.href = "/"; }); setHeaderOpen(false); }} className="admin-header-item admin-header-item--logout">Log Out</button>
+          </div>
+        )}
       </div>
 
       <div style={{ maxWidth: "var(--max-w)", margin: "0 auto", padding: "2rem 2rem" }}>
