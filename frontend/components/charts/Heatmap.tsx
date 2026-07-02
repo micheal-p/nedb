@@ -16,15 +16,40 @@ export default function Heatmap({ data, unit }: Props) {
 
   data.forEach((r) => {
     if (!r.period || r.value === null) return;
-    const [year, monthStr] = r.period.split("-");
-    if (!year || !monthStr) return;
-    const key = `${year}-${monthStr}`;
-    cellMap.set(key, r.value ?? 0);
-    if ((r.value ?? 0) < min) min = r.value ?? 0;
-    if ((r.value ?? 0) > max) max = r.value ?? 0;
+    // Monthly: "2024-07" → year=2024, month=07
+    // Quarterly: "2024-Q2" → expand to 3 months (Q2 = Apr/May/Jun = 04,05,06)
+    // Annual: "2024" → spread across all 12 months
+    const monthly = /^\d{4}-\d{2}$/.test(r.period);
+    const quarterly = /^\d{4}-Q([1-4])$/.test(r.period);
+    const annual = /^\d{4}$/.test(r.period);
+    const year = r.period.slice(0, 4);
+    const val = r.value ?? 0;
+
+    if (monthly) {
+      const key = r.period;
+      cellMap.set(key, val);
+      if (val < min) min = val;
+      if (val > max) max = val;
+    } else if (quarterly) {
+      const q = parseInt(r.period.slice(-1));
+      const startMonth = (q - 1) * 3 + 1;
+      for (let m = startMonth; m < startMonth + 3; m++) {
+        const key = `${year}-${String(m).padStart(2, "0")}`;
+        cellMap.set(key, val);
+      }
+      if (val < min) min = val;
+      if (val > max) max = val;
+    } else if (annual) {
+      for (let m = 1; m <= 12; m++) {
+        const key = `${year}-${String(m).padStart(2, "0")}`;
+        cellMap.set(key, val);
+      }
+      if (val < min) min = val;
+      if (val > max) max = val;
+    }
   });
 
-  const years = [...new Set(data.map((r) => r.period?.split("-")[0]).filter(Boolean))].sort();
+  const years = [...new Set(data.map((r) => r.period?.slice(0, 4)).filter(Boolean))].sort();
   const range = max - min || 1;
 
   function getColor(val: number): string {
