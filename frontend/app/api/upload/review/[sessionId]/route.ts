@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { requireAdmin, ok, err } from "@/lib/api-helpers";
 import { cacheDel } from "@/lib/redis";
+import { sendApprovalEmail, sendRejectionEmail } from "@/lib/mailer";
 
 // POST /api/upload/review/:sessionId — admin approve or reject
 export async function POST(
@@ -29,6 +30,16 @@ export async function POST(
 
   if (action === "reject") {
     await client.from("upload_sessions").update({ status: "rejected" }).eq("id", sessionId);
+
+    // Email uploader
+    if (session.uploaded_by) {
+      const { data: staffRow } = await client.from("staff_users").select("email, full_name").eq("username", session.uploaded_by).single();
+      const { data: seriesRow } = await client.from("series_types").select("name").eq("id", session.series_type_id).single();
+      if (staffRow?.email) {
+        await sendRejectionEmail({ to: staffRow.email, uploaderName: staffRow.full_name ?? session.uploaded_by, seriesName: seriesRow?.name ?? session.series_type_id, rejectedBy: claims.username, sessionId: Number(sessionId) });
+      }
+    }
+
     return ok({ rejected: Number(sessionId), message: "Upload rejected." });
   }
 
@@ -55,6 +66,15 @@ export async function POST(
   } catch { /* non-fatal */ }
 
   await cacheDel(`stats:${session.series_type_id}`, "series:list");
+
+  // Email uploader
+  if (session.uploaded_by) {
+    const { data: staffRow } = await client.from("staff_users").select("email, full_name").eq("username", session.uploaded_by).single();
+    const { data: seriesRow } = await client.from("series_types").select("name").eq("id", session.series_type_id).single();
+    if (staffRow?.email) {
+      await sendApprovalEmail({ to: staffRow.email, uploaderName: staffRow.full_name ?? session.uploaded_by, seriesName: seriesRow?.name ?? session.series_type_id, committedRows: session.validated_rows.length, approvedBy: claims.username, sessionId: Number(sessionId) });
+    }
+  }
 
   return ok({
     approved: Number(sessionId),
