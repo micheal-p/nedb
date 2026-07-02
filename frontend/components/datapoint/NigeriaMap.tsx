@@ -4,7 +4,12 @@ import { useState } from "react";
 import React from "react";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 
-const GEO_URL = "https://raw.githubusercontent.com/deldersveld/topojson/master/countries/nigeria/nigeria-states.json";
+const GEO_URL = "/nigeria-states.json";
+
+// Normalise GeoJSON shapeName → our internal state name (zone/upload dropdown keys)
+const GEO_NAME: Record<string, string> = {
+  "Abuja Federal Capital Territory": "FCT (Abuja)",
+};
 
 interface NigeriaMapProps {
   stateData: Record<string, number>;
@@ -79,7 +84,8 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
             <Geographies geography={GEO_URL}>
               {({ geographies }: { geographies: { rsmKey: string; properties: Record<string,string> }[] }) =>
                 geographies.map((geo) => {
-                  const name = geo.properties.NAME_1 ?? geo.properties.name ?? "";
+                  const rawName = geo.properties.shapeName ?? geo.properties.NAME_1 ?? geo.properties.name ?? "";
+                  const name = GEO_NAME[rawName] ?? rawName;
                   return (
                     <Geography
                       key={geo.rsmKey}
@@ -88,7 +94,7 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
                       stroke="#fff"
                       strokeWidth={0.5}
                       style={{ default: { outline: "none" }, hover: { outline: "none", opacity: 0.8 }, pressed: { outline: "none" } }}
-                      onMouseEnter={(e: React.MouseEvent) => setTooltip({ name, value: stateData[name] ?? null, x: e.clientX, y: e.clientY })}
+                      onMouseEnter={(e: React.MouseEvent) => setTooltip({ name: rawName === name ? name : `${name} (${rawName})`, value: stateData[name] ?? null, x: e.clientX, y: e.clientY })}
                     />
                   );
                 })
