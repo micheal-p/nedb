@@ -133,6 +133,13 @@ export default function AdminPage() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditFilter, setAuditFilter] = useState({ series: "", action: "" });
 
+  // Data freeze state
+  interface FrozenPeriod { id: number; series_type_id: string; period: string; frozen_by: string; frozen_at: string; reason: string | null; }
+  const [frozenList, setFrozenList]   = useState<FrozenPeriod[]>([]);
+  const [freezeForm, setFreezeForm]   = useState({ series_type_id: "crude_oil_production", period: "", reason: "" });
+  const [freezeMsg, setFreezeMsg]     = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [freezeLoading, setFreezeLoading] = useState(false);
+
   // Upload approvals state
   interface PendingSession { id: number; series_type_id: string; filename: string; row_count: number; uploaded_by: string | null; created_at: string; }
   const [pendingSessions, setPendingSessions] = useState<PendingSession[]>([]);
@@ -206,6 +213,39 @@ export default function AdminPage() {
     setAuditLoading(false);
   }, []);
 
+  const loadFrozen = useCallback(async () => {
+    const token = getToken(); if (!token) return;
+    setFreezeLoading(true);
+    const r = await fetch("/api/admin/freeze", { headers: { Authorization: `Bearer ${token}` } });
+    setFrozenList(r.ok ? (await r.json()).frozen ?? [] : []);
+    setFreezeLoading(false);
+  }, []);
+
+  async function freezePeriod(e: React.FormEvent) {
+    e.preventDefault();
+    const token = getToken(); if (!token) return;
+    if (!freezeForm.period) { setFreezeMsg({ type: "err", text: "Period is required." }); return; }
+    const r = await fetch("/api/admin/freeze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(freezeForm),
+    });
+    const data = await r.json();
+    if (r.ok) {
+      setFreezeMsg({ type: "ok", text: `Locked ${freezeForm.series_type_id} · ${freezeForm.period}` });
+      setFreezeForm((f) => ({ ...f, period: "", reason: "" }));
+      loadFrozen();
+    } else {
+      setFreezeMsg({ type: "err", text: data.error ?? "Freeze failed." });
+    }
+  }
+
+  async function unfreeze(id: number) {
+    const token = getToken(); if (!token) return;
+    const r = await fetch(`/api/admin/freeze?id=${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    if (r.ok) { setFrozenList((prev) => prev.filter((f) => f.id !== id)); setFreezeMsg({ type: "ok", text: "Period unlocked." }); }
+  }
+
   const loadApprovals = useCallback(async () => {
     const token = getToken(); if (!token) return;
     setPendingLoading(true); setApprovalMsg(null);
@@ -278,7 +318,8 @@ export default function AdminPage() {
     loadCompanies();
     loadRequests();
     loadApprovals();
-  }, [router, loadUsers, loadCompanies, loadRequests, loadApprovals]);
+    loadFrozen();
+  }, [router, loadUsers, loadCompanies, loadRequests, loadApprovals, loadFrozen]);
 
   // ── User actions ──────────────────────────────────────────────
   async function createUser(e: React.FormEvent) {
@@ -939,6 +980,69 @@ export default function AdminPage() {
               )}
             </div>
           </>
+        )}
+
+        {/* ── DATA FREEZE SECTION (inside entry tab) ── */}
+        {tab === "entry" && (
+          <div style={{ marginTop: "2.5rem", borderTop: "2px solid var(--border)", paddingTop: "2rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div>
+                <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.1rem", fontWeight: 400, color: "var(--ink)", marginBottom: "0.2rem" }}>Published Period Locks</h2>
+                <p style={{ fontSize: "0.78rem", color: "var(--ink-4)" }}>Frozen periods cannot be edited or deleted. Use this to protect officially published data.</p>
+              </div>
+            </div>
+
+            {freezeMsg && (
+              <div style={{ marginBottom: "1rem", padding: "0.75rem 1rem", background: freezeMsg.type === "ok" ? "var(--green-strong)" : "var(--red-tint)", border: `1px solid ${freezeMsg.type === "ok" ? "var(--green-line)" : "rgba(192,57,43,0.2)"}`, borderRadius: "var(--r-md)", fontSize: "0.8rem", fontWeight: 600, color: freezeMsg.type === "ok" ? "var(--green-deep)" : "var(--red)", display: "flex", justifyContent: "space-between" }}>
+                {freezeMsg.text}
+                <button onClick={() => setFreezeMsg(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "inherit" }}>✕</button>
+              </div>
+            )}
+
+            <form onSubmit={freezePeriod} style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "1.25rem", padding: "1rem", background: "var(--surface-muted)", borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
+              <div className="form-group" style={{ marginBottom: 0, minWidth: 200 }}>
+                <label className="form-label">Series</label>
+                <select className="form-input form-select" style={{ fontSize: "0.8rem" }} value={freezeForm.series_type_id} onChange={(e) => setFreezeForm((f) => ({ ...f, series_type_id: e.target.value }))}>
+                  {Object.entries(SERIES_META).map(([id, m]) => <option key={id} value={id}>{m.name}</option>)}
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Period <span style={{ color: "var(--ink-5)", fontWeight: 400 }}>(or * for whole series)</span></label>
+                <input className="form-input" placeholder="e.g. 2023-Q1 or *" value={freezeForm.period} onChange={(e) => setFreezeForm((f) => ({ ...f, period: e.target.value }))} style={{ width: 160 }} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 180 }}>
+                <label className="form-label">Reason (optional)</label>
+                <input className="form-input" placeholder="e.g. Official ECN Q1 2023 publication" value={freezeForm.reason} onChange={(e) => setFreezeForm((f) => ({ ...f, reason: e.target.value }))} />
+              </div>
+              <button type="submit" className="btn btn-dark" style={{ height: 38 }}>Lock Period</button>
+            </form>
+
+            {freezeLoading ? (
+              <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--ink-5)", fontSize: "0.82rem" }}>Loading…</div>
+            ) : frozenList.length === 0 ? (
+              <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--ink-5)", fontSize: "0.78rem" }}>No periods are currently locked.</div>
+            ) : (
+              <div className="data-table-wrap">
+                <table className="data-table" style={{ fontSize: "0.75rem" }}>
+                  <thead><tr><th>Series</th><th>Period</th><th>Locked by</th><th>When</th><th>Reason</th><th style={{ width: 70 }}></th></tr></thead>
+                  <tbody>
+                    {frozenList.map((f) => (
+                      <tr key={f.id}>
+                        <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.7rem", color: "var(--green-deep)" }}>{SERIES_META[f.series_type_id]?.name ?? f.series_type_id}</td>
+                        <td className="td-mono">{f.period === "*" ? <span style={{ color: "var(--red)", fontWeight: 700 }}>ALL PERIODS</span> : f.period}</td>
+                        <td style={{ fontWeight: 600 }}>{f.frozen_by}</td>
+                        <td style={{ color: "var(--ink-5)", fontSize: "0.7rem" }}>{new Date(f.frozen_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</td>
+                        <td style={{ color: "var(--ink-4)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.reason ?? "—"}</td>
+                        <td>
+                          <button onClick={() => unfreeze(f.id)} style={{ padding: "2px 10px", fontSize: "0.7rem", background: "none", border: "1px solid var(--border)", borderRadius: 4, color: "var(--ink-4)", cursor: "pointer" }}>Unlock</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         )}
 
         {/* ── IOT / API TAB ── */}

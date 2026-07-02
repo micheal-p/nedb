@@ -39,12 +39,24 @@ export async function PATCH(
 
   const client = db();
 
-  // Fetch current record for audit trail
+  // Fetch current record for audit trail + freeze check
   const { data: before } = await client
     .from("energy_records")
     .select("id, series_type_id, period, region, value")
     .eq("id", Number(id))
     .single();
+
+  if (before) {
+    const { data: freeze } = await client
+      .from("frozen_periods")
+      .select("id")
+      .eq("series_type_id", before.series_type_id)
+      .or(`period.eq.${before.period},period.eq.*`)
+      .limit(1);
+    if (freeze && freeze.length > 0) {
+      return NextResponse.json({ error: `Period ${before.period} is frozen and cannot be edited. Unfreeze it in the admin panel first.` }, { status: 423 });
+    }
+  }
 
   const allowed = ["period", "period_date", "value", "unit", "region", "source", "notes"];
   const patch: Record<string, unknown> = {};
@@ -75,12 +87,24 @@ export async function DELETE(
 
   const client = db();
 
-  // Fetch record before deletion for audit trail
+  // Fetch record before deletion for audit trail + freeze check
   const { data: before } = await client
     .from("energy_records")
     .select("id, series_type_id, period, region, value")
     .eq("id", Number(id))
     .single();
+
+  if (before) {
+    const { data: freeze } = await client
+      .from("frozen_periods")
+      .select("id")
+      .eq("series_type_id", before.series_type_id)
+      .or(`period.eq.${before.period},period.eq.*`)
+      .limit(1);
+    if (freeze && freeze.length > 0) {
+      return NextResponse.json({ error: `Period ${before.period} is frozen and cannot be deleted.` }, { status: 423 });
+    }
+  }
 
   const { error } = await client.from("energy_records").delete().eq("id", Number(id));
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
