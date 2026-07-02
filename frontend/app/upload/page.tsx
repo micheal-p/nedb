@@ -14,7 +14,20 @@ interface ManualRow {
   value: string; unit: string; source: string; notes: string;
 }
 
+const NG_ZONES: Record<string, string[]> = {
+  "North West":   ["Jigawa","Kaduna","Kano","Katsina","Kebbi","Sokoto","Zamfara"],
+  "North East":   ["Adamawa","Bauchi","Borno","Gombe","Taraba","Yobe"],
+  "North Central":["Benue","FCT (Abuja)","Kogi","Kwara","Nasarawa","Niger","Plateau"],
+  "South West":   ["Ekiti","Lagos","Ogun","Ondo","Osun","Oyo"],
+  "South East":   ["Abia","Anambra","Ebonyi","Enugu","Imo"],
+  "South South":  ["Akwa Ibom","Bayelsa","Cross River","Delta","Edo","Rivers"],
+};
+const STATE_TO_ZONE: Record<string,string> = {};
+Object.entries(NG_ZONES).forEach(([z, states]) => states.forEach((s) => { STATE_TO_ZONE[s] = z; }));
+const ALL_STATES = Object.values(NG_ZONES).flat().sort();
+
 const EMPTY_ROW: ManualRow = { period: "", period_date: "", region: "NGA", value: "", unit: "", source: "", notes: "" };
+const EMPTY_FORM = { ...EMPTY_ROW, state: "NGA", zone: "" };
 
 function periodToDate(period: string): string {
   if (/^\d{4}$/.test(period)) return `${period}-01-01`;
@@ -43,10 +56,17 @@ export default function UploadPage() {
 
   // Manual entry state
   const [manualRows, setManualRows] = useState<ManualRow[]>([]);
-  const [rowForm, setRowForm]     = useState<ManualRow>(EMPTY_ROW);
+  const [rowForm, setRowForm]     = useState(EMPTY_FORM);
   const [manualState, setManualState] = useState<"idle" | "committing" | "committed" | "error">("idle");
   const [manualError, setManualError] = useState("");
   const [manualCommitted, setManualCommitted] = useState<number | null>(null);
+
+  // Committed records (for delete)
+  type EnergyRecord = { id: number; series_type_id: string; period: string; value: number; unit: string; region: string; source?: string; created_at: string };
+  const [committedRecs, setCommittedRecs] = useState<EnergyRecord[]>([]);
+  const [recsLoading, setRecsLoading]     = useState(false);
+  const [deletingId, setDeletingId]       = useState<number | null>(null);
+  const [deleteMsg, setDeleteMsg]         = useState<string | null>(null);
 
   const selectedMeta = series.find((s) => s.id === selectedSeries);
 
@@ -96,9 +116,10 @@ export default function UploadPage() {
   function addRow(e: React.FormEvent) {
     e.preventDefault();
     if (!rowForm.period || !rowForm.value) { setManualError("Period and Value are required."); return; }
-    const date = rowForm.period_date || periodToDate(rowForm.period);
-    setManualRows((rows) => [...rows, { ...rowForm, period_date: date, unit: rowForm.unit || selectedMeta?.unit_default || "" }]);
-    setRowForm((r) => ({ ...EMPTY_ROW, unit: r.unit, region: r.region, source: r.source }));
+    const date   = rowForm.period_date || periodToDate(rowForm.period);
+    const region = rowForm.state !== "NGA" ? rowForm.state : (rowForm.zone || "NGA");
+    setManualRows((rows) => [...rows, { period: rowForm.period, period_date: date, region, value: rowForm.value, unit: rowForm.unit || selectedMeta?.unit_default || "", source: rowForm.source, notes: rowForm.notes }]);
+    setRowForm((r) => ({ ...EMPTY_FORM, unit: r.unit, state: r.state, zone: r.zone, region: r.region, source: r.source }));
     setManualError("");
   }
   function removeRow(i: number) { setManualRows((rows) => rows.filter((_, idx) => idx !== i)); }
@@ -115,9 +136,26 @@ export default function UploadPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Commit failed.");
       setManualCommitted(data.committed_rows); setManualState("committed"); setManualRows([]);
+      if (selectedSeries) loadCommittedRecs(selectedSeries);
     } catch (e) { setManualState("error"); setManualError(e instanceof Error ? e.message : "Commit failed."); }
   }
-  function resetManual() { setManualState("idle"); setManualRows([]); setManualError(""); setManualCommitted(null); setRowForm(EMPTY_ROW); }
+  function resetManual() { setManualState("idle"); setManualRows([]); setManualError(""); setManualCommitted(null); setRowForm(EMPTY_FORM); }
+
+  async function loadCommittedRecs(seriesId: string) {
+    if (!seriesId) return;
+    setRecsLoading(true); setDeleteMsg(null);
+    const r = await fetch(`/api/admin/records?series=${seriesId}&limit=200`);
+    setCommittedRecs(r.ok ? (await r.json()).records ?? [] : []);
+    setRecsLoading(false);
+  }
+  async function deleteRecord(id: number) {
+    if (!confirm("Delete this record permanently? This cannot be undone.")) return;
+    setDeletingId(id);
+    const r = await fetch(`/api/admin/records/${id}`, { method: "DELETE" });
+    if (r.ok) { setCommittedRecs((prev) => prev.filter((rec) => rec.id !== id)); setDeleteMsg(`Record #${id} deleted.`); }
+    else setDeleteMsg("Delete failed — check permissions.");
+    setDeletingId(null);
+  }
 
   const TAB = (active: boolean): React.CSSProperties => ({
     padding: "0.5rem 1.25rem", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", border: "none",
@@ -172,7 +210,7 @@ export default function UploadPage() {
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">Energy Data Series</label>
                     <select className="form-input form-select" value={selectedSeries}
-                      onChange={(e) => { setSelectedSeries(e.target.value); reset(); resetManual(); }}>
+                      onChange={(e) => { setSelectedSeries(e.target.value); reset(); resetManual(); loadCommittedRecs(e.target.value); }}>
                       <option value="">Select a series…</option>
                       {series.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.sector})</option>)}
                     </select>
@@ -245,7 +283,7 @@ export default function UploadPage() {
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem 1rem" }}>
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label">Period *</label>
-                          <input className="form-input" placeholder={selectedMeta?.frequency === "annual" ? "e.g. 2024" : selectedMeta?.frequency === "monthly" ? "e.g. 2024-01" : "e.g. 2024-Q1"}
+                          <input className="form-input" placeholder={selectedMeta?.frequency === "annual" ? "e.g. 2026" : selectedMeta?.frequency === "monthly" ? "e.g. 2026-01" : "e.g. 2026-Q1"}
                             value={rowForm.period} onChange={(e) => setRowForm({ ...rowForm, period: e.target.value })} />
                         </div>
                         <div className="form-group" style={{ marginBottom: 0 }}>
@@ -258,19 +296,45 @@ export default function UploadPage() {
                           <input className="form-input" placeholder={selectedMeta?.unit_default ?? "e.g. Barrels"}
                             value={rowForm.unit} onChange={(e) => setRowForm({ ...rowForm, unit: e.target.value })} />
                         </div>
+
+                        {/* State → auto-fills zone */}
                         <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Region</label>
-                          <input className="form-input" placeholder="NGA or state code"
-                            value={rowForm.region} onChange={(e) => setRowForm({ ...rowForm, region: e.target.value })} />
+                          <label className="form-label">State</label>
+                          <select className="form-input form-select" value={rowForm.state}
+                            onChange={(e) => {
+                              const st   = e.target.value;
+                              const zone = STATE_TO_ZONE[st] ?? "";
+                              setRowForm({ ...rowForm, state: st, zone, region: st !== "NGA" ? st : "NGA" });
+                            }}>
+                            <option value="NGA">National (NGA)</option>
+                            {ALL_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
                         </div>
+
+                        {/* Geopolitical zone — auto-filled or direct select */}
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Geopolitical Zone</label>
+                          <select className="form-input form-select" value={rowForm.zone}
+                            onChange={(e) => {
+                              const zone = e.target.value;
+                              setRowForm({ ...rowForm, zone, state: "NGA", region: zone || "NGA" });
+                            }}>
+                            <option value="">— Select zone —</option>
+                            {Object.keys(NG_ZONES).map((z) => <option key={z} value={z}>{z}</option>)}
+                          </select>
+                          {rowForm.state !== "NGA" && rowForm.zone && (
+                            <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 3 }}>Auto-filled from state</div>
+                          )}
+                        </div>
+
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label">Source</label>
-                          <input className="form-input" placeholder="e.g. NUPRC Q4 2024"
+                          <input className="form-input" placeholder="e.g. NUPRC Q1 2026"
                             value={rowForm.source} onChange={(e) => setRowForm({ ...rowForm, source: e.target.value })} />
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
+                        <div className="form-group" style={{ marginBottom: 0, gridColumn: "2 / -1" }}>
                           <label className="form-label">Notes</label>
-                          <input className="form-input" placeholder="Optional"
+                          <input className="form-input" placeholder="Optional — preliminary, revised, etc."
                             value={rowForm.notes} onChange={(e) => setRowForm({ ...rowForm, notes: e.target.value })} />
                         </div>
                       </div>
@@ -310,7 +374,7 @@ export default function UploadPage() {
                         <div className="data-table-wrap">
                           <table className="data-table" style={{ fontSize: "0.75rem" }}>
                             <thead>
-                              <tr><th>Period</th><th>Value</th><th>Unit</th><th>Region</th><th>Source</th><th></th></tr>
+                              <tr><th>Period</th><th>Value</th><th>Unit</th><th>State / Region</th><th>Zone</th><th>Source</th><th></th></tr>
                             </thead>
                             <tbody>
                               {manualRows.map((r, i) => (
@@ -319,6 +383,7 @@ export default function UploadPage() {
                                   <td className="td-mono td-num">{Number(r.value).toLocaleString()}</td>
                                   <td>{r.unit}</td>
                                   <td>{r.region}</td>
+                                  <td style={{ color: "var(--ink-4)", fontSize: "0.7rem" }}>{STATE_TO_ZONE[r.region] ?? "—"}</td>
                                   <td style={{ color: "var(--ink-4)" }}>{r.source || "—"}</td>
                                   <td>
                                     <button onClick={() => removeRow(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--red)", fontSize: "0.72rem", padding: "2px 6px" }}>✕</button>
@@ -456,6 +521,65 @@ export default function UploadPage() {
                 Issues? Contact the NEDB system administrator or the ECN Data Management Unit.
               </div>
             </div>
+
+            {/* ── COMMITTED RECORDS (delete) — spans full width below the two columns ── */}
+            {selectedSeries && (
+              <div style={{ gridColumn: "1 / -1" }}>
+                <div className="panel">
+                  <div className="panel-header">
+                    <span className="panel-title">Committed Records — {series.find((s) => s.id === selectedSeries)?.name ?? selectedSeries}</span>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      {deleteMsg && <span style={{ fontSize: "0.72rem", color: deleteMsg.includes("failed") ? "var(--red)" : "var(--green-deep)", fontWeight: 600 }}>{deleteMsg}</span>}
+                      <button className="btn btn-secondary" style={{ height: 30, padding: "0 12px", fontSize: "0.72rem" }}
+                        onClick={() => loadCommittedRecs(selectedSeries)} disabled={recsLoading}>
+                        {recsLoading ? "Loading…" : "Refresh"}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="data-table-wrap" style={{ border: "none", borderRadius: 0 }}>
+                    {recsLoading ? (
+                      <div style={{ padding: "2rem", textAlign: "center", color: "var(--ink-5)", fontSize: "0.82rem" }}>Loading…</div>
+                    ) : committedRecs.length === 0 ? (
+                      <div style={{ padding: "2rem 1rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem", color: "var(--ink-5)" }}>
+                        <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--ink-4)" }}>No committed records yet</div>
+                        <div style={{ fontSize: "0.72rem" }}>Select a series above — records will load automatically.</div>
+                      </div>
+                    ) : (
+                      <table className="data-table" style={{ fontSize: "0.75rem" }}>
+                        <thead>
+                          <tr><th>ID</th><th>Period</th><th className="td-num">Value</th><th>Unit</th><th>Region</th><th>Zone</th><th>Source</th><th>Added</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                          {committedRecs.map((rec) => (
+                            <tr key={rec.id}>
+                              <td style={{ color: "var(--ink-5)", fontFamily: "var(--font-mono)", fontSize: "0.7rem" }}>#{rec.id}</td>
+                              <td className="td-mono">{rec.period}</td>
+                              <td className="td-num td-mono">{Number(rec.value).toLocaleString()}</td>
+                              <td>{rec.unit}</td>
+                              <td>{rec.region ?? "NGA"}</td>
+                              <td style={{ color: "var(--ink-4)", fontSize: "0.7rem" }}>{STATE_TO_ZONE[rec.region] ?? "—"}</td>
+                              <td style={{ color: "var(--ink-4)" }}>{rec.source ?? "—"}</td>
+                              <td style={{ color: "var(--ink-5)", fontSize: "0.7rem" }}>{new Date(rec.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</td>
+                              <td>
+                                <button onClick={() => deleteRecord(rec.id)} disabled={deletingId === rec.id}
+                                  style={{ padding: "3px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid rgba(192,57,43,0.3)", borderRadius: 4, background: "rgba(192,57,43,0.06)", color: "var(--red)", cursor: "pointer", opacity: deletingId === rec.id ? 0.5 : 1 }}>
+                                  {deletingId === rec.id ? "…" : "Delete"}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                  {committedRecs.length > 0 && (
+                    <div style={{ padding: "0.75rem 1.25rem", borderTop: "1px solid var(--border)", fontSize: "0.72rem", color: "var(--ink-5)" }}>
+                      {committedRecs.length} record{committedRecs.length !== 1 ? "s" : ""}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
           </div>
         </div>
