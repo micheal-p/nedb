@@ -8,7 +8,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { data, error } = await db()
     .from("series_types")
     .select(`
-      id, name, sector, subsector, unit_default, frequency, viz_types, created_at,
+      id, name, sector, subsector, unit_default, frequency, viz_types, created_at, description, methodology, source_agency,
       energy_records(count)
     `)
     .eq("id", id)

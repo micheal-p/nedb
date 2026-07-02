@@ -17,7 +17,7 @@ async function getData(id: string) {
   const [{ data: seriesRaw }, { data: records, count }] = await Promise.all([
     db()
       .from("series_types")
-      .select("id, name, sector, subsector, unit_default, frequency, viz_types, created_at, energy_records(count)")
+      .select("id, name, sector, subsector, unit_default, frequency, viz_types, created_at, description, methodology, source_agency, energy_records(count)")
       .eq("id", id)
       .single(),
     db()
@@ -186,25 +186,33 @@ export default async function SeriesDetail({ params }: Props) {
             </div>
           </div>
 
-          {/* ── METHODOLOGY NOTE ── */}
-          <div style={{
-            marginTop: "1.5rem",
-            padding: "1.25rem",
-            background: "var(--surface-white)",
-            border: "1px solid var(--border)",
-            borderLeft: "3px solid var(--green)",
-            borderRadius: "var(--r-md)",
-          }}>
-            <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.35rem" }}>
-              Methodology Note
-            </div>
-            <p style={{ fontSize: "0.8rem", color: "var(--ink-3)", lineHeight: 1.65 }}>
-              Data for this series is ingested through the NEDB validated upload pipeline. Each record
-              carries an explicit source attribution, methodology version tag, and ISO-aligned region code.
-              Statistics (YoY, MoM, CAGR, rolling means) are computed at query time from the committed
-              record set. Discrepancies with previously published figures may reflect retrospective revisions
-              by the source agency.
-            </p>
+          {/* ── METHODOLOGY / ABOUT ── */}
+          <div style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: series.methodology ? "1fr 1fr" : "1fr", gap: "1rem" }}>
+            {series.description && (
+              <div style={{ padding: "1.25rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderLeft: "3px solid var(--green)", borderRadius: "var(--r-md)" }}>
+                <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.35rem" }}>About this Series</div>
+                <p style={{ fontSize: "0.8rem", color: "var(--ink-3)", lineHeight: 1.65, margin: 0 }}>{series.description}</p>
+                {series.source_agency && (
+                  <div style={{ marginTop: "0.75rem", fontSize: "0.7rem", color: "var(--ink-5)" }}>
+                    Source agency: <span style={{ fontWeight: 600, color: "var(--ink-4)" }}>{series.source_agency}</span>
+                  </div>
+                )}
+              </div>
+            )}
+            {series.methodology && (
+              <div style={{ padding: "1.25rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderLeft: "3px solid var(--ink-5)", borderRadius: "var(--r-md)" }}>
+                <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-4)", marginBottom: "0.35rem" }}>Methodology Note</div>
+                <p style={{ fontSize: "0.78rem", color: "var(--ink-4)", lineHeight: 1.65, margin: 0 }}>{series.methodology}</p>
+              </div>
+            )}
+            {!series.description && !series.methodology && (
+              <div style={{ padding: "1.25rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderLeft: "3px solid var(--green)", borderRadius: "var(--r-md)" }}>
+                <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.35rem" }}>Methodology Note</div>
+                <p style={{ fontSize: "0.8rem", color: "var(--ink-3)", lineHeight: 1.65, margin: 0 }}>
+                  Data for this series is ingested through the NEDB validated upload pipeline. Each record carries an explicit source attribution, methodology version tag, and ISO-aligned region code. Statistics (YoY, MoM, CAGR, rolling means) are computed at query time from the committed record set.
+                </p>
+              </div>
+            )}
           </div>
 
         </div>

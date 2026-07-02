@@ -10,6 +10,9 @@ export interface SeriesType {
   viz_types: string[];
   record_count: number;
   created_at: string;
+  description?: string;
+  methodology?: string;
+  source_agency?: string;
 }
 
 export interface EnergyRecord {
