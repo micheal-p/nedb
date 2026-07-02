@@ -886,9 +886,9 @@ export default function AdminPage() {
         {tab === "iot" && (
           <>
             <div style={{ marginBottom: "1.5rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "0.25rem" }}>
-                <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.5rem", fontWeight: 400, color: "var(--ink)", margin: 0 }}>IoT & EOM Telemetry Integration</h1>
-                <span className="tag tag-amber" style={{ fontSize: "0.65rem" }}>Device Management — Coming Soon</span>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: "0.25rem", flexWrap: "wrap" }}>
+                <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 400, color: "var(--ink)", margin: 0 }}>IoT & EOM Telemetry Integration</h1>
+                <span className="tag tag-amber" style={{ fontSize: "0.65rem", flexShrink: 0, marginTop: 4 }}>Device Management — Coming Soon</span>
               </div>
               <p style={{ fontSize: "0.8rem", color: "var(--ink-4)" }}>
                 Energy Operation Management (EOM) systems and IoT field devices post readings directly to this API. Data lands in real-time on the Data Point dashboard.
@@ -902,11 +902,11 @@ export default function AdminPage() {
 
                 <div>
                   <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>POST Endpoint</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <code style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 14px", fontSize: "0.82rem", fontFamily: "var(--font-mono)", color: "var(--ink)" }}>
+                  <div style={{ display: "flex", alignItems: "stretch", gap: 8, flexWrap: "wrap" }}>
+                    <code style={{ flex: 1, minWidth: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 14px", fontSize: "0.78rem", fontFamily: "var(--font-mono)", color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
                       https://nedb.vercel.app/api/iot/ingest
                     </code>
-                    <button onClick={() => copyToClipboard("https://nedb.vercel.app/api/iot/ingest", "url")} style={{ padding: "8px 14px", border: "1px solid var(--border)", borderRadius: 6, background: copied === "url" ? "var(--green)" : "var(--surface)", color: copied === "url" ? "#fff" : "var(--ink-4)", fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap", transition: "0.15s" }}>
+                    <button onClick={() => copyToClipboard("https://nedb.vercel.app/api/iot/ingest", "url")} style={{ padding: "8px 14px", border: "1px solid var(--border)", borderRadius: 6, background: copied === "url" ? "var(--green)" : "var(--surface)", color: copied === "url" ? "#fff" : "var(--ink-4)", fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap", transition: "0.15s", flexShrink: 0 }}>
                       {copied === "url" ? "Copied!" : "Copy"}
                     </button>
                   </div>
@@ -914,11 +914,11 @@ export default function AdminPage() {
 
                 <div>
                   <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>API Key — share with device operators only</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <code style={{ flex: 1, background: "var(--ink)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 14px", fontSize: "0.78rem", fontFamily: "var(--font-mono)", color: "var(--green)", letterSpacing: "0.04em" }}>
+                  <div style={{ display: "flex", alignItems: "stretch", gap: 8, flexWrap: "wrap" }}>
+                    <code style={{ flex: 1, minWidth: 0, background: "var(--ink)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 14px", fontSize: "0.78rem", fontFamily: "var(--font-mono)", color: "var(--green)", letterSpacing: "0.04em", display: "block" }}>
                       Add <strong style={{ color: "#fff" }}>IOT_API_KEY</strong> to your Vercel environment variables
                     </code>
-                    <button onClick={() => copyToClipboard("X-API-Key", "key")} style={{ padding: "8px 14px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)", color: "var(--ink-4)", fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap" }}>
+                    <button onClick={() => copyToClipboard("X-API-Key", "key")} style={{ padding: "8px 14px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)", color: "var(--ink-4)", fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
                       Copy Header
                     </button>
                   </div>
@@ -935,7 +935,7 @@ export default function AdminPage() {
             </div>
 
             {/* Payload examples */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", marginBottom: "1.5rem" }}>
+            <div className="iot-examples-grid" style={{ marginBottom: "1.5rem" }}>
               <div className="panel">
                 <div className="panel-header"><span className="panel-title">Single Reading</span><span style={{ fontSize: "0.68rem", color: "var(--ink-5)" }}>e.g. one monthly figure</span></div>
                 <div className="panel-body">

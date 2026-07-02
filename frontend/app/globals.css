@@ -1072,6 +1072,16 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   gap: 0.75rem 1rem;
 }
 
+/* IoT examples: 2-col → 1-col on mobile */
+.iot-examples-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+@media (max-width: 640px) {
+  .iot-examples-grid { grid-template-columns: 1fr; }
+}
+
 /* ── Admin header responsive ──────────────────────────────────── */
 .admin-header-actions-desktop { display: flex; }
 .admin-header-hamburger       { display: none !important; }
