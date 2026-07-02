@@ -131,6 +131,13 @@ export default function AdminPage() {
   const [entrySubmitting, setEntrySubmitting] = useState(false);
   const [entryMsg, setEntryMsg]       = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  // Committed records state
+  type EnergyRecord = { id: number; series_type_id: string; period: string; period_date: string; region: string; value: number; unit: string; source?: string; notes?: string; created_at: string };
+  const [records, setRecords]           = useState<EnergyRecord[]>([]);
+  const [recLoading, setRecLoading]     = useState(false);
+  const [recFilter, setRecFilter]       = useState({ series: "", year: String(new Date().getFullYear()) });
+  const [deletingId, setDeletingId]     = useState<number | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg]              = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
@@ -160,6 +167,29 @@ export default function AdminPage() {
     setRequests(r.ok ? await r.json() : []);
     setReqLoading(false);
   }, []);
+
+  const loadRecords = useCallback(async (series = "", year = String(new Date().getFullYear())) => {
+    setRecLoading(true);
+    const qs = new URLSearchParams({ limit: "200" });
+    if (series) qs.set("series", series);
+    if (year)   qs.set("year", year);
+    const r = await fetch(`/api/admin/records?${qs}`);
+    setRecords(r.ok ? (await r.json()).records ?? [] : []);
+    setRecLoading(false);
+  }, []);
+
+  async function deleteRecord(id: number) {
+    if (!confirm("Delete this record permanently? This cannot be undone.")) return;
+    setDeletingId(id);
+    const r = await fetch(`/api/admin/records/${id}`, { method: "DELETE" });
+    if (r.ok) {
+      setRecords((prev) => prev.filter((rec) => rec.id !== id));
+      setEntryMsg({ type: "ok", text: `Record #${id} deleted.` });
+    } else {
+      setEntryMsg({ type: "err", text: "Delete failed." });
+    }
+    setDeletingId(null);
+  }
 
   useEffect(() => {
     const token = getToken();
@@ -306,6 +336,7 @@ export default function AdminPage() {
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Failed");
       setEntryMsg({ type: "ok", text: `Record committed — ${meta.name} · ${entryForm.period} · ${entryForm.value} ${meta.unit}` });
+      loadRecords(recFilter.series, recFilter.year);
       setEntryForm((f) => ({ ...f, period: "", value: "", notes: "" }));
     } catch (err) {
       setEntryMsg({ type: "err", text: err instanceof Error ? err.message : "Failed to save record." });
@@ -346,7 +377,7 @@ export default function AdminPage() {
         {/* Tab bar */}
         <div style={{ borderBottom: "1px solid var(--border)", marginBottom: "2rem", display: "flex", gap: 0 }}>
           <button style={TAB_STYLE(tab === "users")}    onClick={() => { setTab("users"); setMsg(null); }}>Portal Users</button>
-          <button style={TAB_STYLE(tab === "entry")}    onClick={() => { setTab("entry"); setMsg(null); setEntryMsg(null); }}>Data Entry</button>
+          <button style={TAB_STYLE(tab === "entry")}    onClick={() => { setTab("entry"); setMsg(null); setEntryMsg(null); loadRecords(recFilter.series, recFilter.year); }}>Data Entry</button>
           <button style={TAB_STYLE(tab === "iot")}      onClick={() => { setTab("iot"); setMsg(null); }}>IoT / API</button>
           <button style={TAB_STYLE(tab === "registry")} onClick={() => { setTab("registry"); setMsg(null); }}>Companies Registry</button>
           <button style={TAB_STYLE(tab === "requests")} onClick={() => { setTab("requests"); loadRequests(); setMsg(null); }}>
@@ -678,6 +709,84 @@ export default function AdminPage() {
                   </p>
                 </form>
               </div>
+            </div>
+
+            {/* ── Committed Records ── */}
+            <div className="panel" style={{ marginTop: "1.5rem" }}>
+              <div className="panel-header">
+                <span className="panel-title">Committed Records</span>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <select className="form-input form-select" style={{ height: 30, padding: "0 8px", fontSize: "0.75rem", width: "auto" }}
+                    value={recFilter.series}
+                    onChange={(e) => { const s = e.target.value; setRecFilter((f) => ({ ...f, series: s })); loadRecords(s, recFilter.year); }}>
+                    <option value="">All series</option>
+                    {Object.entries(SERIES_META).map(([id, m]) => <option key={id} value={id}>{m.name}</option>)}
+                  </select>
+                  <select className="form-input form-select" style={{ height: 30, padding: "0 8px", fontSize: "0.75rem", width: "auto" }}
+                    value={recFilter.year}
+                    onChange={(e) => { const y = e.target.value; setRecFilter((f) => ({ ...f, year: y })); loadRecords(recFilter.series, y); }}>
+                    {ENTRY_YEARS.map((y) => <option key={y} value={String(y)}>{y}</option>)}
+                  </select>
+                  <button className="btn btn-secondary" style={{ height: 30, padding: "0 12px", fontSize: "0.72rem" }}
+                    onClick={() => loadRecords(recFilter.series, recFilter.year)} disabled={recLoading}>
+                    {recLoading ? "Loading…" : "Refresh"}
+                  </button>
+                </div>
+              </div>
+              <div className="data-table-wrap" style={{ border: "none", borderRadius: 0 }}>
+                {recLoading ? (
+                  <div style={{ padding: "2rem", textAlign: "center", color: "var(--ink-5)", fontSize: "0.82rem" }}>Loading records…</div>
+                ) : records.length === 0 ? (
+                  <div style={{ padding: "2.5rem 1rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem", color: "var(--ink-5)" }}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                    <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--ink-4)" }}>No records found</div>
+                    <div style={{ fontSize: "0.72rem" }}>Add records using the form above, or adjust the filters.</div>
+                  </div>
+                ) : (
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Series</th>
+                        <th>Period</th>
+                        <th className="td-num">Value</th>
+                        <th>Unit</th>
+                        <th>Region</th>
+                        <th>Source</th>
+                        <th>Added</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {records.map((rec) => (
+                        <tr key={rec.id}>
+                          <td style={{ color: "var(--ink-5)", fontSize: "0.7rem", fontFamily: "var(--font-mono)" }}>#{rec.id}</td>
+                          <td className="td-primary" style={{ fontSize: "0.75rem" }}>{SERIES_META[rec.series_type_id]?.name ?? rec.series_type_id}</td>
+                          <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>{rec.period}</td>
+                          <td className="td-num td-mono">{Number(rec.value).toLocaleString()}</td>
+                          <td style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>{rec.unit}</td>
+                          <td style={{ fontSize: "0.72rem" }}>{rec.region ?? "NGA"}</td>
+                          <td style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>{rec.source ?? "—"}</td>
+                          <td style={{ fontSize: "0.7rem", color: "var(--ink-5)" }}>{new Date(rec.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</td>
+                          <td>
+                            <button
+                              onClick={() => deleteRecord(rec.id)}
+                              disabled={deletingId === rec.id}
+                              style={{ padding: "3px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid rgba(192,57,43,0.3)", borderRadius: 4, background: "rgba(192,57,43,0.06)", color: "var(--red)", cursor: "pointer", opacity: deletingId === rec.id ? 0.5 : 1 }}>
+                              {deletingId === rec.id ? "…" : "Delete"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              {records.length > 0 && (
+                <div style={{ padding: "0.75rem 1.25rem", borderTop: "1px solid var(--border)", fontSize: "0.72rem", color: "var(--ink-5)" }}>
+                  {records.length} record{records.length !== 1 ? "s" : ""} — showing latest 200 per filter
+                </div>
+              )}
             </div>
           </>
         )}
