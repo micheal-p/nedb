@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import InfoTip from "@/components/ui/InfoTip";
 import type { SeriesType, EnergyRecord } from "@/lib/api";
 import {
   ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -78,7 +79,10 @@ export default function ComparePage() {
           {/* Selector row */}
           <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", marginBottom: "1.5rem", flexWrap: "wrap" }}>
             <label style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1, minWidth: 220 }}>
-              <span style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: COLORS[0] }}>Series A</span>
+              <span style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: COLORS[0], display: "flex", alignItems: "center", gap: 4 }}>
+                Series A
+                <InfoTip text="Plotted on the left Y-axis in green. Tip: compare series with different units (e.g. production vs revenue) — each axis scales independently." position="bottom" width={230} />
+              </span>
               <select className="form-input" value={idA} onChange={(e) => setIdA(e.target.value)}>
                 <option value="">Select series…</option>
                 {seriesList.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}

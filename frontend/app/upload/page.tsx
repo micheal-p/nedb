@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import { api, type SeriesType, type ValidateResponse } from "@/lib/api";
 import { getToken, isLoggedIn, getRole } from "@/lib/auth";
+import InfoTip from "@/components/ui/InfoTip";
 
 type UploadState = "idle" | "validating" | "validated" | "committing" | "committed" | "submitting" | "submitted" | "error";
 
@@ -244,7 +245,10 @@ export default function UploadPage() {
               {/* Step 1 — Series selection (shared) */}
               <div className="panel">
                 <div className="panel-header">
-                  <span className="panel-title">Step 1 — Select Data Series</span>
+                  <span className="panel-title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    Step 1 — Select Data Series
+                    <InfoTip text="A data series is one specific energy metric (e.g. Crude Oil Production). Each series has a fixed unit, frequency and expected column format. Choose the correct series before downloading the template." position="right" width={260} />
+                  </span>
                 </div>
                 <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
@@ -261,7 +265,10 @@ export default function UploadPage() {
                       <div><div className="kpi-label">Unit</div><div style={{ fontSize: "0.82rem", color: "var(--ink)", marginTop: 2 }}>{selectedMeta.unit_default}</div></div>
                       <div><div className="kpi-label">Frequency</div><div style={{ fontSize: "0.82rem", color: "var(--ink)", marginTop: 2 }}>{selectedMeta.frequency}</div></div>
                       <div style={{ marginLeft: "auto" }}>
-                        <a href={api.templateUrl(selectedMeta.id)} className="btn btn-secondary btn-sm" style={{ marginTop: 2 }}>Download Template</a>
+                        <span style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
+                        <a href={api.templateUrl(selectedMeta.id)} className="btn btn-secondary btn-sm">Download Template</a>
+                        <InfoTip text="Download the pre-formatted Excel template for this series. Fill in your data without changing the column headers, then upload the file below." position="left" width={230} />
+                      </span>
                       </div>
                     </div>
                   )}
@@ -469,21 +476,30 @@ export default function UploadPage() {
                       <button onClick={reset} style={{ marginTop: "0.5rem", fontSize: "0.72rem", color: "#1a56a4", background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>Upload another dataset</button>
                     </div>
                   )}
-                  <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
                     {state !== "committed" && state !== "submitted" && (
-                      <button className="btn btn-primary" onClick={validate} disabled={!file || !selectedSeries || state === "validating" || state === "committing" || state === "submitting"}>
-                        {state === "validating" ? "Validating…" : "Validate Dataset"}
-                      </button>
+                      <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        <button className="btn btn-primary" onClick={validate} disabled={!file || !selectedSeries || state === "validating" || state === "committing" || state === "submitting"}>
+                          {state === "validating" ? "Validating…" : "Validate Dataset"}
+                        </button>
+                        <InfoTip text="Checks your file for missing columns, invalid values and formatting errors without writing anything to the database. Fix any errors shown, then upload again." width={240} position="top" />
+                      </span>
                     )}
                     {(state === "validated" || state === "committing" || state === "submitting") && !hasErrors && (
                       role === "admin" ? (
-                        <button className="btn btn-dark" onClick={commit} disabled={state === "committing"}>
-                          {state === "committing" ? "Committing…" : "Commit to Database"}
-                        </button>
+                        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <button className="btn btn-dark" onClick={commit} disabled={state === "committing"}>
+                            {state === "committing" ? "Committing…" : "Commit to Database"}
+                          </button>
+                          <InfoTip text="Writes all validated rows permanently into the NEDB database. This action is audited and cannot be undone without admin intervention." width={240} position="top" />
+                        </span>
                       ) : (
-                        <button className="btn btn-dark" onClick={submitForReview} disabled={state === "submitting"} style={{ background: "#1a56a4", borderColor: "#1a56a4" }}>
-                          {state === "submitting" ? "Submitting…" : "Submit for Review"}
-                        </button>
+                        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <button className="btn btn-dark" onClick={submitForReview} disabled={state === "submitting"} style={{ background: "#1a56a4", borderColor: "#1a56a4" }}>
+                            {state === "submitting" ? "Submitting…" : "Submit for Review"}
+                          </button>
+                          <InfoTip text="Sends the validated dataset to an administrator for approval before it is committed. You will receive an email notification once a decision is made." width={240} position="top" />
+                        </span>
                       )
                     )}
                     {(state === "validated" || state === "committed" || state === "submitted" || state === "error") && (

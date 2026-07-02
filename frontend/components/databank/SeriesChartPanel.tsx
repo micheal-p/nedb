@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { EnergyRecord } from "@/lib/api";
+import InfoTip from "@/components/ui/InfoTip";
 
 const LineChart      = dynamic(() => import("@/components/charts/LineChart"),      { ssr: false });
 const StackedArea    = dynamic(() => import("@/components/charts/StackedArea"),    { ssr: false });
@@ -145,12 +146,15 @@ export default function SeriesChartPanel({ title, subtitle, source, vizTypes, da
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {/* Forecast toggle — only on line view */}
           {active === "line" && data.length >= 6 && (
-            <button
-              onClick={() => setShowProjection((p) => !p)}
-              style={{ fontSize: "0.72rem", padding: "0.3rem 0.7rem", borderRadius: 20, border: `1px solid ${showProjection ? "var(--green)" : "var(--border)"}`, background: showProjection ? "var(--green-tint)" : "transparent", color: showProjection ? "var(--green)" : "var(--ink-4)", cursor: "pointer", fontWeight: 600, letterSpacing: "0.04em" }}
-            >
-              {showProjection ? "Hide Projection" : "Projection"}
-            </button>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <button
+                onClick={() => setShowProjection((p) => !p)}
+                style={{ fontSize: "0.72rem", padding: "0.3rem 0.7rem", borderRadius: 20, border: `1px solid ${showProjection ? "var(--green)" : "var(--border)"}`, background: showProjection ? "var(--green-tint)" : "transparent", color: showProjection ? "var(--green)" : "var(--ink-4)", cursor: "pointer", fontWeight: 600, letterSpacing: "0.04em" }}
+              >
+                {showProjection ? "Hide Projection" : "Projection"}
+              </button>
+              <InfoTip text="Extends the line chart using linear regression (OLS) on all available data points. The dashed line shows estimated future values — for indicative purposes only, not a formal forecast." width={240} position="bottom" />
+            </span>
           )}
           {/* Compare link */}
           {seriesId && (

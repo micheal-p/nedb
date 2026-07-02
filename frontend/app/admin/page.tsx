@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api, type StaffUser } from "@/lib/api";
 import { getToken, getRole, getFullName } from "@/lib/auth";
 import CoatOfArms from "@/components/layout/CoatOfArms";
+import InfoTip from "@/components/ui/InfoTip";
 
 interface Company {
   id: number; company: string; oml_blocks: string | null;
@@ -577,7 +578,7 @@ export default function AdminPage() {
             )}
           </button>
           <button style={TAB_STYLE(tab === "anomalies")} onClick={() => { setTab("anomalies"); loadAnomalies(); setMsg(null); }}>
-            Anomalies{anomalies.length > 0 && <span style={{ marginLeft: 6, background: "#F59E0B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: "0.6rem", fontWeight: 800 }}>{anomalies.length}</span>}
+            Anomalies {anomalies.length > 0 && <span style={{ marginLeft: 4, background: "#F59E0B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: "0.6rem", fontWeight: 800 }}>{anomalies.length}</span>}
           </button>
           <button style={TAB_STYLE(tab === "data-requests")} onClick={() => { setTab("data-requests"); loadDataRequests(); setMsg(null); }}>
             Data Requests{dataReqs.filter((r) => r.status === "pending").length > 0 && <span style={{ marginLeft: 6, background: "#C0392B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: "0.6rem", fontWeight: 800 }}>{dataReqs.filter((r) => r.status === "pending").length}</span>}
@@ -1419,7 +1420,10 @@ Content-Type: application/json
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
               <div>
                 <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.25rem", fontWeight: 400, color: "var(--ink)", marginBottom: "0.25rem" }}>Upload Review Queue</h2>
-                <p style={{ fontSize: "0.78rem", color: "var(--ink-4)" }}>Staff-submitted datasets awaiting admin approval before being committed to the database.</p>
+                <p style={{ fontSize: "0.78rem", color: "var(--ink-4)", display: "flex", alignItems: "center", gap: 6 }}>
+                  Staff-submitted datasets awaiting admin approval before being committed to the database.
+                  <InfoTip text="When a staff member uploads and validates a file, they click 'Submit for Review' instead of committing directly. The dataset sits here until you Approve (commits it) or Reject (discards it). The uploader is notified by email either way." width={280} position="right" />
+                </p>
               </div>
               <button className="btn btn-secondary btn-sm" onClick={loadApprovals} disabled={pendingLoading}>{pendingLoading ? "Loading…" : "Refresh"}</button>
             </div>
@@ -1558,7 +1562,10 @@ Content-Type: application/json
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
               <div>
                 <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.5rem", fontWeight: 400, color: "var(--ink)", marginBottom: "0.25rem" }}>Anomaly Flags</h1>
-                <p style={{ fontSize: "0.8rem", color: "var(--ink-4)" }}>Records flagged as statistical outliers (Z-score &gt; 2.5σ) detected at commit time. Review and dismiss false positives.</p>
+                <p style={{ fontSize: "0.8rem", color: "var(--ink-4)", display: "flex", alignItems: "center", gap: 6 }}>
+                  Records flagged as statistical outliers (Z-score &gt; 2.5σ) detected at commit time. Review and dismiss false positives.
+                  <InfoTip text="A Z-score measures how many standard deviations a value is from the series mean. Values beyond ±2.5σ are flagged as potential anomalies. Dismiss a flag if the value is correct (e.g. a genuine spike due to a policy change)." width={280} position="right" />
+                </p>
               </div>
               <button className="btn btn-secondary" onClick={() => loadAnomalies()}>Refresh</button>
             </div>
