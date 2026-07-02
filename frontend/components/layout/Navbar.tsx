@@ -71,6 +71,7 @@ export default function Navbar({ active }: NavbarProps) {
           <Link href="/data-point" className={`nav-link-main${active === "datapoint" ? " active" : ""}`}>Data Point</Link>
           <Link href="/portal" className="nav-link-main">Intelligence Portal</Link>
           <Link href="/about" className={`nav-link-main${active === "about" ? " active" : ""}`}>About NEDB</Link>
+          <Link href="/api-docs" className="nav-link-main">API</Link>
           <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer" className="nav-link-main">ECN Website</a>
         </div>
 
@@ -104,6 +105,7 @@ export default function Navbar({ active }: NavbarProps) {
           <Link href="/data-point" className={`mobile-link${active === "datapoint" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Data Point</Link>
           <Link href="/portal" className="mobile-link" onClick={() => setMenuOpen(false)}>Intelligence Portal</Link>
           <Link href="/about" className={`mobile-link${active === "about" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>About NEDB</Link>
+          <Link href="/api-docs" className="mobile-link" onClick={() => setMenuOpen(false)}>API Docs</Link>
           <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer" className="mobile-link" onClick={() => setMenuOpen(false)}>ECN Website</a>
 
           <div className="mobile-auth-section">

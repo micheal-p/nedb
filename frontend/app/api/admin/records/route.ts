@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const series = searchParams.get("series") ?? null;
   const year   = searchParams.get("year")   ?? null;
-  const limit  = Math.min(parseInt(searchParams.get("limit") ?? "200"), 500);
+  const limit  = Math.min(parseInt(searchParams.get("limit") ?? "200"), 5000);
 
   let query = db()
     .from("energy_records")

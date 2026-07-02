@@ -126,13 +126,22 @@ export default async function SeriesDetail({ params }: Props) {
                 {series.name}
               </h1>
               <p style={{ fontSize: "0.78rem", color: "var(--ink-4)", marginTop: "0.35rem" }}>
-                {series.record_count.toLocaleString()} records &nbsp;·&nbsp; Default unit: {series.unit_default} &nbsp;·&nbsp;
+                {series.record_count.toLocaleString()} records &nbsp;·&nbsp; {series.unit_default} &nbsp;·&nbsp;
                 NEDB ID: <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{series.id}</span>
+                {data.rows.length > 0 && (
+                  <> &nbsp;·&nbsp; Last updated: {new Date(data.rows[data.rows.length - 1].created_at ?? series.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</>
+                )}
               </p>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <a href={`/api/series/${series.id}/export?format=csv`} className="btn btn-secondary btn-sm" download>
+                Export CSV
+              </a>
+              <a href={`/api/series/${series.id}/export?format=xlsx`} className="btn btn-secondary btn-sm" download>
+                Export Excel
+              </a>
               <a href={templateUrl} className="btn btn-secondary btn-sm">
-                Download Template (XLSX)
+                Template
               </a>
               <Link href="/upload" className="btn btn-primary btn-sm">
                 Upload Dataset

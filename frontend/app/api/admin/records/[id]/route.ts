@@ -2,15 +2,49 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { requireAdmin } from "@/lib/api-helpers";
 
+async function writeAudit(
+  action: "UPDATE" | "DELETE",
+  record: { id: number; series_type_id: string; period: string; region: string; value: number | null },
+  newValue: number | null,
+  performedBy: string,
+  notes?: string
+) {
+  try {
+    await db().from("audit_log").insert({
+      action,
+      record_id:     record.id,
+      series_type_id: record.series_type_id,
+      period:        record.period,
+      region:        record.region,
+      old_value:     record.value,
+      new_value:     newValue,
+      performed_by:  performedBy,
+      notes,
+    });
+  } catch { /* audit failures must not block the main operation */ }
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const claims = await requireAdmin(req);
+  if (!claims) return NextResponse.json({ error: "admin required" }, { status: 403 });
+
   const { id } = await params;
   if (!id || isNaN(Number(id))) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Body required" }, { status: 400 });
+
+  const client = db();
+
+  // Fetch current record for audit trail
+  const { data: before } = await client
+    .from("energy_records")
+    .select("id, series_type_id, period, region, value")
+    .eq("id", Number(id))
+    .single();
 
   const allowed = ["period", "period_date", "value", "unit", "region", "source", "notes"];
   const patch: Record<string, unknown> = {};
@@ -19,19 +53,41 @@ export async function PATCH(
   }
   if (!Object.keys(patch).length) return NextResponse.json({ error: "No valid fields" }, { status: 400 });
 
-  const { data, error } = await db().from("energy_records").update(patch).eq("id", Number(id)).select().single();
+  const { data, error } = await client.from("energy_records").update(patch).eq("id", Number(id)).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (before) {
+    await writeAudit("UPDATE", before, "value" in patch ? Number(patch.value) : before.value, claims.username);
+  }
+
   return NextResponse.json({ record: data });
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const claims = await requireAdmin(req);
+  if (!claims) return NextResponse.json({ error: "admin required" }, { status: 403 });
+
   const { id } = await params;
   if (!id || isNaN(Number(id))) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
-  const { error } = await db().from("energy_records").delete().eq("id", Number(id));
+  const client = db();
+
+  // Fetch record before deletion for audit trail
+  const { data: before } = await client
+    .from("energy_records")
+    .select("id, series_type_id, period, region, value")
+    .eq("id", Number(id))
+    .single();
+
+  const { error } = await client.from("energy_records").delete().eq("id", Number(id));
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (before) {
+    await writeAudit("DELETE", before, null, claims.username, "record deleted by admin");
+  }
+
   return NextResponse.json({ deleted: Number(id) });
 }
