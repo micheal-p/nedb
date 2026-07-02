@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase-server";
+import { requireAdmin } from "@/lib/api-helpers";
 
 export async function PATCH(
   req: NextRequest,

@@ -50,3 +50,29 @@ export function clearTokens() {
 export function isLoggedIn(): boolean {
   return !!getToken();
 }
+
+export async function tryRefresh(): Promise<boolean> {
+  const rt = getRefreshToken();
+  if (!rt) return false;
+  try {
+    const res = await fetch("/api/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: rt }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    saveTokens(data.token, data.refresh_token ?? rt, data.full_name, data.role, data.dashboard_profile);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function getTokenFresh(): Promise<string | null> {
+  const t = getToken();
+  if (t) return t;
+  const refreshed = await tryRefresh();
+  if (!refreshed) return null;
+  return getToken();
+}

@@ -3,8 +3,16 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/supabase-server";
 import { signTokenPair } from "@/lib/jwt-server";
 import { ok, err } from "@/lib/api-helpers";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 10 attempts per 15 minutes per IP
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl  = checkRateLimit(`login:${ip}`, 10, 15 * 60 * 1000);
+  if (!rl.allowed) {
+    return err(`Too many login attempts. Try again in ${rl.resetIn}s.`, 429);
+  }
+
   const body = await req.json().catch(() => null);
   if (!body?.username || !body?.password) return err("username and password are required", 400);
 

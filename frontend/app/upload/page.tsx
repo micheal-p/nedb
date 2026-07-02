@@ -483,8 +483,26 @@ export default function UploadPage() {
                           </table>
                         </div>
                       ) : (
-                        <div className="panel-body" style={{ fontSize: "0.82rem", color: "var(--ink-3)" }}>
-                          All {validation.total_rows} rows passed validation. Click <strong>Commit to Database</strong> to write the records.
+                        <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                          <div style={{ fontSize: "0.82rem", color: "var(--ink-3)" }}>
+                            All {validation.total_rows} rows passed validation. Click <strong>Commit to Database</strong> to write the records.
+                          </div>
+                          {(validation.conflicts?.length ?? 0) > 0 && (
+                            <div style={{ padding: "0.75rem 1rem", background: "rgba(230,152,0,0.08)", border: "1px solid rgba(230,152,0,0.3)", borderRadius: 6 }}>
+                              <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#B8860B", marginBottom: 6 }}>
+                                ⚠ {validation.conflicts!.length} conflict{validation.conflicts!.length > 1 ? "s" : ""} detected — these periods already exist in the database
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 8 }}>
+                                {validation.conflicts!.slice(0, 5).map((c, i) => (
+                                  <div key={i} style={{ fontSize: "0.72rem", fontFamily: "var(--font-mono)", color: "var(--ink-4)" }}>
+                                    {c.period} · {c.region} — existing: <strong>{c.existing_value.toLocaleString()}</strong> → incoming: <strong>{c.incoming_value.toLocaleString()}</strong>
+                                  </div>
+                                ))}
+                                {validation.conflicts!.length > 5 && <div style={{ fontSize: "0.68rem", color: "var(--ink-5)" }}>…and {validation.conflicts!.length - 5} more</div>}
+                              </div>
+                              <div style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>Committing will <strong>replace</strong> existing values with the incoming ones.</div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

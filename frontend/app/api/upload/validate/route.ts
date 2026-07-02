@@ -159,11 +159,42 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Detect conflicts with existing records
+  const conflicts: Array<{ period: string; region: string; existing_value: number; incoming_value: number; row_number: number }> = [];
+  if (validRows.length > 0) {
+    const periods = [...new Set(validRows.map((r) => r.period))];
+    const { data: existing } = await client
+      .from("energy_records")
+      .select("period, region, value")
+      .eq("series_type_id", seriesTypeId)
+      .in("period", periods);
+
+    if (existing?.length) {
+      const existingMap = new Map<string, number>();
+      for (const ex of existing) {
+        existingMap.set(`${ex.period}|${ex.region ?? "NGA"}`, ex.value ?? 0);
+      }
+      validRows.forEach((row, i) => {
+        const key = `${row.period}|${row.region ?? "NGA"}`;
+        if (existingMap.has(key)) {
+          conflicts.push({
+            period: row.period,
+            region: row.region ?? "NGA",
+            existing_value: existingMap.get(key)!,
+            incoming_value: row.value,
+            row_number: i + 2,
+          });
+        }
+      });
+    }
+  }
+
   return ok({
     session_id: sessionId,
     total_rows: rawRows.length,
     valid_rows: validRows.length,
     errors,
+    conflicts,
     status,
   });
 }

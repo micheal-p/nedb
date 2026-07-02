@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ses
   const { error: insertErr } = await client.from("energy_records").insert(session.validated_rows);
   if (insertErr) return err("failed to insert records: " + insertErr.message, 500);
 
-  await client.from("upload_sessions").update({ status: "committed" }).eq("id", sessionId);
+  await client.from("upload_sessions").update({ status: "committed", uploaded_by: claims.username }).eq("id", sessionId);
 
   return ok({ committed_rows: session.validated_rows.length, series_type_id: session.series_type_id });
 }

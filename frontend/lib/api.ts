@@ -53,11 +53,20 @@ export interface ValidationError {
   raw_value?: string;
 }
 
+export interface ConflictRow {
+  period: string;
+  region: string;
+  existing_value: number;
+  incoming_value: number;
+  row_number: number;
+}
+
 export interface ValidateResponse {
   session_id: number;
   total_rows: number;
   valid_rows: number;
   errors: ValidationError[];
+  conflicts?: ConflictRow[];
   status: string;
 }
 
@@ -85,14 +94,32 @@ export interface StaffUser {
 }
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const doFetch = (o?: RequestInit) => fetch(`${BASE}${path}`, {
     cache: "no-store",
-    headers: { "Content-Type": "application/json", ...opts?.headers },
-    ...opts,
+    headers: { "Content-Type": "application/json", ...o?.headers },
+    ...o,
   });
+
+  let res = await doFetch(opts);
+
+  if (res.status === 401 && typeof window !== "undefined") {
+    const { tryRefresh, getToken } = await import("./auth");
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      const newToken = getToken();
+      if (newToken) {
+        const existingHeaders = opts?.headers as Record<string, string> | undefined;
+        res = await doFetch({
+          ...opts,
+          headers: { "Content-Type": "application/json", ...existingHeaders, Authorization: `Bearer ${newToken}` },
+        });
+      }
+    }
+  }
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? `HTTP ${res.status}`);
+    const errData = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(errData.error ?? `HTTP ${res.status}`);
   }
   return res.json();
 }

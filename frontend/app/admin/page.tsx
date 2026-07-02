@@ -392,6 +392,7 @@ export default function AdminPage() {
           </div>
           {/* Desktop actions */}
           <div className="admin-header-actions-desktop" style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <Link href="/admin/databank" className="btn btn-ghost btn-sm">Storage Bank</Link>
             <Link href="/upload" className="btn btn-ghost btn-sm">Upload Data</Link>
             <Link href="/data-point/dashboard" className="btn btn-ghost btn-sm">Dashboard</Link>
             <button onClick={() => { import("@/lib/auth").then(m => { m.clearTokens(); window.location.href = "/"; }); }} className="btn btn-ghost btn-sm" style={{ color: "#fca5a5" }}>Log Out</button>
@@ -411,6 +412,7 @@ export default function AdminPage() {
         {/* Mobile dropdown */}
         {headerOpen && (
           <div className="admin-header-dropdown">
+            <Link href="/admin/databank" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Storage Bank</Link>
             <Link href="/upload" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Upload Data</Link>
             <Link href="/data-point/dashboard" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Dashboard</Link>
             <button onClick={() => { import("@/lib/auth").then(m => { m.clearTokens(); window.location.href = "/"; }); setHeaderOpen(false); }} className="admin-header-item admin-header-item--logout">Log Out</button>
