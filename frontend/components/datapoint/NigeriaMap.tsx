@@ -86,12 +86,14 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
       });
       leafletRef.current = map;
 
+      // Let page scroll pass through on touch — prevents map from capturing swipe
+      const mc = map.getContainer();
+      mc.style.touchAction = "pan-y";
+
       // Fetch the local GeoJSON
       const res  = await fetch("/nigeria-states.json");
       const geoj = await res.json();
       if (destroyed) return;
-
-      const tooltip = L.tooltip({ sticky: true, className: "nedb-map-tooltip" });
 
       L.geoJSON(geoj, {
         style: (feature) => {
@@ -152,9 +154,9 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
         )}
       </div>
 
-      <div className="chart-panel-body" style={{ padding: "0.5rem", display: "grid", gridTemplateColumns: "1fr 200px", gap: "1rem", alignItems: "start" }}>
+      <div className="chart-panel-body nigeria-map-body">
         {/* Leaflet map container */}
-        <div ref={mapRef} style={{ height: 525, borderRadius: 6, overflow: "hidden", background: "#F4F2EC" }} />
+        <div ref={mapRef} className="nigeria-map-canvas" />
 
         {/* Legend + top 5 */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>

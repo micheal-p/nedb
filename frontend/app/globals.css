@@ -1192,6 +1192,30 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   .series-cell { padding: 0.875rem; }
 }
 
+/* Nigeria Leaflet map layout */
+.nigeria-map-body {
+  padding: 0.5rem;
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 1rem;
+  align-items: start;
+}
+.nigeria-map-canvas {
+  height: 525px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #F4F2EC;
+  touch-action: pan-y;
+}
+
+@media (max-width: 900px) {
+  .nigeria-map-body { grid-template-columns: 1fr; }
+  .nigeria-map-canvas { height: 380px; }
+}
+@media (max-width: 640px) {
+  .nigeria-map-canvas { height: 300px; }
+}
+
 /* Leaflet Nigeria map tooltip */
 .nedb-map-tooltip {
   background: #fff;
