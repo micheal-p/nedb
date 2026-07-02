@@ -3,6 +3,24 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { db } from "@/lib/supabase-server";
 
+function qualityScore(count: number, freq: string) {
+  const expected = freq === "monthly" ? 318 : freq === "quarterly" ? 106 : 27;
+  return Math.min(Math.round((count / expected) * 100), 100);
+}
+
+function QualityDots({ score }: { score: number }) {
+  const filled = Math.max(0, Math.min(5, Math.ceil(score / 20)));
+  const color = score >= 76 ? "#0E7A3C" : score >= 51 ? "#7CB342" : score >= 26 ? "#F9A825" : "#E04F39";
+  return (
+    <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+      {[1,2,3,4,5].map((i) => (
+        <span key={i} style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: i <= filled ? color : "var(--border)" }} />
+      ))}
+      <span style={{ fontSize: "0.6rem", color: "var(--ink-5)", marginLeft: 3 }}>{score}%</span>
+    </div>
+  );
+}
+
 interface SeriesRow {
   id: string; name: string; sector: string; subsector: string | null;
   unit_default: string; frequency: string; viz_types: string[];
@@ -154,6 +172,9 @@ export default async function Home() {
                 {meta.label}<span className="count">{(bySector[sec] ?? []).length}</span>
               </a>
             ))}
+            <Link href="/bulletin" className="sub-nav-link">Intelligence Bulletin</Link>
+            <Link href="/compare" className="sub-nav-link">Compare Series</Link>
+            <Link href="/request-data" className="sub-nav-link">Request Data</Link>
           </div>
 
           {Object.entries(SECTOR_META).map(([sector, meta]) => {
@@ -191,6 +212,9 @@ export default async function Home() {
                       </div>
                       <div className="viz-chips">
                         {s.viz_types.map((vt) => <span key={vt} className="viz-chip">{vt}</span>)}
+                      </div>
+                      <div style={{ marginTop: "0.5rem" }}>
+                        <QualityDots score={qualityScore(s.record_count, s.frequency)} />
                       </div>
                     </Link>
                   ))}

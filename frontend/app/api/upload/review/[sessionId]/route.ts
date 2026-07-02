@@ -3,6 +3,7 @@ import { db } from "@/lib/supabase-server";
 import { requireAdmin, ok, err } from "@/lib/api-helpers";
 import { cacheDel } from "@/lib/redis";
 import { sendApprovalEmail, sendRejectionEmail } from "@/lib/mailer";
+import { detectAndFlag } from "@/lib/anomaly";
 
 // POST /api/upload/review/:sessionId — admin approve or reject
 export async function POST(
@@ -66,6 +67,10 @@ export async function POST(
   } catch { /* non-fatal */ }
 
   await cacheDel(`stats:${session.series_type_id}`, "series:list");
+
+  // Anomaly detection
+  const { data: inserted } = await client.from("energy_records").select("id, series_type_id, period, region, value").eq("upload_session_id", Number(sessionId));
+  if (inserted?.length) detectAndFlag(inserted).catch(() => {});
 
   // Email uploader
   if (session.uploaded_by) {

@@ -92,7 +92,7 @@ const ENTRY_INIT = { series_type_id: "crude_oil_production", year: 2026, period:
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "registry" | "requests" | "entry" | "iot" | "approvals" | "audit">("users");
+  const [tab, setTab] = useState<"users" | "registry" | "requests" | "entry" | "iot" | "approvals" | "audit" | "anomalies" | "data-requests">("users");
   const [copied, setCopied] = useState<string | null>(null);
   const [headerOpen, setHeaderOpen] = useState(false);
 
@@ -165,6 +165,18 @@ export default function AdminPage() {
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg]              = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  // Anomaly flags state
+  interface AnomalyFlag { id: number; record_id: number; series_type_id: string; period: string; region: string; value: number | null; mean_value: number | null; stddev_value: number | null; z_score: number | null; reviewed: boolean; reviewed_by: string | null; flagged_at: string; }
+  const [anomalies, setAnomalies]         = useState<AnomalyFlag[]>([]);
+  const [anomalyLoading, setAnomalyLoading] = useState(false);
+  const [anomalyMsg, setAnomalyMsg]         = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // Data requests state
+  interface DataRequest { id: number; full_name: string; organization: string | null; email: string; purpose: string; requested_series: string[]; date_range: string | null; status: string; admin_notes: string | null; created_at: string; }
+  const [dataReqs, setDataReqs]           = useState<DataRequest[]>([]);
+  const [dataReqLoading, setDataReqLoading] = useState(false);
+  const [dataReqMsg, setDataReqMsg]         = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
   const adminName = getFullName() || "Administrator";
 
   const loadUsers = useCallback(async () => {
@@ -220,6 +232,38 @@ export default function AdminPage() {
     setFrozenList(r.ok ? (await r.json()).frozen ?? [] : []);
     setFreezeLoading(false);
   }, []);
+
+  const loadAnomalies = useCallback(async (onlyUnreviewed = true) => {
+    const token = getToken(); if (!token) return;
+    setAnomalyLoading(true);
+    const qs = new URLSearchParams({ limit: "200" });
+    if (onlyUnreviewed) qs.set("reviewed", "0");
+    const r = await fetch(`/api/admin/anomalies?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+    setAnomalies(r.ok ? await r.json() : []);
+    setAnomalyLoading(false);
+  }, []);
+
+  async function dismissAnomaly(id: number) {
+    const token = getToken(); if (!token) return;
+    const r = await fetch("/api/admin/anomalies", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ id }) });
+    if (r.ok) { setAnomalyMsg({ type: "ok", text: "Flag dismissed." }); loadAnomalies(); }
+    else setAnomalyMsg({ type: "err", text: "Failed to dismiss." });
+  }
+
+  const loadDataRequests = useCallback(async () => {
+    const token = getToken(); if (!token) return;
+    setDataReqLoading(true);
+    const r = await fetch("/api/admin/requests", { headers: { Authorization: `Bearer ${token}` } });
+    setDataReqs(r.ok ? await r.json() : []);
+    setDataReqLoading(false);
+  }, []);
+
+  async function updateDataRequest(id: number, status: string) {
+    const token = getToken(); if (!token) return;
+    const r = await fetch("/api/admin/requests", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ id, status }) });
+    if (r.ok) { setDataReqMsg({ type: "ok", text: `Request marked ${status}.` }); loadDataRequests(); }
+    else setDataReqMsg({ type: "err", text: "Failed to update." });
+  }
 
   async function freezePeriod(e: React.FormEvent) {
     e.preventDefault();
@@ -531,6 +575,12 @@ export default function AdminPage() {
             {requests.filter((r) => r.status === "pending").length > 0 && (
               <span style={{ marginLeft: 6, background: "#C0392B", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: "0.65rem", fontWeight: 700 }}>{requests.filter((r) => r.status === "pending").length}</span>
             )}
+          </button>
+          <button style={TAB_STYLE(tab === "anomalies")} onClick={() => { setTab("anomalies"); loadAnomalies(); setMsg(null); }}>
+            Anomalies{anomalies.length > 0 && <span style={{ marginLeft: 6, background: "#F59E0B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: "0.6rem", fontWeight: 800 }}>{anomalies.length}</span>}
+          </button>
+          <button style={TAB_STYLE(tab === "data-requests")} onClick={() => { setTab("data-requests"); loadDataRequests(); setMsg(null); }}>
+            Data Requests{dataReqs.filter((r) => r.status === "pending").length > 0 && <span style={{ marginLeft: 6, background: "#C0392B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: "0.6rem", fontWeight: 800 }}>{dataReqs.filter((r) => r.status === "pending").length}</span>}
           </button>
         </div>
 
@@ -1502,6 +1552,116 @@ Content-Type: application/json
             )}
           </>
         )}
+        {/* ── ANOMALIES TAB ── */}
+        {tab === "anomalies" && (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
+              <div>
+                <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.5rem", fontWeight: 400, color: "var(--ink)", marginBottom: "0.25rem" }}>Anomaly Flags</h1>
+                <p style={{ fontSize: "0.8rem", color: "var(--ink-4)" }}>Records flagged as statistical outliers (Z-score &gt; 2.5σ) detected at commit time. Review and dismiss false positives.</p>
+              </div>
+              <button className="btn btn-secondary" onClick={() => loadAnomalies()}>Refresh</button>
+            </div>
+            {anomalyMsg && (
+              <div style={{ marginBottom: "1rem", padding: "0.75rem 1rem", background: anomalyMsg.type === "ok" ? "var(--green-strong)" : "var(--red-tint)", border: `1px solid ${anomalyMsg.type === "ok" ? "var(--green-line)" : "rgba(192,57,43,0.2)"}`, borderRadius: "var(--r-md)", fontSize: "0.82rem", color: anomalyMsg.type === "ok" ? "var(--green-deep)" : "var(--red)" }}>
+                {anomalyMsg.text}
+              </div>
+            )}
+            {anomalyLoading ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)" }}>Loading…</div>
+            ) : anomalies.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)" }}>No unreviewed anomaly flags. Data looks clean.</div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid var(--border)" }}>
+                      {["Series", "Period", "Region", "Value", "Mean", "Std Dev", "Z-Score", "Flagged", "Action"].map((h) => (
+                        <th key={h} style={{ textAlign: "left", padding: "0.5rem 0.75rem", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--ink-5)", fontWeight: 700, whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {anomalies.map((a) => (
+                      <tr key={a.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "0.625rem 0.75rem", fontWeight: 600, color: "var(--green)" }}>{a.series_type_id}</td>
+                        <td style={{ padding: "0.625rem 0.75rem", fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>{a.period}</td>
+                        <td style={{ padding: "0.625rem 0.75rem" }}>{a.region}</td>
+                        <td style={{ padding: "0.625rem 0.75rem", fontFamily: "var(--font-mono)", fontWeight: 700, color: "#E04F39" }}>{a.value?.toLocaleString()}</td>
+                        <td style={{ padding: "0.625rem 0.75rem", fontFamily: "var(--font-mono)", color: "var(--ink-4)" }}>{a.mean_value?.toFixed(2)}</td>
+                        <td style={{ padding: "0.625rem 0.75rem", fontFamily: "var(--font-mono)", color: "var(--ink-4)" }}>{a.stddev_value?.toFixed(2)}</td>
+                        <td style={{ padding: "0.625rem 0.75rem", fontFamily: "var(--font-mono)", fontWeight: 700, color: "#F59E0B" }}>{a.z_score?.toFixed(1)}σ</td>
+                        <td style={{ padding: "0.625rem 0.75rem", fontSize: "0.72rem", color: "var(--ink-5)" }}>{new Date(a.flagged_at).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</td>
+                        <td style={{ padding: "0.625rem 0.75rem" }}>
+                          <button onClick={() => dismissAnomaly(a.id)} style={{ fontSize: "0.72rem", padding: "3px 10px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", color: "var(--ink-3)" }}>Dismiss</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── DATA REQUESTS TAB ── */}
+        {tab === "data-requests" && (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
+              <div>
+                <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.5rem", fontWeight: 400, color: "var(--ink)", marginBottom: "0.25rem" }}>Data Requests</h1>
+                <p style={{ fontSize: "0.8rem", color: "var(--ink-4)" }}>Inbound requests submitted via the public Data Request Portal. Mark each as Fulfilled or Declined.</p>
+              </div>
+              <button className="btn btn-secondary" onClick={() => loadDataRequests()}>Refresh</button>
+            </div>
+            {dataReqMsg && (
+              <div style={{ marginBottom: "1rem", padding: "0.75rem 1rem", background: dataReqMsg.type === "ok" ? "var(--green-strong)" : "var(--red-tint)", border: `1px solid ${dataReqMsg.type === "ok" ? "var(--green-line)" : "rgba(192,57,43,0.2)"}`, borderRadius: "var(--r-md)", fontSize: "0.82rem", color: dataReqMsg.type === "ok" ? "var(--green-deep)" : "var(--red)" }}>
+                {dataReqMsg.text}
+              </div>
+            )}
+            {dataReqLoading ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)" }}>Loading…</div>
+            ) : dataReqs.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)" }}>No data requests yet.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {dataReqs.map((req) => (
+                  <div key={req.id} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem", borderLeft: `4px solid ${req.status === "pending" ? "var(--amber,#F59E0B)" : req.status === "fulfilled" ? "var(--green)" : "#aaa"}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "0.92rem", fontWeight: 700 }}>{req.full_name}</span>
+                          {req.organization && <span style={{ fontSize: "0.75rem", color: "var(--ink-4)" }}>{req.organization}</span>}
+                          <a href={`mailto:${req.email}`} style={{ fontSize: "0.72rem", color: "var(--green)", fontFamily: "var(--font-mono)" }}>{req.email}</a>
+                          <span className="tag tag-muted" style={{ fontSize: "0.62rem" }}>{req.status.toUpperCase()}</span>
+                        </div>
+                        <div style={{ marginTop: 8, fontSize: "0.8rem", color: "var(--ink-3)", background: "var(--surface)", padding: "6px 10px", borderRadius: 4, borderLeft: "2px solid var(--border)", lineHeight: 1.55 }}>
+                          <strong style={{ fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ink-5)" }}>Purpose:</strong> {req.purpose}
+                        </div>
+                        {req.requested_series?.length > 0 && (
+                          <div style={{ marginTop: 6, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                            {req.requested_series.map((s) => (
+                              <span key={s} style={{ fontSize: "0.65rem", background: "var(--green-tint)", border: "1px solid var(--green-line,rgba(14,122,60,0.15))", borderRadius: 4, padding: "2px 7px", color: "var(--green)", fontWeight: 600 }}>{s}</span>
+                            ))}
+                          </div>
+                        )}
+                        {req.date_range && <div style={{ marginTop: 4, fontSize: "0.72rem", color: "var(--ink-5)" }}>Date range: {req.date_range}</div>}
+                        <div style={{ marginTop: 4, fontSize: "0.65rem", color: "var(--ink-5)" }}>Submitted {new Date(req.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</div>
+                      </div>
+                      {req.status === "pending" && (
+                        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                          <button onClick={() => updateDataRequest(req.id, "fulfilled")} style={{ padding: "6px 14px", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>Mark Fulfilled</button>
+                          <button onClick={() => updateDataRequest(req.id, "declined")} style={{ padding: "6px 12px", background: "transparent", color: "var(--red)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, fontSize: "0.78rem", cursor: "pointer" }}>Decline</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
       </div>
     </div>
   );

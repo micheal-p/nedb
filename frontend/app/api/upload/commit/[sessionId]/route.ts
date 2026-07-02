@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { requireAuth, ok, err } from "@/lib/api-helpers";
 import { cacheDel } from "@/lib/redis";
+import { detectAndFlag } from "@/lib/anomaly";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ sessionId: string }> }) {
   const claims = await requireAuth(req);
@@ -25,6 +26,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ses
 
   await client.from("upload_sessions").update({ status: "committed", uploaded_by: claims.username }).eq("id", sessionId);
   await cacheDel(`stats:${session.series_type_id}`, "series:list");
+
+  // Anomaly detection — fetch the just-inserted records by session id
+  const { data: inserted } = await client.from("energy_records").select("id, series_type_id, period, region, value").eq("upload_session_id", Number(sessionId));
+  if (inserted?.length) detectAndFlag(inserted).catch(() => {});
 
   return ok({ committed_rows: session.validated_rows.length, series_type_id: session.series_type_id });
 }

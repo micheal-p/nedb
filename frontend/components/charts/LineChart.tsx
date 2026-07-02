@@ -15,17 +15,23 @@ import type { EnergyRecord } from "@/lib/api";
 interface Props {
   data: EnergyRecord[];
   unit: string;
+  projectionData?: { period: string; projected: number }[];
 }
 
-export default function LineChart({ data, unit }: Props) {
-  const chartData = data.map((r) => ({
-    period: r.period,
-    value: r.value,
-  }));
+export default function LineChart({ data, unit, projectionData }: Props) {
+  const chartData = data.map((r) => ({ period: r.period, value: r.value }));
+
+  // Merge projection points (they only have `projected`, not `value`)
+  const merged = projectionData?.length
+    ? [
+        ...chartData,
+        ...projectionData.map((p) => ({ period: p.period, value: null, projected: p.projected })),
+      ]
+    : chartData;
 
   return (
     <ResponsiveContainer width="100%" height={360}>
-      <ReLineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+      <ReLineChart data={merged} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" />
         <XAxis
           dataKey="period"
@@ -42,15 +48,10 @@ export default function LineChart({ data, unit }: Props) {
           label={{ value: unit, angle: -90, position: "insideLeft", offset: -4, style: { fontSize: 11, fill: "#8E867B" } }}
         />
         <Tooltip
-          contentStyle={{
-            background: "#FFFFFF",
-            border: "1px solid #E7E5E0",
-            borderRadius: 8,
-            fontSize: 12,
-            boxShadow: "0 4px 16px rgba(10,10,10,0.08)",
-          }}
-          formatter={(v) => [Number(v).toLocaleString(), unit]}
+          contentStyle={{ background: "#FFFFFF", border: "1px solid #E7E5E0", borderRadius: 8, fontSize: 12, boxShadow: "0 4px 16px rgba(10,10,10,0.08)" }}
+          formatter={(v: unknown, name: unknown) => [Number(v).toLocaleString(), name === "projected" ? `Projected (${unit})` : unit]}
         />
+        {projectionData?.length && <Legend formatter={(v) => v === "projected" ? "Projection (linear)" : "Actual"} />}
         <Line
           type="monotone"
           dataKey="value"
@@ -58,7 +59,20 @@ export default function LineChart({ data, unit }: Props) {
           strokeWidth={2.5}
           dot={false}
           activeDot={{ r: 5, fill: "#0E7A3C" }}
+          connectNulls={false}
         />
+        {projectionData?.length ? (
+          <Line
+            type="monotone"
+            dataKey="projected"
+            stroke="#0E7A3C"
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            dot={false}
+            activeDot={{ r: 4, fill: "#0E7A3C" }}
+            connectNulls
+          />
+        ) : null}
       </ReLineChart>
     </ResponsiveContainer>
   );

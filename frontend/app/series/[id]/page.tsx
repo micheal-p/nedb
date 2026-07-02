@@ -6,6 +6,7 @@ import SeriesTable from "@/components/databank/SeriesTable";
 import SeriesChartPanel from "@/components/databank/SeriesChartPanel";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 import PrintButton from "@/components/ui/PrintButton";
+import EmbedButton from "@/components/ui/EmbedButton";
 import { db } from "@/lib/supabase-server";
 import type { AutoStats } from "@/lib/api";
 import { api } from "@/lib/api";
@@ -154,6 +155,8 @@ export default async function SeriesDetail({ params }: Props) {
             </div>
             <div className="no-print" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <PrintButton />
+              <EmbedButton seriesId={series.id} />
+              <Link href={`/compare?a=${series.id}`} className="btn btn-secondary btn-sm">Compare</Link>
               <a href={`/api/series/${series.id}/export?format=csv`} className="btn btn-secondary btn-sm" download>
                 Export CSV
               </a>
@@ -190,6 +193,7 @@ export default async function SeriesDetail({ params }: Props) {
               vizTypes={series.viz_types}
               data={data.rows}
               unit={series.unit_default}
+              seriesId={series.id}
             />
           </div>
 
