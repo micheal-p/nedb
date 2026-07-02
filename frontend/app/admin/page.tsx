@@ -92,7 +92,7 @@ const ENTRY_INIT = { series_type_id: "crude_oil_production", year: 2026, period:
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "registry" | "requests" | "entry" | "iot">("users");
+  const [tab, setTab] = useState<"users" | "registry" | "requests" | "entry" | "iot" | "approvals">("users");
   const [copied, setCopied] = useState<string | null>(null);
   const [headerOpen, setHeaderOpen] = useState(false);
 
@@ -126,6 +126,13 @@ export default function AdminPage() {
   // Edit user state
   const [editUserId, setEditUserId] = useState<number | null>(null);
   const [editUserForm, setEditUserForm] = useState({ full_name: "", email: "", agency: "", role: "viewer", dashboard_profile: "executive" });
+
+  // Upload approvals state
+  interface PendingSession { id: number; series_type_id: string; filename: string; row_count: number; uploaded_by: string | null; created_at: string; }
+  const [pendingSessions, setPendingSessions] = useState<PendingSession[]>([]);
+  const [pendingLoading, setPendingLoading]   = useState(false);
+  const [actingSessionId, setActingSessionId] = useState<number | null>(null);
+  const [approvalMsg, setApprovalMsg]         = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // Data entry state
   const [entryForm, setEntryForm]     = useState(ENTRY_INIT);
@@ -182,6 +189,34 @@ export default function AdminPage() {
     setRecLoading(false);
   }, []);
 
+  const loadApprovals = useCallback(async () => {
+    const token = getToken(); if (!token) return;
+    setPendingLoading(true); setApprovalMsg(null);
+    const r = await fetch("/api/upload/review", { headers: { Authorization: `Bearer ${token}` } });
+    setPendingSessions(r.ok ? (await r.json()).sessions ?? [] : []);
+    setPendingLoading(false);
+  }, []);
+
+  async function actOnSession(sessionId: number, action: "approve" | "reject") {
+    const token = getToken(); if (!token) return;
+    setActingSessionId(sessionId); setApprovalMsg(null);
+    const r = await fetch(`/api/upload/review/${sessionId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action }),
+    });
+    const data = await r.json();
+    if (r.ok) {
+      setApprovalMsg({ type: "ok", text: action === "approve"
+        ? `Approved — ${data.committed_rows} records committed to ${data.series_type_id}.`
+        : `Session rejected.` });
+      setPendingSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    } else {
+      setApprovalMsg({ type: "err", text: data.error ?? `${action} failed.` });
+    }
+    setActingSessionId(null);
+  }
+
   async function deleteRecord(id: number) {
     if (!confirm("Delete this record permanently? This cannot be undone.")) return;
     setDeletingId(id);
@@ -225,7 +260,8 @@ export default function AdminPage() {
     loadUsers();
     loadCompanies();
     loadRequests();
-  }, [router, loadUsers, loadCompanies, loadRequests]);
+    loadApprovals();
+  }, [router, loadUsers, loadCompanies, loadRequests, loadApprovals]);
 
   // ── User actions ──────────────────────────────────────────────
   async function createUser(e: React.FormEvent) {
@@ -428,6 +464,9 @@ export default function AdminPage() {
           <button style={TAB_STYLE(tab === "entry")}    onClick={() => { setTab("entry"); setMsg(null); setEntryMsg(null); loadRecords(recFilter.series, recFilter.year); }}>Data Entry</button>
           <button style={TAB_STYLE(tab === "iot")}      onClick={() => { setTab("iot"); setMsg(null); }}>IoT / API</button>
           <button style={TAB_STYLE(tab === "registry")} onClick={() => { setTab("registry"); setMsg(null); }}>Companies Registry</button>
+          <button style={TAB_STYLE(tab === "approvals")} onClick={() => { setTab("approvals"); loadApprovals(); setMsg(null); }}>
+            Pending Approvals{pendingSessions.length > 0 && <span style={{ marginLeft: 6, background: "var(--red)", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: "0.6rem", fontWeight: 800, verticalAlign: "middle" }}>{pendingSessions.length}</span>}
+          </button>
           <button style={TAB_STYLE(tab === "requests")} onClick={() => { setTab("requests"); loadRequests(); setMsg(null); }}>
             Access Requests
             {requests.filter((r) => r.status === "pending").length > 0 && (
@@ -1126,6 +1165,71 @@ Content-Type: application/json
         )}
 
         {/* ── ACCESS REQUESTS TAB ── */}
+        {tab === "approvals" && (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div>
+                <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.25rem", fontWeight: 400, color: "var(--ink)", marginBottom: "0.25rem" }}>Upload Review Queue</h2>
+                <p style={{ fontSize: "0.78rem", color: "var(--ink-4)" }}>Staff-submitted datasets awaiting admin approval before being committed to the database.</p>
+              </div>
+              <button className="btn btn-secondary btn-sm" onClick={loadApprovals} disabled={pendingLoading}>{pendingLoading ? "Loading…" : "Refresh"}</button>
+            </div>
+
+            {approvalMsg && (
+              <div style={{ marginBottom: "1.25rem", padding: "0.875rem 1rem", background: approvalMsg.type === "ok" ? "var(--green-strong)" : "var(--red-tint)", border: `1px solid ${approvalMsg.type === "ok" ? "var(--green-line)" : "rgba(192,57,43,0.2)"}`, borderRadius: "var(--r-md)", fontSize: "0.82rem", fontWeight: 600, color: approvalMsg.type === "ok" ? "var(--green-deep)" : "var(--red)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                {approvalMsg.text}
+                <button onClick={() => setApprovalMsg(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", color: "inherit", opacity: 0.6 }}>✕</button>
+              </div>
+            )}
+
+            {pendingLoading ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)" }}>Loading…</div>
+            ) : pendingSessions.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "3rem 1rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+                <div style={{ fontSize: "1.5rem" }}>✓</div>
+                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink-4)" }}>No pending uploads</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--ink-5)" }}>All submissions have been reviewed.</div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {pendingSessions.map((session) => (
+                  <div key={session.id} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem", borderLeft: "4px solid var(--amber)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                          <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--ink)" }}>{SERIES_META[session.series_type_id]?.name ?? session.series_type_id}</span>
+                          <span className="tag tag-amber" style={{ fontSize: "0.62rem" }}>PENDING REVIEW</span>
+                        </div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--ink-4)", lineHeight: 1.7 }}>
+                          <span style={{ fontFamily: "var(--font-mono)" }}>{session.filename}</span>
+                          &nbsp;·&nbsp; <strong>{session.row_count.toLocaleString()}</strong> rows
+                          {session.uploaded_by && <>&nbsp;·&nbsp; Submitted by <strong>{session.uploaded_by}</strong></>}
+                          &nbsp;·&nbsp; {new Date(session.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                        <div style={{ marginTop: 6, fontSize: "0.68rem", color: "var(--ink-5)" }}>Session ID: <span style={{ fontFamily: "var(--font-mono)" }}>#{session.id}</span></div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                        <button
+                          onClick={() => actOnSession(session.id, "approve")}
+                          disabled={actingSessionId === session.id}
+                          style={{ padding: "7px 16px", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", opacity: actingSessionId === session.id ? 0.6 : 1 }}>
+                          {actingSessionId === session.id ? "…" : "Approve & Commit"}
+                        </button>
+                        <button
+                          onClick={() => { if (confirm(`Reject this upload from ${session.uploaded_by ?? "staff"}? The data will not be committed.`)) actOnSession(session.id, "reject"); }}
+                          disabled={actingSessionId === session.id}
+                          style={{ padding: "7px 14px", background: "transparent", color: "var(--red)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, fontSize: "0.78rem", cursor: "pointer" }}>
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
         {tab === "requests" && (
           <>
             {/* Filter bar */}

@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import { api, type SeriesType, type ValidateResponse } from "@/lib/api";
-import { getToken, isLoggedIn } from "@/lib/auth";
+import { getToken, isLoggedIn, getRole } from "@/lib/auth";
 
-type UploadState = "idle" | "validating" | "validated" | "committing" | "committed" | "error";
+type UploadState = "idle" | "validating" | "validated" | "committing" | "committed" | "submitting" | "submitted" | "error";
 
 interface ManualRow {
   period: string; period_date: string; region: string;
@@ -73,6 +73,7 @@ export default function UploadPage() {
   const [committedRows, setCommittedRows] = useState<number | null>(null);
   const [error, setError]         = useState("");
   const [dragging, setDragging]   = useState(false);
+  const [role, setRole]           = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Manual entry state
@@ -93,6 +94,7 @@ export default function UploadPage() {
 
   useEffect(() => {
     if (!isLoggedIn()) { router.replace("/data-point/login?redirect=/upload"); return; }
+    setRole(getRole());
     api.listSeries().then(setSeries).catch(() => {});
   }, [router]);
 
@@ -131,6 +133,23 @@ export default function UploadPage() {
     } catch (e) { setState("error"); setError(e instanceof Error ? e.message : "Commit failed."); }
   }
   function reset() { setState("idle"); setFile(null); setValidation(null); setError(""); setCommittedRows(null); }
+
+  async function submitForReview() {
+    if (!validation) return;
+    const token = getToken(); if (!token) { router.replace("/data-point/login?redirect=/upload"); return; }
+    setState("submitting"); setError("");
+    try {
+      const res = await fetch("/api/upload/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ session_id: validation.session_id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Submission failed.");
+      setState("submitted"); setValidation(null); setFile(null);
+    } catch (e) { setState("error"); setError(e instanceof Error ? e.message : "Submission failed."); }
+  }
+
   const hasErrors = (validation?.errors ?? []).length > 0;
 
   // ── Manual entry handlers ────────────────────────────────────
@@ -441,18 +460,33 @@ export default function UploadPage() {
                       </div>
                     </div>
                   )}
+                  {state === "submitted" && (
+                    <div style={{ padding: "1rem 1.25rem", background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: "var(--r-md)" }}>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1a56a4", marginBottom: "0.25rem" }}>Submitted for review</div>
+                      <div style={{ fontSize: "0.78rem", color: "var(--ink-3)" }}>
+                        Your dataset has been queued for admin review. You will be notified once it is approved and committed to the database.
+                      </div>
+                      <button onClick={reset} style={{ marginTop: "0.5rem", fontSize: "0.72rem", color: "#1a56a4", background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>Upload another dataset</button>
+                    </div>
+                  )}
                   <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-                    {state !== "committed" && (
-                      <button className="btn btn-primary" onClick={validate} disabled={!file || !selectedSeries || state === "validating" || state === "committing"}>
+                    {state !== "committed" && state !== "submitted" && (
+                      <button className="btn btn-primary" onClick={validate} disabled={!file || !selectedSeries || state === "validating" || state === "committing" || state === "submitting"}>
                         {state === "validating" ? "Validating…" : "Validate Dataset"}
                       </button>
                     )}
-                    {(state === "validated" || state === "committing") && !hasErrors && (
-                      <button className="btn btn-dark" onClick={commit} disabled={state === "committing"}>
-                        {state === "committing" ? "Committing…" : "Commit to Database"}
-                      </button>
+                    {(state === "validated" || state === "committing" || state === "submitting") && !hasErrors && (
+                      role === "admin" ? (
+                        <button className="btn btn-dark" onClick={commit} disabled={state === "committing"}>
+                          {state === "committing" ? "Committing…" : "Commit to Database"}
+                        </button>
+                      ) : (
+                        <button className="btn btn-dark" onClick={submitForReview} disabled={state === "submitting"} style={{ background: "#1a56a4", borderColor: "#1a56a4" }}>
+                          {state === "submitting" ? "Submitting…" : "Submit for Review"}
+                        </button>
+                      )
                     )}
-                    {(state === "validated" || state === "committed" || state === "error") && (
+                    {(state === "validated" || state === "committed" || state === "submitted" || state === "error") && (
                       <button className="btn btn-secondary" onClick={reset}>Start Over</button>
                     )}
                   </div>
