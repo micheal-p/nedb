@@ -4,6 +4,8 @@ import Footer from "@/components/layout/Footer";
 import StatCards from "@/components/databank/StatCards";
 import SeriesTable from "@/components/databank/SeriesTable";
 import VizSwitcher from "@/components/databank/VizSwitcher";
+import { db } from "@/lib/supabase-server";
+import type { AutoStats } from "@/lib/api";
 import { api } from "@/lib/api";
 
 interface Props {
@@ -11,12 +13,64 @@ interface Props {
 }
 
 async function getData(id: string) {
-  const [series, data, stats] = await Promise.all([
-    api.getSeries(id).catch(() => null),
-    api.getSeriesData(id, { limit: 500 }).catch(() => ({ rows: [], total: 0, page: 1, limit: 500 })),
-    api.getStats(id).catch(() => null),
+  // Query Supabase directly — avoids relative-URL self-fetch issues in server components
+  const [{ data: seriesRaw }, { data: records, count }] = await Promise.all([
+    db()
+      .from("series_types")
+      .select("id, name, sector, subsector, unit_default, frequency, viz_types, created_at, energy_records(count)")
+      .eq("id", id)
+      .single(),
+    db()
+      .from("energy_records")
+      .select("*", { count: "exact" })
+      .eq("series_type_id", id)
+      .order("period_date", { ascending: true })
+      .limit(500),
   ]);
-  return { series, data, stats };
+
+  const series = seriesRaw
+    ? {
+        ...seriesRaw,
+        record_count: (seriesRaw.energy_records as { count: number }[])?.[0]?.count ?? 0,
+        energy_records: undefined,
+      }
+    : null;
+
+  const rows = records ?? [];
+
+  // Compute stats inline (same logic as /api/series/[id]/stats)
+  let stats: AutoStats | null = null;
+  if (rows.length) {
+    const desc = [...rows].reverse();
+    const latest = desc[0];
+    const s: AutoStats = {
+      series_type_id: id,
+      latest: latest.value,
+      latest_period: latest.period,
+      unit: latest.unit,
+      yoy_pct: null, mom_pct: null, cagr: null, rolling_3: null, rolling_12: null,
+    };
+    const yoyIdx = desc.length >= 13 ? 12 : 1;
+    if (desc.length > yoyIdx && desc[yoyIdx].value !== 0)
+      s.yoy_pct = ((latest.value - desc[yoyIdx].value) / Math.abs(desc[yoyIdx].value)) * 100;
+    if (desc.length >= 2 && desc[1].value !== 0)
+      s.mom_pct = ((latest.value - desc[1].value) / Math.abs(desc[1].value)) * 100;
+    if (desc.length >= 2) {
+      const oldest = desc[desc.length - 1];
+      const years = (new Date(latest.period_date as string).getTime() - new Date(oldest.period_date as string).getTime()) / (1000 * 60 * 60 * 8760);
+      if (oldest.value > 0 && years > 0)
+        s.cagr = (Math.pow(latest.value / oldest.value, 1 / years) - 1) * 100;
+    }
+    if (desc.length >= 3)  s.rolling_3  = (desc[0].value + desc[1].value + desc[2].value) / 3;
+    if (desc.length >= 12) s.rolling_12 = desc.slice(0, 12).reduce((sum, r) => sum + r.value, 0) / 12;
+    stats = s;
+  }
+
+  return {
+    series,
+    data: { rows, total: count ?? rows.length, page: 1, limit: 500 },
+    stats,
+  };
 }
 
 const SECTOR_LABELS: Record<string, string> = {
@@ -116,12 +170,22 @@ export default async function SeriesDetail({ params }: Props) {
                 />
               </div>
               <div className="chart-panel-body" style={{ minHeight: 320 }}>
-                <VizSwitcher
-                  vizTypes={series.viz_types}
-                  data={data.rows}
-                  unit={series.unit_default}
-                  renderChart
-                />
+                {data.rows.length === 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 320, gap: "0.5rem", color: "var(--ink-5)" }}>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}>
+                      <path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 4-4"/>
+                    </svg>
+                    <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--ink-4)" }}>No data yet</div>
+                    <Link href="/upload" style={{ fontSize: "0.75rem", color: "var(--green)", fontWeight: 600 }}>Upload data to populate this chart</Link>
+                  </div>
+                ) : (
+                  <VizSwitcher
+                    vizTypes={series.viz_types}
+                    data={data.rows}
+                    unit={series.unit_default}
+                    renderChart
+                  />
+                )}
               </div>
               <div className="chart-source">
                 Source: NEDB / {data.rows[0]?.source ?? "ECN"} &nbsp;·&nbsp;
