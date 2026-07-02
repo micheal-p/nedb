@@ -139,7 +139,7 @@ export default function UploadPage() {
     if (!rowForm.period || !rowForm.value) { setManualError("Period and Value are required."); return; }
     const date   = rowForm.period_date || periodToDate(rowForm.period);
     const region = rowForm.state !== "NGA" ? rowForm.state : (rowForm.zone || "NGA");
-    setManualRows((rows) => [...rows, { period: rowForm.period, period_date: date, region, value: rowForm.value, unit: rowForm.unit || selectedMeta?.unit_default || "", source: rowForm.source, notes: rowForm.notes }]);
+    setManualRows((rows) => [...rows, { period: rowForm.period, period_date: date, region, value: rowForm.value, unit: selectedMeta?.unit_default || rowForm.unit || "", source: rowForm.source, notes: rowForm.notes }]);
     setRowForm((r) => ({ ...EMPTY_FORM, unit: r.unit, state: r.state, zone: r.zone, region: r.region, source: r.source }));
     setManualError("");
   }
@@ -319,8 +319,9 @@ export default function UploadPage() {
                         </div>
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label">Unit</label>
-                          <input className="form-input" placeholder={selectedMeta?.unit_default ?? "e.g. Barrels"}
-                            value={rowForm.unit} onChange={(e) => setRowForm({ ...rowForm, unit: e.target.value })} />
+                          <div className="form-input" style={{ background: "var(--surface-muted)", color: "var(--ink-4)", cursor: "default", userSelect: "none" }}>
+                            {selectedMeta?.unit_default ?? "—"}
+                          </div>
                         </div>
 
                         {/* State → auto-fills zone */}
