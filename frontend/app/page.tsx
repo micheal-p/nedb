@@ -2,25 +2,8 @@ import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { db } from "@/lib/supabase-server";
+import SeriesCatalogue from "@/components/databank/SeriesCatalogue";
 
-function qualityScore(count: number, freq: string) {
-  const expected = freq === "monthly" ? 318 : freq === "quarterly" ? 106 : 27;
-  return Math.min(Math.round((count / expected) * 100), 100);
-}
-
-function QualityDots({ score }: { score: number }) {
-  const filled = Math.max(0, Math.min(5, Math.ceil(score / 20)));
-  const color = score >= 76 ? "#0E7A3C" : score >= 51 ? "#7CB342" : score >= 26 ? "#F9A825" : "#E04F39";
-  const label = score >= 76 ? "Good" : score >= 51 ? "Moderate" : score >= 26 ? "Sparse" : score > 0 ? "Minimal" : "Empty";
-  return (
-    <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-      {[1,2,3,4,5].map((i) => (
-        <span key={i} style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: i <= filled ? color : "var(--border)" }} title={`Data completeness: ${score}%`} />
-      ))}
-      <span style={{ fontSize: "0.6rem", color: "var(--ink-5)", marginLeft: 3 }}>{label}</span>
-    </div>
-  );
-}
 
 interface SeriesRow {
   id: string; name: string; sector: string; subsector: string | null;
@@ -178,58 +161,7 @@ export default async function Home() {
             <Link href="/request-data" className="sub-nav-link">Request Data</Link>
           </div>
 
-          {Object.entries(SECTOR_META).map(([sector, meta]) => {
-            const items = bySector[sector] ?? [];
-            if (!items.length) return null;
-            return (
-              <section key={sector} id={`sector-${sector}`} style={{ marginBottom: "3rem" }}>
-                <div className="sec-hd">
-                  <div>
-                    <h2>{meta.label}</h2>
-                    <p style={{ fontSize: "0.78rem", color: "var(--ink-3)", marginTop: 4, fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>{meta.desc}</p>
-                    <p style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 2, letterSpacing: "0.05em" }}>{meta.subsectors}</p>
-                  </div>
-                  <span className="sec-hd-meta">{items.length} series</span>
-                </div>
-                <div className="series-grid">
-                  {items.map((s) => (
-                    <Link key={s.id} href={`/series/${s.id}`} className="series-cell">
-                      <div className="series-meta">
-                        <span className="tag tag-green">{s.frequency}</span>
-                        {s.record_count > 0 && <span className="tag tag-muted">{s.record_count.toLocaleString()} records</span>}
-                      </div>
-                      <div className="series-name">{s.name}</div>
-                      <div style={{ display: "flex", gap: "1.5rem", margin: "0.625rem 0" }}>
-                        <div>
-                          <div style={{ fontSize: "1.375rem", fontFamily: "var(--font-mono)", fontWeight: 600, lineHeight: 1, color: s.record_count > 0 ? "var(--ink)" : "var(--ink-5)" }}>
-                            {s.record_count > 0 ? s.record_count.toLocaleString() : "—"}
-                          </div>
-                          <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 2 }}>Records</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: "0.82rem", fontWeight: 500, color: "var(--ink-3)", lineHeight: 1.5 }}>{s.unit_default}</div>
-                          <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 2 }}>Unit</div>
-                        </div>
-                      </div>
-                      <div className="viz-chips">
-                        {s.viz_types.map((vt) => <span key={vt} className="viz-chip">{vt}</span>)}
-                      </div>
-                      <div style={{ marginTop: "0.5rem" }}>
-                        <QualityDots score={qualityScore(s.record_count, s.frequency)} />
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-
-          {series.length === 0 && (
-            <div style={{ textAlign: "center", padding: "6rem 0" }}>
-              <p style={{ fontSize: "0.95rem", color: "var(--ink-3)", marginBottom: "0.5rem" }}>No data records published yet.</p>
-              <p style={{ fontSize: "0.82rem", color: "var(--ink-4)" }}>Series are listed above. Staff can upload data via the portal below.</p>
-            </div>
-          )}
+          <SeriesCatalogue series={series} sectorMeta={SECTOR_META} />
 
           {/* ── LEGAL FRAMEWORK ── */}
           <section style={{ marginTop: "4rem", marginBottom: "2rem" }}>
