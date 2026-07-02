@@ -1356,3 +1356,101 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
 .nedb-map-tooltip::before { display: none; }
 /* Hide default Leaflet tile-layer attribution box */
 .leaflet-control-attribution { display: none !important; }
+
+/* ── Print / PDF styles ──────────────────────────────────────────────────── */
+.print-only { display: none !important; }
+
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  .no-print  { display: none !important; }
+  .print-only { display: block !important; }
+
+  body { background: #fff !important; font-family: Georgia, serif; }
+  main { background: #fff !important; padding: 0 !important; }
+  .page-wrap { max-width: 100% !important; padding: 0 1.5rem !important; }
+
+  /* ── Letterhead ── */
+  .print-header {
+    display: flex !important;
+    align-items: flex-start;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 3px solid #0E7A3C;
+    margin-bottom: 1.5rem;
+  }
+  .print-header-org {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #0A5C2D;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 3px;
+  }
+  .print-header-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0A0A0A;
+    margin-bottom: 4px;
+  }
+  .print-header-meta {
+    font-size: 0.68rem;
+    color: #5C5650;
+  }
+  .print-header-ecn {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #fff;
+    background: #0E7A3C;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    align-self: flex-start;
+    margin-top: 4px;
+  }
+
+  /* ── Sub-header block (series title + meta) ── */
+  .series-subheader-print { display: block !important; margin-bottom: 1.25rem; }
+
+  /* ── Stat cards: lay them out in a row on print ── */
+  .stat-cards-strip {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important;
+    gap: 0.5rem !important;
+    margin-bottom: 1.25rem !important;
+  }
+  .stat-card {
+    border: 1px solid #E7E5E0 !important;
+    border-radius: 6px !important;
+    padding: 0.5rem 0.75rem !important;
+    background: #fff !important;
+    page-break-inside: avoid;
+  }
+
+  /* ── Data table ── */
+  .data-table { font-size: 0.68rem !important; width: 100% !important; }
+  .data-table th { background: #F4F2EC !important; color: #0A0A0A !important; }
+  .data-table-wrap { overflow: visible !important; }
+  .panel { border: 1px solid #E7E5E0 !important; border-radius: 6px !important; page-break-inside: avoid; }
+  .panel-header { background: #F4F2EC !important; }
+
+  /* ── Methodology panels ── */
+  .methodology-grid { page-break-inside: avoid; }
+
+  /* ── Print footer ── */
+  .print-doc-footer {
+    display: block !important;
+    margin-top: 2.5rem;
+    padding-top: 0.875rem;
+    border-top: 1px solid #ccc;
+    font-size: 0.62rem;
+    color: #8E867B;
+    line-height: 1.8;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4 portrait;
+    margin: 1.5cm 1.5cm 2cm 1.5cm;
+  }
+}

@@ -4,6 +4,8 @@ import Footer from "@/components/layout/Footer";
 import StatCards from "@/components/databank/StatCards";
 import SeriesTable from "@/components/databank/SeriesTable";
 import SeriesChartPanel from "@/components/databank/SeriesChartPanel";
+import CoatOfArms from "@/components/layout/CoatOfArms";
+import PrintButton from "@/components/ui/PrintButton";
 import { db } from "@/lib/supabase-server";
 import type { AutoStats } from "@/lib/api";
 import { api } from "@/lib/api";
@@ -101,7 +103,22 @@ export default async function SeriesDetail({ params }: Props) {
 
   return (
     <>
-      <Navbar active="databank" />
+      {/* ── PRINT-ONLY LETTERHEAD ── */}
+      <div className="print-only print-header">
+        <CoatOfArms size={52} />
+        <div style={{ flex: 1 }}>
+          <div className="print-header-org">ENERGY COMMISSION OF NIGERIA (ECN)</div>
+          <div className="print-header-title">National Energy Data Bank — {series.name}</div>
+          <div className="print-header-meta">
+            {series.sector} &nbsp;·&nbsp; {series.frequency} &nbsp;·&nbsp; Unit: {series.unit_default}
+            &nbsp;·&nbsp; {series.record_count.toLocaleString()} records
+            &nbsp;·&nbsp; Generated: {new Date().toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}
+          </div>
+        </div>
+        <div className="print-header-ecn">OFFICIAL DATA PUBLICATION</div>
+      </div>
+
+      <div className="no-print"><Navbar active="databank" /></div>
 
       {/* ── SUB-HEADER ── */}
       <div style={{ background: "var(--surface-white)", borderBottom: "1px solid var(--border)", padding: "1.5rem 0" }}>
@@ -133,7 +150,8 @@ export default async function SeriesDetail({ params }: Props) {
                 )}
               </p>
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <div className="no-print" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <PrintButton />
               <a href={`/api/series/${series.id}/export?format=csv`} className="btn btn-secondary btn-sm" download>
                 Export CSV
               </a>
@@ -162,7 +180,7 @@ export default async function SeriesDetail({ params }: Props) {
           )}
 
           {/* ── VISUALISATION ── */}
-          <div style={{ marginBottom: "1.75rem" }}>
+          <div className="no-print" style={{ marginBottom: "1.75rem" }}>
             <SeriesChartPanel
               title={`${series.name} — Time Series`}
               subtitle={`${data.total.toLocaleString()} records · ${series.unit_default}`}
@@ -187,7 +205,7 @@ export default async function SeriesDetail({ params }: Props) {
           </div>
 
           {/* ── METHODOLOGY / ABOUT ── */}
-          <div style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: series.methodology ? "1fr 1fr" : "1fr", gap: "1rem" }}>
+          <div className="methodology-grid" style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: series.methodology ? "1fr 1fr" : "1fr", gap: "1rem" }}>
             {series.description && (
               <div style={{ padding: "1.25rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderLeft: "3px solid var(--green)", borderRadius: "var(--r-md)" }}>
                 <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.35rem" }}>About this Series</div>
@@ -218,7 +236,14 @@ export default async function SeriesDetail({ params }: Props) {
         </div>
       </main>
 
-      <Footer />
+      {/* ── PRINT-ONLY FOOTER ── */}
+      <div className="print-only print-doc-footer">
+        <div>National Energy Data Bank (NEDB) &nbsp;·&nbsp; Energy Commission of Nigeria &nbsp;·&nbsp; energy.gov.ng</div>
+        <div>Series ID: <span style={{ fontFamily: "monospace" }}>{series.id}</span> &nbsp;·&nbsp; Data is provided for informational purposes. Cite as: ECN-NEDB, {new Date().getFullYear()}.</div>
+        <div>This document was generated automatically from live NEDB records.</div>
+      </div>
+
+      <div className="no-print"><Footer /></div>
     </>
   );
 }
