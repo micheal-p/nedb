@@ -16,6 +16,7 @@ interface NigeriaMapProps {
   higherIsBetter?: boolean;
   id?: string;
   source?: string;
+  bare?: boolean; // skip the chart-panel wrapper (for use inside SeriesChartPanel)
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -29,7 +30,7 @@ function lerp(a: string, b: string, t: number): string {
   return `rgb(${Math.round(ar+(br-ar)*t)},${Math.round(ag+(bg-ag)*t)},${Math.round(ab+(bb-ab)*t)})`;
 }
 
-export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh, higherIsBetter = false, id = "map", source }: NigeriaMapProps) {
+export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh, higherIsBetter = false, id = "map", source, bare = false }: NigeriaMapProps) {
   const mapRef    = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<unknown>(null);
 
@@ -139,8 +140,8 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(stateData), colorLow, colorHigh, higherIsBetter, unit]);
 
-  return (
-    <div className="chart-panel" style={{ position: "relative" }}>
+  const inner = (
+    <>
       <div className="chart-panel-head">
         <div>
           <div className="chart-panel-title">{title}</div>
@@ -195,6 +196,8 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
       </div>
 
       <div className="chart-source">Data source: {source ?? "ECN / NEDB"} &nbsp;·&nbsp; Committed to NEDB via Staff Upload Portal{hasData ? "" : "  ·  Upload state-level records to populate"}</div>
-    </div>
+    </>
   );
+
+  return bare ? inner : <div className="chart-panel" style={{ position: "relative" }}>{inner}</div>;
 }

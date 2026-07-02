@@ -499,6 +499,17 @@ input, select, textarea { font-family: inherit; }
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
 }
+.admin-tab-bar {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2rem;
+  display: flex;
+  gap: 0;
+  scrollbar-width: none; /* hide scrollbar but still scrollable */
+}
+.admin-tab-bar::-webkit-scrollbar { display: none; }
+
+.data-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -1107,6 +1118,11 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
 
   /* Admin create form 2-col → 1-col */
   .admin-form-grid { grid-template-columns: 1fr !important; }
+
+  /* Admin page: prevent horizontal overflow */
+  .admin-tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .admin-tab-bar button { white-space: nowrap; flex-shrink: 0; }
+  .data-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
 /* ── 640px — most phones in portrait ─────────────────────────── */

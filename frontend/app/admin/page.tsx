@@ -380,20 +380,19 @@ export default function AdminPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface)" }}>
       {/* Header */}
-      <div style={{ background: "var(--ink)", borderBottom: "3px solid var(--green)", padding: "0 2rem" }}>
-        <div style={{ maxWidth: "var(--max-w)", margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <CoatOfArms size={36} />
+      <div style={{ background: "var(--ink)", borderBottom: "3px solid var(--green)", padding: "0 1rem" }}>
+        <div style={{ maxWidth: "var(--max-w)", margin: "0 auto", minHeight: 60, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", padding: "0.5rem 0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <CoatOfArms size={32} />
             <div>
-              <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#fff" }}>NEDB Administrator</div>
-              <div style={{ fontSize: "0.62rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Energy Commission of Nigeria</div>
+              <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#fff" }}>Administrator</div>
+              <div style={{ fontSize: "0.58rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Energy Commission</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.5)" }}>{adminName}</span>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
             <Link href="/upload" className="btn btn-ghost btn-sm">Upload Data</Link>
             <Link href="/data-point/dashboard" className="btn btn-ghost btn-sm">Dashboard</Link>
-            <Link href="/" className="btn btn-ghost btn-sm">Public Site</Link>
+            <button onClick={() => { import("@/lib/auth").then(m => { m.clearTokens(); window.location.href = "/"; }); }} className="btn btn-ghost btn-sm" style={{ color: "rgba(255,255,255,0.55)" }}>Log Out</button>
           </div>
         </div>
       </div>
@@ -401,7 +400,7 @@ export default function AdminPage() {
       <div style={{ maxWidth: "var(--max-w)", margin: "0 auto", padding: "2rem 2rem" }}>
 
         {/* Tab bar */}
-        <div style={{ borderBottom: "1px solid var(--border)", marginBottom: "2rem", display: "flex", gap: 0 }}>
+        <div className="admin-tab-bar">
           <button style={TAB_STYLE(tab === "users")}    onClick={() => { setTab("users"); setMsg(null); }}>Portal Users</button>
           <button style={TAB_STYLE(tab === "entry")}    onClick={() => { setTab("entry"); setMsg(null); setEntryMsg(null); loadRecords(recFilter.series, recFilter.year); }}>Data Entry</button>
           <button style={TAB_STYLE(tab === "iot")}      onClick={() => { setTab("iot"); setMsg(null); }}>IoT / API</button>

@@ -78,6 +78,7 @@ export default function SeriesChartPanel({ title, subtitle, source, vizTypes, da
             higherIsBetter
             id="series-map"
             source={source}
+            bare
           />
         );
       default:
