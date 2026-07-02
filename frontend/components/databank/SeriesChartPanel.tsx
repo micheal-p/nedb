@@ -1,25 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { EnergyRecord } from "@/lib/api";
 
-const LineChart     = dynamic(() => import("@/components/charts/LineChart"),     { ssr: false });
-const StackedArea   = dynamic(() => import("@/components/charts/StackedArea"),   { ssr: false });
-const HorizontalBar = dynamic(() => import("@/components/charts/HorizontalBar"), { ssr: false });
-const Heatmap       = dynamic(() => import("@/components/charts/Heatmap"),       { ssr: false });
+const LineChart      = dynamic(() => import("@/components/charts/LineChart"),      { ssr: false });
+const StackedArea    = dynamic(() => import("@/components/charts/StackedArea"),    { ssr: false });
+const HorizontalBar  = dynamic(() => import("@/components/charts/HorizontalBar"),  { ssr: false });
+const CalendarHeatmap = dynamic(() => import("@/components/charts/Heatmap"),       { ssr: false });
+const NigeriaMap     = dynamic(() => import("@/components/datapoint/NigeriaMap"),  { ssr: false });
 
 const VIZ_LABELS: Record<string, string> = {
   "line":             "Line",
   "stacked-area":     "Stacked Area",
   "horizontal-bar":   "Rankings",
-  "heatmap":          "Heatmap",
-  "choropleth":       "Choropleth",
+  "heatmap":          "Nigeria Map",
+  "choropleth":       "Nigeria Map",
   "small-multiples":  "Small Multiples",
   "sankey":           "Energy Flow",
   "calendar-heatmap": "Calendar",
 };
+
+const NATIONAL_REGIONS = new Set(["NGA", "", "national", "National", "NATIONAL"]);
 
 interface Props {
   title: string;
@@ -32,6 +35,19 @@ interface Props {
 
 export default function SeriesChartPanel({ title, subtitle, source, vizTypes, data, unit }: Props) {
   const [active, setActive] = useState(vizTypes[0] ?? "line");
+
+  // Build state-level map: latest value per Nigerian state (non-national rows)
+  const stateData = useMemo<Record<string, number>>(() => {
+    const latest: Record<string, { date: string; value: number }> = {};
+    for (const r of data) {
+      if (!r.region || NATIONAL_REGIONS.has(r.region) || r.value === null) continue;
+      const existing = latest[r.region];
+      if (!existing || r.period_date > existing.date) {
+        latest[r.region] = { date: r.period_date, value: r.value };
+      }
+    }
+    return Object.fromEntries(Object.entries(latest).map(([k, v]) => [k, v.value]));
+  }, [data]);
 
   function Chart() {
     if (data.length === 0) {
@@ -46,10 +62,24 @@ export default function SeriesChartPanel({ title, subtitle, source, vizTypes, da
       );
     }
     switch (active) {
-      case "line":           return <LineChart data={data} unit={unit} />;
-      case "stacked-area":   return <StackedArea data={data} unit={unit} />;
-      case "horizontal-bar": return <HorizontalBar data={data} unit={unit} />;
-      case "heatmap":        return <Heatmap data={data} unit={unit} />;
+      case "line":            return <LineChart data={data} unit={unit} />;
+      case "stacked-area":    return <StackedArea data={data} unit={unit} />;
+      case "horizontal-bar":  return <HorizontalBar data={data} unit={unit} />;
+      case "calendar-heatmap": return <CalendarHeatmap data={data} unit={unit} />;
+      case "heatmap":
+      case "choropleth":
+        return (
+          <NigeriaMap
+            stateData={stateData}
+            title={title}
+            unit={unit}
+            colorLow="#C8E6C9"
+            colorHigh="#1B5E20"
+            higherIsBetter
+            id="series-map"
+            source={source}
+          />
+        );
       default:
         return (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "var(--ink-4)" }}>
