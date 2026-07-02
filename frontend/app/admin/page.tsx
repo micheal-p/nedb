@@ -92,7 +92,7 @@ const ENTRY_INIT = { series_type_id: "crude_oil_production", year: 2026, period:
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "registry" | "requests" | "entry" | "iot" | "approvals">("users");
+  const [tab, setTab] = useState<"users" | "registry" | "requests" | "entry" | "iot" | "approvals" | "audit">("users");
   const [copied, setCopied] = useState<string | null>(null);
   const [headerOpen, setHeaderOpen] = useState(false);
 
@@ -126,6 +126,12 @@ export default function AdminPage() {
   // Edit user state
   const [editUserId, setEditUserId] = useState<number | null>(null);
   const [editUserForm, setEditUserForm] = useState({ full_name: "", email: "", agency: "", role: "viewer", dashboard_profile: "executive" });
+
+  // Audit log state
+  interface AuditEntry { id: number; action: string; series_type_id: string | null; period: string | null; region: string | null; old_value: number | null; new_value: number | null; performed_by: string; performed_at: string; notes: string | null; }
+  const [auditLog, setAuditLog]       = useState<AuditEntry[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditFilter, setAuditFilter] = useState({ series: "", action: "" });
 
   // Upload approvals state
   interface PendingSession { id: number; series_type_id: string; filename: string; row_count: number; uploaded_by: string | null; created_at: string; }
@@ -187,6 +193,17 @@ export default function AdminPage() {
     const r = await fetch(`/api/admin/records?${qs}`);
     setRecords(r.ok ? (await r.json()).records ?? [] : []);
     setRecLoading(false);
+  }, []);
+
+  const loadAuditLog = useCallback(async (series = "", action = "") => {
+    const token = getToken(); if (!token) return;
+    setAuditLoading(true);
+    const qs = new URLSearchParams({ limit: "200" });
+    if (series) qs.set("series", series);
+    if (action) qs.set("action", action);
+    const r = await fetch(`/api/admin/audit?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+    setAuditLog(r.ok ? (await r.json()).entries ?? [] : []);
+    setAuditLoading(false);
   }, []);
 
   const loadApprovals = useCallback(async () => {
@@ -464,6 +481,7 @@ export default function AdminPage() {
           <button style={TAB_STYLE(tab === "entry")}    onClick={() => { setTab("entry"); setMsg(null); setEntryMsg(null); loadRecords(recFilter.series, recFilter.year); }}>Data Entry</button>
           <button style={TAB_STYLE(tab === "iot")}      onClick={() => { setTab("iot"); setMsg(null); }}>IoT / API</button>
           <button style={TAB_STYLE(tab === "registry")} onClick={() => { setTab("registry"); setMsg(null); }}>Companies Registry</button>
+          <button style={TAB_STYLE(tab === "audit")}     onClick={() => { setTab("audit"); loadAuditLog(); setMsg(null); }}>Audit Log</button>
           <button style={TAB_STYLE(tab === "approvals")} onClick={() => { setTab("approvals"); loadApprovals(); setMsg(null); }}>
             Pending Approvals{pendingSessions.length > 0 && <span style={{ marginLeft: 6, background: "var(--red)", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: "0.6rem", fontWeight: 800, verticalAlign: "middle" }}>{pendingSessions.length}</span>}
           </button>
@@ -1165,6 +1183,83 @@ Content-Type: application/json
         )}
 
         {/* ── ACCESS REQUESTS TAB ── */}
+        {tab === "audit" && (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div>
+                <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.25rem", fontWeight: 400, color: "var(--ink)", marginBottom: "0.25rem" }}>Audit Log</h2>
+                <p style={{ fontSize: "0.78rem", color: "var(--ink-4)" }}>Every edit, deletion, and bulk approval — who did it, when, and what changed.</p>
+              </div>
+              <button className="btn btn-secondary btn-sm" onClick={() => loadAuditLog(auditFilter.series, auditFilter.action)} disabled={auditLoading}>Refresh</button>
+            </div>
+
+            {/* Filter row */}
+            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
+              <select className="form-input form-select" style={{ width: "auto", minWidth: 200, fontSize: "0.8rem" }}
+                value={auditFilter.series}
+                onChange={(e) => { const v = e.target.value; setAuditFilter((f) => ({ ...f, series: v })); loadAuditLog(v, auditFilter.action); }}>
+                <option value="">All series</option>
+                {Object.entries(SERIES_META).map(([id, m]) => <option key={id} value={id}>{m.name}</option>)}
+              </select>
+              <select className="form-input form-select" style={{ width: "auto", minWidth: 140, fontSize: "0.8rem" }}
+                value={auditFilter.action}
+                onChange={(e) => { const v = e.target.value; setAuditFilter((f) => ({ ...f, action: v })); loadAuditLog(auditFilter.series, v); }}>
+                <option value="">All actions</option>
+                <option value="INSERT">INSERT</option>
+                <option value="UPDATE">UPDATE</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+            </div>
+
+            {auditLoading ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)" }}>Loading audit log…</div>
+            ) : auditLog.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)" }}>No audit entries found.</div>
+            ) : (
+              <div className="data-table-wrap">
+                <table className="data-table" style={{ fontSize: "0.75rem" }}>
+                  <thead>
+                    <tr>
+                      <th>When</th><th>Who</th><th>Action</th><th>Series</th><th>Period</th><th>Region</th>
+                      <th className="td-num">Old Value</th><th className="td-num">New Value</th><th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLog.map((entry) => (
+                      <tr key={entry.id}>
+                        <td style={{ color: "var(--ink-5)", whiteSpace: "nowrap", fontSize: "0.7rem" }}>
+                          {new Date(entry.performed_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </td>
+                        <td style={{ fontWeight: 600, color: "var(--ink)" }}>{entry.performed_by}</td>
+                        <td>
+                          <span style={{ fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px", borderRadius: 4,
+                            background: entry.action === "INSERT" ? "var(--green-strong)" : entry.action === "DELETE" ? "var(--red-tint)" : "rgba(230,152,0,0.1)",
+                            color: entry.action === "INSERT" ? "var(--green-deep)" : entry.action === "DELETE" ? "var(--red)" : "#92400e" }}>
+                            {entry.action}
+                          </span>
+                        </td>
+                        <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.7rem", color: "var(--ink-4)" }}>{entry.series_type_id ?? "—"}</td>
+                        <td className="td-mono">{entry.period ?? "—"}</td>
+                        <td style={{ color: "var(--ink-4)" }}>{entry.region ?? "—"}</td>
+                        <td className="td-num td-mono" style={{ color: entry.action === "DELETE" ? "var(--red)" : "var(--ink-4)" }}>
+                          {entry.old_value != null ? Number(entry.old_value).toLocaleString() : "—"}
+                        </td>
+                        <td className="td-num td-mono" style={{ color: entry.action === "INSERT" ? "var(--green-deep)" : "var(--ink)" }}>
+                          {entry.new_value != null ? Number(entry.new_value).toLocaleString() : "—"}
+                        </td>
+                        <td style={{ color: "var(--ink-5)", fontSize: "0.7rem", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.notes ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {auditLog.length > 0 && (
+              <div style={{ padding: "0.75rem 0", fontSize: "0.72rem", color: "var(--ink-5)" }}>{auditLog.length} entries</div>
+            )}
+          </>
+        )}
+
         {tab === "approvals" && (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
