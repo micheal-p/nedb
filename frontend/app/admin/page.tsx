@@ -137,6 +137,9 @@ export default function AdminPage() {
   const [recLoading, setRecLoading]     = useState(false);
   const [recFilter, setRecFilter]       = useState({ series: "", year: String(new Date().getFullYear()) });
   const [deletingId, setDeletingId]     = useState<number | null>(null);
+  const [editingId, setEditingId]       = useState<number | null>(null);
+  const [editDraft, setEditDraft]       = useState<Partial<EnergyRecord>>({});
+  const [savingId, setSavingId]         = useState<number | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg]              = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -189,6 +192,29 @@ export default function AdminPage() {
       setEntryMsg({ type: "err", text: "Delete failed." });
     }
     setDeletingId(null);
+  }
+
+  function startEdit(rec: EnergyRecord) {
+    setEditingId(rec.id);
+    setEditDraft({ value: rec.value, period: rec.period, region: rec.region, source: rec.source ?? "", notes: rec.notes ?? "" });
+  }
+
+  async function saveRecord(id: number) {
+    setSavingId(id);
+    const r = await fetch(`/api/admin/records/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editDraft),
+    });
+    if (r.ok) {
+      const { record } = await r.json();
+      setRecords((prev) => prev.map((rec) => rec.id === id ? { ...rec, ...record } : rec));
+      setEntryMsg({ type: "ok", text: `Record #${id} updated.` });
+      setEditingId(null); setEditDraft({});
+    } else {
+      setEntryMsg({ type: "err", text: "Save failed." });
+    }
+    setSavingId(null);
   }
 
   useEffect(() => {
@@ -725,6 +751,7 @@ export default function AdminPage() {
                   <select className="form-input form-select" style={{ height: 30, padding: "0 8px", fontSize: "0.75rem", width: "auto" }}
                     value={recFilter.year}
                     onChange={(e) => { const y = e.target.value; setRecFilter((f) => ({ ...f, year: y })); loadRecords(recFilter.series, y); }}>
+                    <option value="">All years</option>
                     {ENTRY_YEARS.map((y) => <option key={y} value={String(y)}>{y}</option>)}
                   </select>
                   <button className="btn btn-secondary" style={{ height: 30, padding: "0 12px", fontSize: "0.72rem" }}
@@ -754,37 +781,81 @@ export default function AdminPage() {
                         <th>Region</th>
                         <th>Source</th>
                         <th>Added</th>
-                        <th></th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {records.map((rec) => (
-                        <tr key={rec.id}>
-                          <td style={{ color: "var(--ink-5)", fontSize: "0.7rem", fontFamily: "var(--font-mono)" }}>#{rec.id}</td>
-                          <td className="td-primary" style={{ fontSize: "0.75rem" }}>{SERIES_META[rec.series_type_id]?.name ?? rec.series_type_id}</td>
-                          <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>{rec.period}</td>
-                          <td className="td-num td-mono">{Number(rec.value).toLocaleString()}</td>
-                          <td style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>{rec.unit}</td>
-                          <td style={{ fontSize: "0.72rem" }}>{rec.region ?? "NGA"}</td>
-                          <td style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>{rec.source ?? "—"}</td>
-                          <td style={{ fontSize: "0.7rem", color: "var(--ink-5)" }}>{new Date(rec.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</td>
-                          <td>
-                            <button
-                              onClick={() => deleteRecord(rec.id)}
-                              disabled={deletingId === rec.id}
-                              style={{ padding: "3px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid rgba(192,57,43,0.3)", borderRadius: 4, background: "rgba(192,57,43,0.06)", color: "var(--red)", cursor: "pointer", opacity: deletingId === rec.id ? 0.5 : 1 }}>
-                              {deletingId === rec.id ? "…" : "Delete"}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {records.map((rec) => {
+                        const isEditing = editingId === rec.id;
+                        return isEditing ? (
+                          <tr key={rec.id} style={{ background: "rgba(14,122,60,0.04)" }}>
+                            <td style={{ color: "var(--ink-5)", fontSize: "0.7rem", fontFamily: "var(--font-mono)" }}>#{rec.id}</td>
+                            <td style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>{SERIES_META[rec.series_type_id]?.name ?? rec.series_type_id}</td>
+                            <td>
+                              <input value={editDraft.period ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, period: e.target.value }))}
+                                style={{ width: 90, fontSize: "0.75rem", fontFamily: "var(--font-mono)", padding: "3px 6px", border: "1px solid var(--green)", borderRadius: 4 }} />
+                            </td>
+                            <td>
+                              <input type="number" step="any" value={editDraft.value ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, value: Number(e.target.value) }))}
+                                style={{ width: 100, fontSize: "0.75rem", fontFamily: "var(--font-mono)", padding: "3px 6px", border: "1px solid var(--green)", borderRadius: 4 }} />
+                            </td>
+                            <td style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>{rec.unit}</td>
+                            <td>
+                              <input value={editDraft.region ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, region: e.target.value }))}
+                                style={{ width: 80, fontSize: "0.72rem", padding: "3px 6px", border: "1px solid var(--green)", borderRadius: 4 }} />
+                            </td>
+                            <td>
+                              <input value={editDraft.source ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, source: e.target.value }))}
+                                style={{ width: 100, fontSize: "0.72rem", padding: "3px 6px", border: "1px solid var(--green)", borderRadius: 4 }} />
+                            </td>
+                            <td style={{ fontSize: "0.7rem", color: "var(--ink-5)" }}>{new Date(rec.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</td>
+                            <td style={{ display: "flex", gap: 4 }}>
+                              <button onClick={() => saveRecord(rec.id)} disabled={savingId === rec.id}
+                                style={{ padding: "3px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid var(--green)", borderRadius: 4, background: "var(--green)", color: "#fff", cursor: "pointer", opacity: savingId === rec.id ? 0.6 : 1 }}>
+                                {savingId === rec.id ? "…" : "Save"}
+                              </button>
+                              <button onClick={() => { setEditingId(null); setEditDraft({}); }}
+                                style={{ padding: "3px 8px", fontSize: "0.7rem", border: "1px solid var(--border)", borderRadius: 4, background: "transparent", color: "var(--ink-4)", cursor: "pointer" }}>
+                                Cancel
+                              </button>
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr key={rec.id}>
+                            <td style={{ color: "var(--ink-5)", fontSize: "0.7rem", fontFamily: "var(--font-mono)" }}>#{rec.id}</td>
+                            <td className="td-primary" style={{ fontSize: "0.75rem" }}>{SERIES_META[rec.series_type_id]?.name ?? rec.series_type_id}</td>
+                            <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>{rec.period}</td>
+                            <td className="td-num td-mono">{Number(rec.value).toLocaleString()}</td>
+                            <td style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>{rec.unit}</td>
+                            <td style={{ fontSize: "0.72rem" }}>{rec.region ?? "NGA"}</td>
+                            <td style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>{rec.source ?? "—"}</td>
+                            <td style={{ fontSize: "0.7rem", color: "var(--ink-5)" }}>{new Date(rec.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</td>
+                            <td style={{ display: "flex", gap: 4 }}>
+                              <button onClick={() => startEdit(rec)}
+                                style={{ padding: "3px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid var(--border)", borderRadius: 4, background: "transparent", color: "var(--ink-3)", cursor: "pointer" }}>
+                                Edit
+                              </button>
+                              <button onClick={() => deleteRecord(rec.id)} disabled={deletingId === rec.id}
+                                style={{ padding: "3px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid rgba(192,57,43,0.3)", borderRadius: 4, background: "rgba(192,57,43,0.06)", color: "var(--red)", cursor: "pointer", opacity: deletingId === rec.id ? 0.5 : 1 }}>
+                                {deletingId === rec.id ? "…" : "Delete"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
               </div>
               {records.length > 0 && (
-                <div style={{ padding: "0.75rem 1.25rem", borderTop: "1px solid var(--border)", fontSize: "0.72rem", color: "var(--ink-5)" }}>
-                  {records.length} record{records.length !== 1 ? "s" : ""} — showing latest 200 per filter
+                <div style={{ padding: "0.75rem 1.25rem", borderTop: "1px solid var(--border)", fontSize: "0.72rem", color: "var(--ink-5)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>{records.length} record{records.length !== 1 ? "s" : ""} — showing latest 200 per filter</span>
+                  {recFilter.series && (
+                    <a href={`/series/${recFilter.series}`} target="_blank" rel="noreferrer"
+                      style={{ fontSize: "0.72rem", color: "var(--green)", fontWeight: 600 }}>
+                      View series page →
+                    </a>
+                  )}
                 </div>
               )}
             </div>
