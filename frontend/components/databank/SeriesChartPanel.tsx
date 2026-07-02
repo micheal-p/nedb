@@ -112,7 +112,7 @@ export default function SeriesChartPanel({ title, subtitle, source, vizTypes, da
         <Chart />
       </div>
       <div className="chart-source">
-        Source: NEDB / {source} &nbsp;·&nbsp; Unit: {unit} &nbsp;·&nbsp; Data as at last upload commit
+        Data source: {source || "ECN / NEDB"} &nbsp;·&nbsp; Committed to NEDB via Staff Upload Portal &nbsp;·&nbsp; Unit: {unit}
       </div>
     </div>
   );

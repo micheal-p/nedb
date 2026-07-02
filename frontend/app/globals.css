@@ -1207,6 +1207,12 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   background: #F4F2EC;
   touch-action: pan-y;
 }
+/* Override Leaflet's touch-action: none so page scroll passes through */
+.nigeria-map-canvas .leaflet-container,
+.nigeria-map-canvas .leaflet-pane,
+.nigeria-map-canvas .leaflet-layer {
+  touch-action: pan-y !important;
+}
 
 @media (max-width: 900px) {
   .nigeria-map-body { grid-template-columns: 1fr; }

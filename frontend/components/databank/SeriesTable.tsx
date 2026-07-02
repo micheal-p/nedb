@@ -25,10 +25,9 @@ export default function SeriesTable({ records, unit, total }: Props) {
             <th style={{ width: 44 }}>#</th>
             <th>Period</th>
             <th>Region</th>
-            <th>Product / Fuel</th>
             <th style={{ textAlign: "right" }}>Value</th>
             <th>Unit</th>
-            <th>Source</th>
+            <th>Data Source</th>
             <th>Notes</th>
           </tr>
         </thead>
@@ -38,7 +37,6 @@ export default function SeriesTable({ records, unit, total }: Props) {
               <td style={{ color: "var(--ink-5)", fontSize: "0.72rem" }}>{i + 1}</td>
               <td className="td-mono td-primary">{r.period}</td>
               <td>{r.region}</td>
-              <td>{r.fuel_product ?? <span style={{ color: "var(--ink-5)" }}>—</span>}</td>
               <td className="td-num">
                 {r.value != null ? Number(r.value).toLocaleString() : "—"}
               </td>
@@ -51,7 +49,7 @@ export default function SeriesTable({ records, unit, total }: Props) {
           ))}
           {records.length === 0 && (
             <tr>
-              <td colSpan={8} style={{ textAlign: "center", padding: "3rem", color: "var(--ink-4)", fontSize: "0.82rem" }}>
+              <td colSpan={7} style={{ textAlign: "center", padding: "3rem", color: "var(--ink-4)", fontSize: "0.82rem" }}>
                 No records. Upload a dataset to populate this series.
               </td>
             </tr>

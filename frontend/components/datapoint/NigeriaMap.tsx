@@ -194,7 +194,7 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
         </div>
       </div>
 
-      <div className="chart-source">Source: {source ?? "NERC / NUPRC / REA / ECN"}{hasData ? "" : "  ·  Upload state-level records to populate"}</div>
+      <div className="chart-source">Data source: {source ?? "ECN / NEDB"} &nbsp;·&nbsp; Committed to NEDB via Staff Upload Portal{hasData ? "" : "  ·  Upload state-level records to populate"}</div>
     </div>
   );
 }
