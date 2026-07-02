@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/supabase-server";
+import { cacheGet, cacheSet } from "@/lib/redis";
+
+const CACHE_KEY = "series:list";
+const TTL = 900; // 15 min
 
 export async function GET() {
-  // Direct query with count using subquery — works without a stored procedure
+  const cached = await cacheGet<unknown[]>(CACHE_KEY);
+  if (cached) return NextResponse.json(cached);
+
   const { data, error } = await db()
     .from("series_types")
     .select(`
@@ -19,5 +25,6 @@ export async function GET() {
     energy_records: undefined,
   }));
 
+  await cacheSet(CACHE_KEY, shaped, TTL);
   return NextResponse.json(shaped);
 }

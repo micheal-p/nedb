@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { requireAdmin, ok, err } from "@/lib/api-helpers";
+import { cacheDel } from "@/lib/redis";
 
 // POST /api/upload/review/:sessionId — admin approve or reject
 export async function POST(
@@ -52,6 +53,8 @@ export async function POST(
       notes: `Approved upload session ${sessionId} — ${session.validated_rows.length} records committed`,
     });
   } catch { /* non-fatal */ }
+
+  await cacheDel(`stats:${session.series_type_id}`, "series:list");
 
   return ok({
     approved: Number(sessionId),

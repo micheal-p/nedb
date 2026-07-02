@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { requireAdmin } from "@/lib/api-helpers";
+import { cacheDel } from "@/lib/redis";
 
 async function writeAudit(
   action: "UPDATE" | "DELETE",
@@ -70,6 +71,7 @@ export async function PATCH(
 
   if (before) {
     await writeAudit("UPDATE", before, "value" in patch ? Number(patch.value) : before.value, claims.username);
+    await cacheDel(`stats:${before.series_type_id}`, "series:list");
   }
 
   return NextResponse.json({ record: data });
@@ -111,6 +113,7 @@ export async function DELETE(
 
   if (before) {
     await writeAudit("DELETE", before, null, claims.username, "record deleted by admin");
+    await cacheDel(`stats:${before.series_type_id}`, "series:list");
   }
 
   return NextResponse.json({ deleted: Number(id) });

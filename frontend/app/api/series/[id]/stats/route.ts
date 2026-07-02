@@ -1,9 +1,17 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok } from "@/lib/api-helpers";
+import { cacheGet, cacheSet } from "@/lib/redis";
+
+const TTL = 3600; // 1 hour
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const cacheKey = `stats:${id}`;
+
+  // Cache hit
+  const cached = await cacheGet<Record<string, unknown>>(cacheKey);
+  if (cached) return ok({ ...cached, _cache: "hit" });
 
   const { data: rows } = await db()
     .from("energy_records")
@@ -19,9 +27,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!all.length) return ok(stats);
 
   const latest = all[0];
-  stats.latest       = latest.value;
+  stats.latest        = latest.value;
   stats.latest_period = latest.period;
-  stats.unit         = latest.unit;
+  stats.unit          = latest.unit;
 
   const yoyIdx = all.length >= 13 ? 12 : 1;
   if (all.length > yoyIdx) {
@@ -43,5 +51,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (all.length >= 12)
     stats.rolling_12 = all.slice(0, 12).reduce((s: number, r: { value: number }) => s + r.value, 0) / 12;
 
+  await cacheSet(cacheKey, stats, TTL);
   return ok(stats);
 }

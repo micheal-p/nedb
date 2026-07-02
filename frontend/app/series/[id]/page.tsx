@@ -106,7 +106,9 @@ export default async function SeriesDetail({ params }: Props) {
       {/* ── PRINT-ONLY LETTERHEAD ── */}
       <div className="print-only print-header">
         <CoatOfArms size={52} />
-        <div style={{ flex: 1 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/ecn-logo.png" alt="ECN" style={{ height: 52, width: "auto", objectFit: "contain" }} />
+        <div style={{ flex: 1, borderLeft: "1px solid #ccc", paddingLeft: "1rem", marginLeft: "0.25rem" }}>
           <div className="print-header-org">ENERGY COMMISSION OF NIGERIA (ECN)</div>
           <div className="print-header-title">National Energy Data Bank — {series.name}</div>
           <div className="print-header-meta">
