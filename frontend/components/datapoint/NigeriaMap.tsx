@@ -154,7 +154,7 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
 
       <div className="chart-panel-body" style={{ padding: "0.5rem", display: "grid", gridTemplateColumns: "1fr 200px", gap: "1rem", alignItems: "start" }}>
         {/* Leaflet map container */}
-        <div ref={mapRef} style={{ height: 420, borderRadius: 6, overflow: "hidden", background: "#F4F2EC" }} />
+        <div ref={mapRef} style={{ height: 525, borderRadius: 6, overflow: "hidden", background: "#F4F2EC" }} />
 
         {/* Legend + top 5 */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
