@@ -1,12 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import React from "react";
-import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+import { useEffect, useRef } from "react";
 
-const GEO_URL = "/nigeria-states.json";
-
-// Normalise GeoJSON shapeName → our internal state name (zone/upload dropdown keys)
+// Normalise GeoJSON shapeName → our internal state name keys
 const GEO_NAME: Record<string, string> = {
   "Abuja Federal Capital Territory": "FCT (Abuja)",
 };
@@ -22,35 +18,36 @@ interface NigeriaMapProps {
   source?: string;
 }
 
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+
 function lerp(a: string, b: string, t: number): string {
-  const hex = (s: string) => parseInt(s, 16);
-  const parse = (c: string) => [hex(c.slice(1,3)), hex(c.slice(3,5)), hex(c.slice(5,7))] as [number,number,number];
-  const [ar, ag, ab] = parse(a);
-  const [br, bg, bb] = parse(b);
-  const r   = Math.round(ar + (br - ar) * t);
-  const g   = Math.round(ag + (bg - ag) * t);
-  const bl2 = Math.round(ab + (bb - ab) * t);
-  return `rgb(${r},${g},${bl2})`;
+  const [ar,ag,ab] = hexToRgb(a);
+  const [br,bg,bb] = hexToRgb(b);
+  return `rgb(${Math.round(ar+(br-ar)*t)},${Math.round(ag+(bg-ag)*t)},${Math.round(ab+(bb-ab)*t)})`;
 }
 
 export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh, higherIsBetter = false, id = "map", source }: NigeriaMapProps) {
-  const [tooltip, setTooltip] = useState<{ name: string; value: number | null; x: number; y: number } | null>(null);
+  const mapRef    = useRef<HTMLDivElement>(null);
+  const leafletRef = useRef<unknown>(null);
 
-  const values  = Object.values(stateData).filter((v) => v > 0);
-  const hasData = values.length > 0;
-  const minV    = hasData ? Math.min(...values) : 0;
-  const maxV    = hasData ? Math.max(...values) : 100;
+  const values   = Object.values(stateData).filter(v => isFinite(v));
+  const hasData  = values.length > 0;
+  const minV     = hasData ? Math.min(...values) : 0;
+  const maxV     = hasData ? Math.max(...values) : 1;
+  const sorted   = Object.entries(stateData).sort(([,a],[,b]) => b - a).slice(0, 5);
 
-  function getColor(stateName: string) {
-    const v = stateData[stateName];
-    if (v === undefined || v === 0 || !hasData) return "#E7E5E0";
+  function getColor(name: string): string {
+    const v = stateData[name];
+    if (v === undefined || !hasData) return "#E7E5E0";
     const t = (v - minV) / (maxV - minV || 1);
     return higherIsBetter ? lerp(colorLow, colorHigh, t) : lerp(colorHigh, colorLow, t);
   }
 
   function downloadCSV() {
-    if (!hasData) return;
-    const rows = Object.entries(stateData).map(([state, val]) => `${state},${val}`).join("\n");
+    const rows = Object.entries(stateData).map(([s, v]) => `${s},${v}`).join("\n");
     const blob = new Blob([`State,${unit}\n${rows}`], { type: "text/csv" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
@@ -58,7 +55,87 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
     URL.revokeObjectURL(url);
   }
 
-  const sorted = Object.entries(stateData).sort(([,a],[,b]) => b - a).slice(0, 5);
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    let L: typeof import("leaflet");
+    let map: ReturnType<typeof import("leaflet").map>;
+    let destroyed = false;
+
+    async function init() {
+      // Dynamic import — leaflet is SSR-incompatible
+      L = (await import("leaflet")).default;
+      await import("leaflet/dist/leaflet.css");
+
+      if (destroyed || !mapRef.current) return;
+
+      // Remove any previous Leaflet instance on the same element
+      if ((leafletRef.current as { remove?: () => void })?.remove) {
+        (leafletRef.current as { remove: () => void }).remove();
+      }
+
+      map = L.map(mapRef.current, {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false,
+        keyboard: false,
+        touchZoom: false,
+      });
+      leafletRef.current = map;
+
+      // Fetch the local GeoJSON
+      const res  = await fetch("/nigeria-states.json");
+      const geoj = await res.json();
+      if (destroyed) return;
+
+      const tooltip = L.tooltip({ sticky: true, className: "nedb-map-tooltip" });
+
+      L.geoJSON(geoj, {
+        style: (feature) => {
+          const raw  = feature?.properties?.shapeName ?? "";
+          const name = GEO_NAME[raw] ?? raw;
+          return {
+            fillColor:   getColor(name),
+            fillOpacity: 1,
+            color:       "#fff",
+            weight:      1,
+          };
+        },
+        onEachFeature: (feature, layer) => {
+          const raw   = feature.properties?.shapeName ?? "";
+          const name  = GEO_NAME[raw] ?? raw;
+          const val   = stateData[name];
+          const label = val !== undefined
+            ? `<strong>${name}</strong><br/>${val.toLocaleString()} ${unit}`
+            : `<strong>${name}</strong><br/>No data`;
+
+          layer.bindTooltip(label, { sticky: true, className: "nedb-map-tooltip" });
+          (layer as L.Path).on("mouseover", function(this: L.Path) { this.setStyle({ weight: 2, color: "#0E7A3C" }); });
+          (layer as L.Path).on("mouseout",  function(this: L.Path) { this.setStyle({ weight: 1, color: "#fff" }); });
+        },
+      }).addTo(map);
+
+      // Fit map to Nigeria bounds
+      map.fitBounds([
+        [4.2, 2.7],   // SW corner
+        [13.9, 14.7], // NE corner
+      ]);
+    }
+
+    init();
+
+    return () => {
+      destroyed = true;
+      if ((leafletRef.current as { remove?: () => void })?.remove) {
+        (leafletRef.current as { remove: () => void }).remove();
+        leafletRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(stateData), colorLow, colorHigh, higherIsBetter, unit]);
 
   return (
     <div className="chart-panel" style={{ position: "relative" }}>
@@ -76,40 +153,10 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
       </div>
 
       <div className="chart-panel-body" style={{ padding: "0.5rem", display: "grid", gridTemplateColumns: "1fr 200px", gap: "1rem", alignItems: "start" }}>
-        <div style={{ position: "relative" }} onMouseLeave={() => setTooltip(null)}>
-          <ComposableMap
-            projection="geoMercator"
-            projectionConfig={{ scale: 2200, center: [8.6753, 9.082] }}
-            style={{ width: "100%", height: "auto" }}>
-            <Geographies geography={GEO_URL}>
-              {({ geographies }: { geographies: { rsmKey: string; properties: Record<string,string> }[] }) =>
-                geographies.map((geo) => {
-                  const rawName = geo.properties.shapeName ?? geo.properties.NAME_1 ?? geo.properties.name ?? "";
-                  const name = GEO_NAME[rawName] ?? rawName;
-                  return (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      fill={getColor(name)}
-                      stroke="#fff"
-                      strokeWidth={0.5}
-                      style={{ default: { outline: "none" }, hover: { outline: "none", opacity: 0.8 }, pressed: { outline: "none" } }}
-                      onMouseEnter={(e: React.MouseEvent) => setTooltip({ name: rawName === name ? name : `${name} (${rawName})`, value: stateData[name] ?? null, x: e.clientX, y: e.clientY })}
-                    />
-                  );
-                })
-              }
-            </Geographies>
-          </ComposableMap>
+        {/* Leaflet map container */}
+        <div ref={mapRef} style={{ height: 420, borderRadius: 6, overflow: "hidden", background: "#F4F2EC" }} />
 
-          {tooltip && (
-            <div style={{ position: "fixed", left: tooltip.x + 12, top: tooltip.y - 8, background: "#fff", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: "0.75rem", boxShadow: "var(--shadow-2)", pointerEvents: "none", zIndex: 1000 }}>
-              <div style={{ fontWeight: 700, color: "var(--ink)" }}>{tooltip.name}</div>
-              <div style={{ color: "var(--ink-4)" }}>{tooltip.value !== null ? `${tooltip.value.toFixed(1)} ${unit}` : "No data"}</div>
-            </div>
-          )}
-        </div>
-
+        {/* Legend + top 5 */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           {hasData ? (
             <>
@@ -117,8 +164,8 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
                 <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Scale</div>
                 <div style={{ height: 8, borderRadius: 4, background: `linear-gradient(to right, ${higherIsBetter ? colorLow : colorHigh}, ${higherIsBetter ? colorHigh : colorLow})`, marginBottom: 4 }} />
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.65rem", color: "var(--ink-5)" }}>
-                  <span>{minV.toFixed(1)}</span>
-                  <span>{maxV.toFixed(1)}</span>
+                  <span>{minV.toLocaleString()}</span>
+                  <span>{maxV.toLocaleString()}</span>
                 </div>
               </div>
               <div>
@@ -127,8 +174,8 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
                   <div key={state} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                     <div style={{ width: 16, height: 16, borderRadius: 3, background: getColor(state), flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: "0.68rem", fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{state.replace(" Federal Capital Territory", " (FCT)").replace(" State", "")}</div>
-                      <div style={{ fontSize: "0.62rem", color: "var(--ink-4)", fontFamily: "var(--font-mono)" }}>{val.toFixed(1)} {unit}</div>
+                      <div style={{ fontSize: "0.68rem", fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{state}</div>
+                      <div style={{ fontSize: "0.62rem", color: "var(--ink-4)", fontFamily: "var(--font-mono)" }}>{val.toLocaleString()} {unit}</div>
                     </div>
                     <div style={{ fontSize: "0.62rem", color: "var(--ink-5)" }}>#{i+1}</div>
                   </div>
@@ -140,13 +187,12 @@ export default function NigeriaMap({ stateData, title, unit, colorLow, colorHigh
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", paddingTop: "1rem" }}>
               <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--ink-4)" }}>No state-level data</div>
               <div style={{ fontSize: "0.7rem", color: "var(--ink-5)", lineHeight: 1.5 }}>Upload records with a Nigerian state as the region to populate this map.</div>
-              <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", marginTop: 4 }}>All states shown in grey until data is committed.</div>
             </div>
           )}
         </div>
       </div>
 
-      <div className="chart-source">Source: {source ?? "NERC / NUPRC / REA / ECN"}{hasData ? "" : "  ·  No data — upload state-level records via Admin → Data Entry"}</div>
+      <div className="chart-source">Source: {source ?? "NERC / NUPRC / REA / ECN"}{hasData ? "" : "  ·  Upload state-level records to populate"}</div>
     </div>
   );
 }

@@ -1191,3 +1191,19 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
 
   .series-cell { padding: 0.875rem; }
 }
+
+/* Leaflet Nigeria map tooltip */
+.nedb-map-tooltip {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  pointer-events: none;
+}
+.nedb-map-tooltip::before { display: none; }
+/* Hide default Leaflet tile-layer attribution box */
+.leaflet-control-attribution { display: none !important; }
