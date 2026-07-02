@@ -49,6 +49,12 @@ export default function DataBankPage() {
   const [msg, setMsg]               = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [headerOpen, setHeaderOpen] = useState(false);
 
+  // Record history modal
+  interface AuditEntry { id: number; action: string; old_value: number | null; new_value: number | null; performed_by: string; performed_at: string; notes: string | null; }
+  const [historyRec, setHistoryRec]   = useState<EnergyRec | null>(null);
+  const [historyLog, setHistoryLog]   = useState<AuditEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   const load = useCallback(async () => {
     const token = await getTokenFresh();
     if (!token) { router.replace("/data-point/login?redirect=/admin/databank"); return; }
@@ -91,6 +97,14 @@ export default function DataBankPage() {
     } finally {
       setDeleting(null);
     }
+  }
+
+  async function openHistory(rec: EnergyRec) {
+    setHistoryRec(rec); setHistoryLog([]); setHistoryLoading(true);
+    const token = await getTokenFresh(); if (!token) return;
+    const res = await fetch(`/api/admin/audit?record=${rec.id}`, { headers: { Authorization: `Bearer ${token}` } });
+    setHistoryLog(res.ok ? (await res.json()).entries ?? [] : []);
+    setHistoryLoading(false);
   }
 
   function toggleExpand(id: string) {
@@ -281,7 +295,8 @@ export default function DataBankPage() {
                                 <td style={{ fontSize: "0.68rem", color: "var(--ink-5)", whiteSpace: "nowrap" }}>
                                   {r.created_at ? new Date(r.created_at).toLocaleDateString("en-NG") : "—"}
                                 </td>
-                                <td>
+                                <td style={{ display: "flex", gap: 4 }}>
+                                  <button onClick={() => openHistory(r)} style={{ padding: "2px 8px", fontSize: "0.68rem", background: "none", border: "1px solid var(--border)", borderRadius: 4, color: "var(--ink-4)", cursor: "pointer" }}>Hist</button>
                                   <button
                                     onClick={() => deleteRecord(r.id)}
                                     disabled={deleting === r.id}
@@ -335,7 +350,8 @@ export default function DataBankPage() {
                       <td style={{ fontSize: "0.68rem", color: "var(--ink-5)", whiteSpace: "nowrap" }}>
                         {r.created_at ? new Date(r.created_at).toLocaleDateString("en-NG") : "—"}
                       </td>
-                      <td>
+                      <td style={{ display: "flex", gap: 4 }}>
+                        <button onClick={() => openHistory(r)} style={{ padding: "2px 8px", fontSize: "0.68rem", background: "none", border: "1px solid var(--border)", borderRadius: 4, color: "var(--ink-4)", cursor: "pointer" }}>Hist</button>
                         <button
                           onClick={() => deleteRecord(r.id)}
                           disabled={deleting === r.id}
@@ -352,6 +368,76 @@ export default function DataBankPage() {
           </div>
         )}
       </div>
+
+      {/* ── HISTORY MODAL ── */}
+      {historyRec && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+          onClick={() => setHistoryRec(null)}>
+          <div style={{ background: "#fff", borderRadius: "var(--r-lg)", width: "100%", maxWidth: 640, maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}
+            onClick={e => e.stopPropagation()}>
+            {/* Modal header */}
+            <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--ink)", marginBottom: 2 }}>
+                  Record #{historyRec.id} — Change History
+                </div>
+                <div style={{ fontSize: "0.72rem", color: "var(--ink-4)", fontFamily: "var(--font-mono)" }}>
+                  {historyRec.series_type_id} · {historyRec.period} · {historyRec.region}
+                </div>
+                <div style={{ marginTop: 4, fontSize: "0.72rem", color: "var(--ink-4)" }}>
+                  Current value: <strong>{historyRec.value != null ? Number(historyRec.value).toLocaleString() : "—"} {historyRec.unit}</strong>
+                </div>
+              </div>
+              <button onClick={() => setHistoryRec(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem", color: "var(--ink-4)", lineHeight: 1 }}>×</button>
+            </div>
+            {/* Modal body */}
+            <div style={{ overflowY: "auto", flex: 1 }}>
+              {historyLoading ? (
+                <div style={{ padding: "2rem", textAlign: "center", color: "var(--ink-5)" }}>Loading history…</div>
+              ) : historyLog.length === 0 ? (
+                <div style={{ padding: "2rem", textAlign: "center", color: "var(--ink-5)", fontSize: "0.82rem" }}>
+                  No edits recorded for this record. It has not been modified since it was committed.
+                </div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
+                  <thead>
+                    <tr style={{ background: "var(--surface-muted)", borderBottom: "1px solid var(--border)" }}>
+                      <th style={{ padding: "0.6rem 1rem", textAlign: "left", fontWeight: 700, color: "var(--ink-4)", fontSize: "0.65rem", textTransform: "uppercase" }}>When</th>
+                      <th style={{ padding: "0.6rem 0.75rem", textAlign: "left", fontWeight: 700, color: "var(--ink-4)", fontSize: "0.65rem", textTransform: "uppercase" }}>By</th>
+                      <th style={{ padding: "0.6rem 0.75rem", textAlign: "left", fontWeight: 700, color: "var(--ink-4)", fontSize: "0.65rem", textTransform: "uppercase" }}>Action</th>
+                      <th style={{ padding: "0.6rem 0.75rem", textAlign: "right", fontWeight: 700, color: "var(--ink-4)", fontSize: "0.65rem", textTransform: "uppercase" }}>Old</th>
+                      <th style={{ padding: "0.6rem 0.75rem", textAlign: "right", fontWeight: 700, color: "var(--ink-4)", fontSize: "0.65rem", textTransform: "uppercase" }}>New</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyLog.map((e) => (
+                      <tr key={e.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "0.625rem 1rem", color: "var(--ink-5)", whiteSpace: "nowrap" }}>
+                          {new Date(e.performed_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </td>
+                        <td style={{ padding: "0.625rem 0.75rem", fontWeight: 600, color: "var(--ink)" }}>{e.performed_by}</td>
+                        <td style={{ padding: "0.625rem 0.75rem" }}>
+                          <span style={{ fontSize: "0.62rem", fontWeight: 700, padding: "2px 6px", borderRadius: 3,
+                            background: e.action === "DELETE" ? "var(--red-tint)" : "rgba(230,152,0,0.1)",
+                            color: e.action === "DELETE" ? "var(--red)" : "#92400e" }}>
+                            {e.action}
+                          </span>
+                        </td>
+                        <td style={{ padding: "0.625rem 0.75rem", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: "0.72rem", color: "var(--red)" }}>
+                          {e.old_value != null ? Number(e.old_value).toLocaleString() : "—"}
+                        </td>
+                        <td style={{ padding: "0.625rem 0.75rem", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: "0.72rem", fontWeight: 600, color: "var(--green-deep)" }}>
+                          {e.new_value != null ? Number(e.new_value).toLocaleString() : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

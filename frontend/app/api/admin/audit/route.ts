@@ -7,9 +7,10 @@ export async function GET(req: NextRequest) {
   if (!claims) return err("admin required", 403);
 
   const { searchParams } = new URL(req.url);
-  const series = searchParams.get("series") ?? "";
-  const action = searchParams.get("action") ?? "";
-  const limit  = Math.min(parseInt(searchParams.get("limit") ?? "200"), 500);
+  const series   = searchParams.get("series") ?? "";
+  const action   = searchParams.get("action") ?? "";
+  const recordId = searchParams.get("record") ?? "";
+  const limit    = Math.min(parseInt(searchParams.get("limit") ?? "200"), 500);
 
   let query = db()
     .from("audit_log")
@@ -17,8 +18,9 @@ export async function GET(req: NextRequest) {
     .order("performed_at", { ascending: false })
     .limit(limit);
 
-  if (series) query = query.eq("series_type_id", series);
-  if (action) query = query.eq("action", action);
+  if (series)   query = query.eq("series_type_id", series);
+  if (action)   query = query.eq("action", action);
+  if (recordId) query = query.eq("record_id", Number(recordId));
 
   const { data, error } = await query;
   if (error) return err(error.message, 500);
