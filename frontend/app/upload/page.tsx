@@ -29,6 +29,27 @@ const ALL_STATES = Object.values(NG_ZONES).flat().sort();
 const EMPTY_ROW: ManualRow = { period: "", period_date: "", region: "NGA", value: "", unit: "", source: "", notes: "" };
 const EMPTY_FORM = { ...EMPTY_ROW, state: "NGA", zone: "" };
 
+function buildPeriodOptions(frequency: string): string[] {
+  const now = new Date();
+  const thisYear = now.getFullYear();
+  const thisMonth = now.getMonth() + 1; // 1-12
+  const opts: string[] = [];
+  if (frequency === "annual") {
+    for (let y = thisYear; y >= 1990; y--) opts.push(String(y));
+  } else if (frequency === "quarterly") {
+    for (let y = thisYear; y >= 2000; y--) {
+      const maxQ = y === thisYear ? Math.ceil(thisMonth / 3) : 4;
+      for (let q = maxQ; q >= 1; q--) opts.push(`${y}-Q${q}`);
+    }
+  } else {
+    for (let y = thisYear; y >= 2000; y--) {
+      const maxM = y === thisYear ? thisMonth : 12;
+      for (let m = maxM; m >= 1; m--) opts.push(`${y}-${String(m).padStart(2, "0")}`);
+    }
+  }
+  return opts;
+}
+
 function periodToDate(period: string): string {
   if (/^\d{4}$/.test(period)) return `${period}-01-01`;
   if (/^\d{4}-Q[1-4]$/.test(period)) {
@@ -283,8 +304,13 @@ export default function UploadPage() {
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem 1rem" }}>
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label">Period *</label>
-                          <input className="form-input" placeholder={selectedMeta?.frequency === "annual" ? "e.g. 2026" : selectedMeta?.frequency === "monthly" ? "e.g. 2026-01" : "e.g. 2026-Q1"}
-                            value={rowForm.period} onChange={(e) => setRowForm({ ...rowForm, period: e.target.value })} />
+                          <select className="form-input form-select" value={rowForm.period}
+                            onChange={(e) => setRowForm({ ...rowForm, period: e.target.value })}>
+                            <option value="">— Select period —</option>
+                            {buildPeriodOptions(selectedMeta?.frequency ?? "annual").map((p) => (
+                              <option key={p} value={p}>{p}</option>
+                            ))}
+                          </select>
                         </div>
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label">Value *</label>
