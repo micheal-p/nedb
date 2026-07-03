@@ -1454,3 +1454,20 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
     margin: 1.5cm 1.5cm 2cm 1.5cm;
   }
 }
+
+/* ── Portal page responsive grids ── */
+.portal-3col  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+.portal-3col-tight { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+.portal-2col  { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+
+@media (max-width: 768px) {
+  .portal-3col       { grid-template-columns: 1fr; gap: 1.5rem; }
+  .portal-3col-tight { grid-template-columns: 1fr 1fr; gap: 0.875rem; }
+  .portal-2col       { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .portal-3col-tight { grid-template-columns: 1fr; }
+}
+
+/* ── Table scroll wrapper ── */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }

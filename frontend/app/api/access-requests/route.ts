@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { requireAdmin } from "@/lib/api-helpers";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 function ok(data: unknown)           { return NextResponse.json(data); }
 function err(msg: string, s = 400)   { return NextResponse.json({ error: msg }, { status: s }); }
 
 // Public POST — anyone can submit an access request
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
+  const rl  = checkRateLimit(`access-req:${ip}`, 3, 60 * 60 * 1000);
+  if (!rl.allowed) return err(`Too many submissions. Try again in ${Math.ceil(rl.resetIn / 60)} min.`, 429);
+
   const body = await req.json().catch(() => null);
   if (!body) return err("Bad request");
   const { full_name, email, organisation, position, profile_key, justification } = body;

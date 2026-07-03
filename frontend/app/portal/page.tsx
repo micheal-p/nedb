@@ -194,7 +194,7 @@ export default function PortalPage() {
             <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.5rem" }}>Access Management</div>
             <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: 400, color: "var(--ink)" }}>How Account Access Works</h2>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "2rem" }}>
+          <div className="portal-3col">
             {STEPS.map((s, i) => (
               <div key={s.n} style={{ textAlign: "center", position: "relative" }}>
                 {i < STEPS.length - 1 && (
@@ -216,7 +216,7 @@ export default function PortalPage() {
             <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.5rem" }}>Platform Features</div>
             <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: 400, color: "var(--ink)" }}>Every dashboard includes</h2>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1.25rem" }}>
+          <div className="portal-3col-tight">
             {FEATURES.map((f) => (
               <div key={f.title} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.5rem" }}>
                 <div style={{ width: 38, height: 38, borderRadius: 8, background: "rgba(14,122,60,0.07)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "0.875rem" }}>
@@ -319,7 +319,7 @@ export default function PortalPage() {
                 {error && (
                   <div style={{ marginBottom: "1rem", padding: "10px 14px", background: "rgba(192,57,43,0.06)", border: "1px solid rgba(192,57,43,0.2)", borderRadius: 6, fontSize: "0.8rem", color: "var(--red)" }}>{error}</div>
                 )}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                <div className="portal-2col">
                   <Field label="Full Name *"     value={form.full_name}    onChange={(v) => setForm((f) => ({ ...f, full_name: v }))}    placeholder="Dr. Amina Bello"               required />
                   <Field label="Work Email *"    type="email" value={form.email} onChange={(v) => setForm((f) => ({ ...f, email: v }))} placeholder="a.bello@ecn.gov.ng"             required />
                 </div>

@@ -173,6 +173,7 @@ export default async function BulletinPage() {
                 <span className="panel-title">Biggest Year-on-Year Movers</span>
                 <span style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>Latest period vs. same period prior year</span>
               </div>
+              <div className="table-scroll">
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid var(--border)" }}>
@@ -202,6 +203,7 @@ export default async function BulletinPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 

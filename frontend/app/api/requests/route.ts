@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase-server";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST — public, no auth
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
+  const rl  = checkRateLimit(`data-req:${ip}`, 5, 60 * 60 * 1000);
+  if (!rl.allowed) return NextResponse.json({ error: `Too many submissions. Try again in ${Math.ceil(rl.resetIn / 60)} min.` }, { status: 429 });
+
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "body required" }, { status: 400 });
 

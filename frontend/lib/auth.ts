@@ -13,8 +13,16 @@ function deleteCookie(name: string) {
 
 export function saveTokens(token: string, refreshToken: string, fullName?: string, role?: string, dashboardProfile?: string) {
   setCookie(COOKIE_TOKEN, token, 15 * 60);
+  // Store refresh token server-side as httpOnly cookie — never readable by JS
+  if (refreshToken) {
+    fetch("/api/auth/set-refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    }).catch(() => {});
+  }
+  // Only non-sensitive display metadata stays in localStorage
   try {
-    localStorage.setItem(LS_REFRESH, refreshToken);
     if (fullName)          localStorage.setItem("nedb_name", fullName);
     if (role)              localStorage.setItem("nedb_role", role);
     if (dashboardProfile)  localStorage.setItem("nedb_profile", dashboardProfile);
@@ -44,7 +52,13 @@ export function getRefreshToken(): string | null {
 
 export function clearTokens() {
   deleteCookie(COOKIE_TOKEN);
-  try { localStorage.removeItem(LS_REFRESH); } catch {}
+  // Clear httpOnly refresh cookie via server
+  fetch("/api/auth/set-refresh", { method: "DELETE" }).catch(() => {});
+  try {
+    localStorage.removeItem("nedb_name");
+    localStorage.removeItem("nedb_role");
+    localStorage.removeItem("nedb_profile");
+  } catch {}
 }
 
 export function isLoggedIn(): boolean {
@@ -52,17 +66,12 @@ export function isLoggedIn(): boolean {
 }
 
 export async function tryRefresh(): Promise<boolean> {
-  const rt = getRefreshToken();
-  if (!rt) return false;
   try {
-    const res = await fetch("/api/auth/refresh", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: rt }),
-    });
+    // No body needed — server reads from httpOnly cookie nedb_rt
+    const res = await fetch("/api/auth/refresh", { method: "POST", headers: { "Content-Type": "application/json" } });
     if (!res.ok) return false;
     const data = await res.json();
-    saveTokens(data.token, data.refresh_token ?? rt, data.full_name, data.role, data.dashboard_profile);
+    saveTokens(data.token, data.refresh_token ?? "", data.full_name, data.role, data.dashboard_profile);
     return true;
   } catch {
     return false;
