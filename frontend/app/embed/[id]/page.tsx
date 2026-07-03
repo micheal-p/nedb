@@ -1,7 +1,6 @@
-import dynamic from "next/dynamic";
 import { db } from "@/lib/supabase-server";
-
-const LineChart = dynamic(() => import("@/components/charts/LineChart"), { ssr: false });
+import type { EnergyRecord } from "@/lib/api";
+import EmbedChart from "./EmbedChart";
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -10,7 +9,7 @@ async function getData(id: string) {
     db().from("series_types").select("id, name, unit_default, frequency").eq("id", id).single(),
     db().from("energy_records").select("*").eq("series_type_id", id).order("period_date", { ascending: true }).limit(500),
   ]);
-  return { series, records: records ?? [] };
+  return { series, records: (records ?? []) as EnergyRecord[] };
 }
 
 export default async function EmbedPage({ params }: Props) {
@@ -29,7 +28,7 @@ export default async function EmbedPage({ params }: Props) {
           <div style={{ fontSize: 11, color: "#8E867B", marginTop: 2 }}>{series.unit_default} · {series.frequency} · ECN National Energy Data Bank</div>
         </div>
         <div style={{ padding: "4px 0" }}>
-          <LineChart data={records} unit={series.unit_default} />
+          <EmbedChart data={records} unit={series.unit_default} />
         </div>
         <div style={{ padding: "4px 16px 10px", fontSize: 10, color: "#8E867B", borderTop: "1px solid #E7E5E0", display: "flex", justifyContent: "space-between" }}>
           <span>Source: ECN / NEDB · energy.gov.ng</span>
