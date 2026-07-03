@@ -75,17 +75,13 @@ export default function Navbar({ active }: NavbarProps) {
           <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer" className="nav-link-main">ECN Website</a>
         </div>
 
-        <div className="nav-actions nav-desktop" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          {loggedIn ? (
-            <>
-              <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
-              <Link href={portalHref} className="btn btn-ghost btn-sm">{portalLabel}</Link>
-              <button onClick={logout} className="btn btn-ghost btn-sm">Log Out</button>
-            </>
-          ) : (
-            <Link href="/data-point/login" className="btn btn-primary btn-sm">Portal Login</Link>
-          )}
-        </div>
+        {loggedIn && (
+          <div className="nav-actions nav-desktop" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+            <Link href={portalHref} className="btn btn-ghost btn-sm">{portalLabel}</Link>
+            <button onClick={logout} className="btn btn-ghost btn-sm">Log Out</button>
+          </div>
+        )}
 
         <button
           ref={hamburgerRef}
@@ -108,23 +104,17 @@ export default function Navbar({ active }: NavbarProps) {
           <Link href="/api-docs" className="mobile-link" onClick={() => setMenuOpen(false)}>API Docs</Link>
           <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer" className="mobile-link" onClick={() => setMenuOpen(false)}>ECN Website</a>
 
-          <div className="mobile-auth-section">
-            {loggedIn ? (
-              <>
-                {name && <div className="mobile-auth-name">Signed in as {name}</div>}
-                <Link href={portalHref} className="mobile-auth-btn mobile-auth-btn--portal" onClick={() => setMenuOpen(false)}>
-                  {portalLabel}
-                </Link>
-                <button onClick={logout} className="mobile-auth-btn mobile-auth-btn--logout">
-                  Log Out
-                </button>
-              </>
-            ) : (
-              <Link href="/data-point/login" className="mobile-auth-btn mobile-auth-btn--login" onClick={() => setMenuOpen(false)}>
-                Portal Login
+          {loggedIn && (
+            <div className="mobile-auth-section">
+              {name && <div className="mobile-auth-name">Signed in as {name}</div>}
+              <Link href={portalHref} className="mobile-auth-btn mobile-auth-btn--portal" onClick={() => setMenuOpen(false)}>
+                {portalLabel}
               </Link>
-            )}
-          </div>
+              <button onClick={logout} className="mobile-auth-btn mobile-auth-btn--logout">
+                Log Out
+              </button>
+            </div>
+          )}
         </div>
       )}
     </>

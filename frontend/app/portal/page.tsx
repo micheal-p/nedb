@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 
-// ── Profile catalogue ──────────────────────────────────────────
 const GROUPS = [
   {
     id: "agencies",
@@ -12,18 +11,18 @@ const GROUPS = [
     description: "Dedicated intelligence dashboards for Nigerian energy regulators, operators and statistics agencies.",
     color: "#1B2A4A",
     profiles: [
-      { key: "presidency",  name: "Presidency / State House",           icon: "🏛️", tagline: "National energy security brief", access: ["Cross-sector national intelligence", "All 12 series + fiscal panels", "Energy Brief PDF reports", "Priority anomaly feed"] },
-      { key: "ecn",         name: "Energy Commission of Nigeria",        icon: "⚡", tagline: "Policy & all-sector intelligence", access: ["Full sector coverage", "Clean energy transition metrics", "Policy monitoring dashboard", "Energy mix analytics"] },
-      { key: "nerc",        name: "NERC",                               icon: "🔌", tagline: "Electricity market regulation", access: ["DisCo ATC&C & collection data", "Market shortfall tracking", "Tariff performance", "ATC&C state heatmap"] },
-      { key: "nuprc",       name: "NUPRC",                              icon: "🛢️", tagline: "Upstream petroleum regulation", access: ["OML block performance", "Royalty compliance tracking", "Gas flaring data", "Production heatmap by state"] },
-      { key: "nmdpra",      name: "NMDPRA",                             icon: "⛽", tagline: "Midstream & downstream regulation", access: ["PMS / AGO / LPG volumes", "Refinery throughput", "Depot compliance", "Price differential alerts"] },
-      { key: "nnpcl",       name: "NNPC Limited",                       icon: "🏭", tagline: "Operational & commercial intelligence", access: ["Equity crude lifted", "Gas monetisation", "Downstream revenue", "Refinery capacity data"] },
-      { key: "nemic",       name: "NEMIC",                              icon: "🏗️", tagline: "Energy management & infrastructure", access: ["Grid capacity monitoring", "Critical infrastructure flags", "Transmission utilisation", "Investment tracking"] },
-      { key: "nrs",         name: "NRS",                                icon: "📊", tagline: "Natural resources statistics", access: ["Data completeness dashboard", "Agency submission tracking", "Cross-series reconciliation", "All 12 energy series"] },
-      { key: "rea",         name: "REA",                                icon: "☀️", tagline: "Rural electrification & off-grid", access: ["Off-grid connection data", "Mini-grid deployment tracking", "State off-grid heatmap", "LPG penetration metrics"] },
-      { key: "tcn",         name: "TCN",                                icon: "🔋", tagline: "Grid transmission intelligence", access: ["Generation vs. sent-out", "Wheeling capacity data", "Frequency excursion tracking", "State ATC&C heatmap"] },
-      { key: "firs",        name: "FIRS",                               icon: "💰", tagline: "Energy tax & revenue", access: ["PPT collections", "Upstream royalties", "CITA from energy companies", "FAAC oil contribution"] },
-      { key: "nbs",         name: "NBS",                                icon: "📈", tagline: "National energy statistics", access: ["GDP energy weight", "Energy sector CPI", "Cross-sector validation", "National accounts reconciliation"] },
+      { key: "presidency",  name: "Presidency / State House",           abbr: "PSH", tagline: "National energy security brief",          access: ["Cross-sector national intelligence", "All 13 series + fiscal panels", "Energy Brief PDF reports", "Priority anomaly feed"] },
+      { key: "ecn",         name: "Energy Commission of Nigeria",        abbr: "ECN", tagline: "Policy & all-sector intelligence",         access: ["Full sector coverage", "Clean energy transition metrics", "Policy monitoring dashboard", "Energy mix analytics"] },
+      { key: "nerc",        name: "NERC",                               abbr: "NRC", tagline: "Electricity market regulation",            access: ["DisCo ATC&C & collection data", "Market shortfall tracking", "Tariff performance", "ATC&C state heatmap"] },
+      { key: "nuprc",       name: "NUPRC",                              abbr: "NUP", tagline: "Upstream petroleum regulation",           access: ["OML block performance", "Royalty compliance tracking", "Gas flaring data", "Production heatmap by state"] },
+      { key: "nmdpra",      name: "NMDPRA",                             abbr: "NMD", tagline: "Midstream & downstream regulation",       access: ["PMS / AGO / LPG volumes", "Refinery throughput", "Depot compliance", "Price differential alerts"] },
+      { key: "nnpcl",       name: "NNPC Limited",                       abbr: "NNP", tagline: "Operational & commercial intelligence",   access: ["Equity crude lifted", "Gas monetisation", "Downstream revenue", "Refinery capacity data"] },
+      { key: "nemic",       name: "NEMIC",                              abbr: "NEM", tagline: "Energy management & infrastructure",      access: ["Grid capacity monitoring", "Critical infrastructure flags", "Transmission utilisation", "Investment tracking"] },
+      { key: "nrs",         name: "NRS",                                abbr: "NRS", tagline: "Natural resources statistics",            access: ["Data completeness dashboard", "Agency submission tracking", "Cross-series reconciliation", "All 13 energy series"] },
+      { key: "rea",         name: "REA",                                abbr: "REA", tagline: "Rural electrification & off-grid",        access: ["Off-grid connection data", "Mini-grid deployment tracking", "State off-grid heatmap", "LPG penetration metrics"] },
+      { key: "tcn",         name: "TCN",                                abbr: "TCN", tagline: "Grid transmission intelligence",          access: ["Generation vs. sent-out", "Wheeling capacity data", "Frequency excursion tracking", "State ATC&C heatmap"] },
+      { key: "firs",        name: "FIRS",                               abbr: "FRS", tagline: "Energy tax & revenue",                   access: ["PPT collections", "Upstream royalties", "CITA from energy companies", "FAAC oil contribution"] },
+      { key: "nbs",         name: "NBS",                                abbr: "NBS", tagline: "National energy statistics",             access: ["GDP energy weight", "Energy sector CPI", "Cross-sector validation", "National accounts reconciliation"] },
     ],
   },
   {
@@ -32,10 +31,10 @@ const GROUPS = [
     description: "Premium intelligence dashboards for investors, funds and financial institutions evaluating Nigerian energy assets.",
     color: "#0C4A6E",
     profiles: [
-      { key: "investor_fdi",       name: "Foreign Direct Investment",     icon: "🌍", tagline: "IOCs & sovereign wealth funds", access: ["Production & reserves data", "Regulatory risk index", "OML licensing pipeline", "5-year CAGR trends"] },
-      { key: "investor_capital",   name: "Capital Markets",               icon: "📉", tagline: "Equity & fixed income analysts", access: ["FAAC oil revenue flows", "Energy GDP contribution", "Revenue bond intelligence", "Producer financial proxies"] },
-      { key: "investor_infra",     name: "Infrastructure / Power",        icon: "⚡", tagline: "IPPs, GenCo & DisCo investors", access: ["DisCo ATC&C trajectory", "Tariff progression data", "Market shortfall trend", "Capacity & wheeling data"] },
-      { key: "investor_renewable", name: "Renewable Energy",              icon: "🌿", tagline: "Solar, wind & mini-grid developers", access: ["Off-grid market gap (65M people)", "FiT tariff & obligation data", "REA pipeline intelligence", "Solar IRR benchmarks"] },
+      { key: "investor_fdi",       name: "Foreign Direct Investment",     abbr: "FDI", tagline: "IOCs & sovereign wealth funds",         access: ["Production & reserves data", "Regulatory risk index", "OML licensing pipeline", "5-year CAGR trends"] },
+      { key: "investor_capital",   name: "Capital Markets",               abbr: "CAP", tagline: "Equity & fixed income analysts",        access: ["FAAC oil revenue flows", "Energy GDP contribution", "Revenue bond intelligence", "Producer financial proxies"] },
+      { key: "investor_infra",     name: "Infrastructure / Power",        abbr: "INF", tagline: "IPPs, GenCo & DisCo investors",         access: ["DisCo ATC&C trajectory", "Tariff progression data", "Market shortfall trend", "Capacity & wheeling data"] },
+      { key: "investor_renewable", name: "Renewable Energy",              abbr: "REN", tagline: "Solar, wind & mini-grid developers",    access: ["Off-grid market gap (65M people)", "FiT tariff & obligation data", "REA pipeline intelligence", "Solar IRR benchmarks"] },
     ],
   },
   {
@@ -44,30 +43,28 @@ const GROUPS = [
     description: "Specialist dashboards for policy analysts, sector researchers and cross-sector intelligence officers.",
     color: "#0E7A3C",
     profiles: [
-      { key: "executive",   name: "Executive Overview",      icon: "🔭", tagline: "Cross-sector national intelligence", access: ["All 12 data series", "National energy mix", "Multi-sector anomaly feed", "Period comparison (2020–2024)"] },
-      { key: "petroleum",   name: "Petroleum & Gas Analyst", icon: "🛢️", tagline: "Crude, PMS/AGO/LPG analytics", access: ["Upstream production trends", "Product distribution volumes", "Multi-series comparison charts", "OML performance table"] },
-      { key: "electricity", name: "Power & Grid Analyst",    icon: "⚡", tagline: "Generation & DisCo performance", access: ["Generation vs. sent-out", "DisCo comparison table", "ATC&C state heatmap", "Market shortfall trends"] },
-      { key: "renewables",  name: "Clean Energy Analyst",    icon: "☀️", tagline: "Renewables, gas & biomass", access: ["Renewable capacity growth", "Fuelwood displacement data", "Off-grid penetration map", "Gas production trends"] },
-      { key: "fiscal",      name: "Fiscal & Revenue Analyst",icon: "💹", tagline: "FAAC, royalties & upstream revenue", access: ["FAAC oil contribution", "Royalty collection trends", "PPT analytics", "Producing company registry"] },
+      { key: "executive",   name: "Executive Overview",       abbr: "EXC", tagline: "Cross-sector national intelligence",    access: ["All 13 data series", "National energy mix", "Multi-sector anomaly feed", "Period comparison (2020–2024)"] },
+      { key: "petroleum",   name: "Petroleum & Gas Analyst",  abbr: "PET", tagline: "Crude, PMS/AGO/LPG analytics",         access: ["Upstream production trends", "Product distribution volumes", "Multi-series comparison charts", "OML performance table"] },
+      { key: "electricity", name: "Power & Grid Analyst",     abbr: "PWR", tagline: "Generation & DisCo performance",       access: ["Generation vs. sent-out", "DisCo comparison table", "ATC&C state heatmap", "Market shortfall trends"] },
+      { key: "renewables",  name: "Clean Energy Analyst",     abbr: "CLN", tagline: "Renewables, gas & biomass",            access: ["Renewable capacity growth", "Fuelwood displacement data", "Off-grid penetration map", "Gas production trends"] },
+      { key: "fiscal",      name: "Fiscal & Revenue Analyst", abbr: "FSC", tagline: "FAAC, royalties & upstream revenue",  access: ["FAAC oil contribution", "Royalty collection trends", "PPT analytics", "Producing company registry"] },
     ],
   },
 ];
 
-// ── What you get section ───────────────────────────────────────
 const FEATURES = [
-  { icon: "📊", title: "9 Chart Types", desc: "Line, Area, Bar, Column, Pie, Donut, Radar, Scatter and Histogram on every panel — switch instantly." },
-  { icon: "🗺️", title: "Nigeria State Map", desc: "Choropleth heatmap of all 36 states + FCT. Metric changes based on your dashboard profile." },
-  { icon: "⬇️", title: "CSV Download", desc: "Every chart and table exports directly to CSV for offline analysis and reporting." },
-  { icon: "📄", title: "PDF Energy Brief", desc: "Presidency and reporting profiles generate formal print-ready government briefs." },
-  { icon: "🤖", title: "Apex AI (Coming Soon)", desc: "AI intelligence assistant trained on NEDB data to explain trends and answer energy sector questions." },
-  { icon: "⏱️", title: "Period Navigation", desc: "Navigate 2020–2024 data series with year selectors; real data populates as uploads are committed." },
+  { abbr: "9×", title: "9 Chart Types",        desc: "Line, Area, Bar, Column, Pie, Donut, Radar, Scatter and Histogram on every panel — switch instantly." },
+  { abbr: "NG", title: "Nigeria State Map",     desc: "Choropleth heatmap of all 36 states + FCT. Metric changes based on your dashboard profile." },
+  { abbr: "DL", title: "CSV Download",          desc: "Every chart and table exports directly to CSV for offline analysis and reporting." },
+  { abbr: "PDF",title: "PDF Energy Brief",      desc: "Presidency and reporting profiles generate formal print-ready government briefs." },
+  { abbr: "AI", title: "Apex AI (Coming Soon)", desc: "AI intelligence assistant trained on NEDB data to explain trends and answer energy sector questions." },
+  { abbr: "YR", title: "Period Navigation",     desc: "Navigate 2020–2024 data series with year selectors; real data populates as uploads are committed." },
 ];
 
-// ── How it works ───────────────────────────────────────────────
 const STEPS = [
-  { n: "01", title: "Request Access", desc: "Select your organisation type below and submit your access request with your work email and justification." },
-  { n: "02", title: "Verification", desc: "The NEDB Administrator at ECN reviews your request and verifies your organisational affiliation." },
-  { n: "03", title: "Dashboard Access", desc: "Receive your login credentials and access your profile-specific intelligence dashboard immediately." },
+  { n: "01", title: "Request Access",    desc: "Select your organisation type below and submit your access request with your work email and justification." },
+  { n: "02", title: "Verification",      desc: "The NEDB Administrator at ECN reviews your request and verifies your organisational affiliation." },
+  { n: "03", title: "Dashboard Access",  desc: "Receive your login credentials and access your profile-specific intelligence dashboard immediately." },
 ];
 
 const PROFILE_LABELS: Record<string, string> = {};
@@ -80,11 +77,11 @@ interface RequestForm {
 const EMPTY_FORM: RequestForm = { full_name: "", email: "", organisation: "", position: "", profile_key: "", justification: "" };
 
 export default function PortalPage() {
-  const [form, setForm]           = useState<RequestForm>(EMPTY_FORM);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm]             = useState<RequestForm>(EMPTY_FORM);
+  const [modalOpen, setModalOpen]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError]         = useState("");
+  const [submitted, setSubmitted]   = useState(false);
+  const [error, setError]           = useState("");
 
   function openRequest(profileKey: string) {
     setForm({ ...EMPTY_FORM, profile_key: profileKey });
@@ -112,10 +109,9 @@ export default function PortalPage() {
 
       {/* ── HERO ── */}
       <div style={{ background: "linear-gradient(160deg, #0A1628 0%, #0F2A18 60%, #0A3D22 100%)", color: "#fff", position: "relative", overflow: "hidden" }}>
-        {/* Subtle grid overlay */}
         <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0)", backgroundSize: "32px 32px", pointerEvents: "none" }} />
 
-        {/* Nav */}
+        {/* Nav — no sign-in link */}
         <div style={{ maxWidth: 1140, margin: "0 auto", padding: "0 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, position: "relative", zIndex: 2 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <CoatOfArms size={28} />
@@ -124,10 +120,7 @@ export default function PortalPage() {
               <div style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em" }}>ENERGY COMMISSION OF NIGERIA</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <Link href="/" style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.5)", textDecoration: "none" }}>Public Data Bank</Link>
-            <Link href="/data-point/login" style={{ padding: "6px 16px", background: "#0E7A3C", color: "#fff", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, textDecoration: "none" }}>Sign In</Link>
-          </div>
+          <Link href="/" style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.5)", textDecoration: "none" }}>Public Data Bank</Link>
         </div>
 
         {/* Hero content */}
@@ -144,18 +137,13 @@ export default function PortalPage() {
           <p style={{ fontSize: "1.05rem", color: "rgba(255,255,255,0.55)", maxWidth: 560, margin: "0 auto 2.5rem", lineHeight: 1.7 }}>
             The authoritative intelligence platform for Nigeria&apos;s energy sector. Profile-specific dashboards for government agencies, regulators, investors and researchers.
           </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="#access" style={{ padding: "12px 28px", background: "#0E7A3C", color: "#fff", borderRadius: 8, fontSize: "0.9rem", fontWeight: 700, textDecoration: "none", display: "inline-block" }}>
-              Request Dashboard Access
-            </a>
-            <Link href="/data-point/login" style={{ padding: "12px 28px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", borderRadius: 8, fontSize: "0.9rem", fontWeight: 600, textDecoration: "none", display: "inline-block" }}>
-              Sign In
-            </Link>
-          </div>
+          <a href="#access" style={{ padding: "12px 32px", background: "#0E7A3C", color: "#fff", borderRadius: 8, fontSize: "0.9rem", fontWeight: 700, textDecoration: "none", display: "inline-block" }}>
+            Request Dashboard Access
+          </a>
 
           {/* Stats strip */}
           <div style={{ display: "flex", justifyContent: "center", gap: "2.5rem", marginTop: "4rem", flexWrap: "wrap" }}>
-            {[["12", "Energy Series"], ["21", "Dashboard Profiles"], ["36 + FCT", "States Mapped"], ["5", "Years of Data"]].map(([v, l]) => (
+            {[["13", "Energy Series"], ["21", "Dashboard Profiles"], ["36 + FCT", "States Mapped"], ["5", "Years of Data"]].map(([v, l]) => (
               <div key={l} style={{ textAlign: "center" }}>
                 <div style={{ fontSize: "1.6rem", fontWeight: 700, fontFamily: "var(--font-mono)", color: "#fff", lineHeight: 1 }}>{v}</div>
                 <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.35)", marginTop: 4, letterSpacing: "0.06em", textTransform: "uppercase" }}>{l}</div>
@@ -197,7 +185,9 @@ export default function PortalPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1.25rem" }}>
             {FEATURES.map((f) => (
               <div key={f.title} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.5rem" }}>
-                <div style={{ fontSize: "1.5rem", marginBottom: "0.75rem" }}>{f.icon}</div>
+                <div style={{ width: 36, height: 36, borderRadius: 6, background: "var(--green-tint)", border: "1px solid rgba(14,122,60,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "0.75rem", fontFamily: "var(--font-mono)", fontSize: "0.7rem", fontWeight: 800, color: "var(--green)", letterSpacing: "0.04em" }}>
+                  {f.abbr}
+                </div>
                 <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.4rem" }}>{f.title}</div>
                 <div style={{ fontSize: "0.8rem", color: "var(--ink-4)", lineHeight: 1.6 }}>{f.desc}</div>
               </div>
@@ -223,25 +213,28 @@ export default function PortalPage() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
                 {group.profiles.map((p) => (
-                  <div key={p.key} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem", display: "flex", flexDirection: "column", gap: "0.875rem", borderTop: `3px solid ${group.color}`, transition: "box-shadow 0.15s", cursor: "default" }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-2)"; }}
+                  <div key={p.key}
+                    style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem", display: "flex", flexDirection: "column", gap: "0.875rem", borderTop: `3px solid ${group.color}`, transition: "box-shadow 0.15s", cursor: "default" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(0,0,0,0.08)"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
-                      <div style={{ fontSize: "1.4rem", lineHeight: 1, flexShrink: 0 }}>{p.icon}</div>
+                      <div style={{ width: 36, height: 36, borderRadius: 6, background: group.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "var(--font-mono)", fontSize: "0.65rem", fontWeight: 800, color: "#fff", letterSpacing: "0.04em" }}>
+                        {p.abbr}
+                      </div>
                       <div>
                         <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.2 }}>{p.name}</div>
                         <div style={{ fontSize: "0.72rem", color: "var(--ink-4)", marginTop: 2 }}>{p.tagline}</div>
                       </div>
                     </div>
-                    <ul style={{ margin: 0, padding: "0 0 0 1rem", listStyle: "none" }}>
+                    <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
                       {p.access.map((a) => (
                         <li key={a} style={{ fontSize: "0.75rem", color: "var(--ink-4)", marginBottom: 4, display: "flex", gap: 6, alignItems: "baseline" }}>
-                          <span style={{ color: group.color, fontWeight: 700, flexShrink: 0 }}>✓</span>{a}
+                          <span style={{ color: group.color, fontWeight: 700, flexShrink: 0, fontSize: "0.7rem" }}>&#10003;</span>{a}
                         </li>
                       ))}
                     </ul>
                     <button onClick={() => openRequest(p.key)} style={{ marginTop: "auto", padding: "8px 0", background: group.color, color: "#fff", border: "none", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", textAlign: "center" }}>
-                      Request Access →
+                      Request Access
                     </button>
                   </div>
                 ))}
@@ -251,7 +244,7 @@ export default function PortalPage() {
         </div>
       </div>
 
-      {/* ── FOOTER ── */}
+      {/* ── FOOTER — no login link ── */}
       <div style={{ background: "#0A1628", color: "rgba(255,255,255,0.4)", padding: "2.5rem", textAlign: "center" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: "1rem" }}>
           <CoatOfArms size={24} />
@@ -260,10 +253,7 @@ export default function PortalPage() {
         <p style={{ fontSize: "0.72rem", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 1rem" }}>
           The National Energy Data Bank is an official initiative of the Energy Commission of Nigeria. All data is sourced from verified government agencies and published under the NEDB data governance framework.
         </p>
-        <div style={{ display: "flex", justifyContent: "center", gap: "1.5rem", fontSize: "0.72rem" }}>
-          <Link href="/" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>Public Data Bank</Link>
-          <Link href="/data-point/login" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>Staff Login</Link>
-        </div>
+        <Link href="/" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none", fontSize: "0.72rem" }}>Public Data Bank</Link>
       </div>
 
       {/* ── REQUEST MODAL ── */}
@@ -271,7 +261,6 @@ export default function PortalPage() {
         <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(10,22,40,0.75)", backdropFilter: "blur(4px)" }} onClick={() => !submitting && setModalOpen(false)} />
           <div style={{ position: "relative", background: "#fff", borderRadius: 16, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.3)" }}>
-            {/* Modal header */}
             <div style={{ background: "linear-gradient(135deg, #0A1628, #0F2A18)", padding: "1.5rem", borderRadius: "16px 16px 0 0" }}>
               <div style={{ fontSize: "0.62rem", color: "rgba(255,255,255,0.4)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.4rem" }}>NEDB — Access Request</div>
               <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "#fff" }}>
@@ -297,29 +286,23 @@ export default function PortalPage() {
                 {error && (
                   <div style={{ marginBottom: "1rem", padding: "10px 14px", background: "rgba(192,57,43,0.06)", border: "1px solid rgba(192,57,43,0.2)", borderRadius: 6, fontSize: "0.8rem", color: "var(--red)" }}>{error}</div>
                 )}
-
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
-                  <Field label="Full Name *" value={form.full_name} onChange={(v) => setForm((f) => ({ ...f, full_name: v }))} placeholder="Dr. Amina Bello" required />
-                  <Field label="Work Email *" type="email" value={form.email} onChange={(v) => setForm((f) => ({ ...f, email: v }))} placeholder="a.bello@ecn.gov.ng" required />
+                  <Field label="Full Name *"    value={form.full_name}    onChange={(v) => setForm((f) => ({ ...f, full_name: v }))}    placeholder="Dr. Amina Bello"                required />
+                  <Field label="Work Email *"   type="email" value={form.email} onChange={(v) => setForm((f) => ({ ...f, email: v }))} placeholder="a.bello@ecn.gov.ng"              required />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                   <Field label="Organisation *" value={form.organisation} onChange={(v) => setForm((f) => ({ ...f, organisation: v }))} placeholder="Energy Commission of Nigeria" required />
-                  <Field label="Position / Title" value={form.position} onChange={(v) => setForm((f) => ({ ...f, position: v }))} placeholder="Director, Policy Research" />
+                  <Field label="Position / Title" value={form.position}  onChange={(v) => setForm((f) => ({ ...f, position: v }))}    placeholder="Director, Policy Research" />
                 </div>
 
                 <div style={{ marginBottom: "1rem" }}>
                   <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--ink-4)", display: "block", marginBottom: 4 }}>Dashboard Profile *</label>
-                  <select
-                    value={form.profile_key}
-                    onChange={(e) => setForm((f) => ({ ...f, profile_key: e.target.value }))}
-                    required
+                  <select value={form.profile_key} onChange={(e) => setForm((f) => ({ ...f, profile_key: e.target.value }))} required
                     style={{ width: "100%", padding: "8px 12px", fontSize: "0.82rem", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)", color: "var(--ink)", cursor: "pointer" }}>
                     <option value="">Select your profile…</option>
                     {GROUPS.map((g) => (
                       <optgroup key={g.id} label={g.label}>
-                        {g.profiles.map((p) => (
-                          <option key={p.key} value={p.key}>{p.name} — {p.tagline}</option>
-                        ))}
+                        {g.profiles.map((p) => <option key={p.key} value={p.key}>{p.name} — {p.tagline}</option>)}
                       </optgroup>
                     ))}
                   </select>
@@ -327,14 +310,9 @@ export default function PortalPage() {
 
                 <div style={{ marginBottom: "1.5rem" }}>
                   <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--ink-4)", display: "block", marginBottom: 4 }}>Justification / Purpose *</label>
-                  <textarea
-                    value={form.justification}
-                    onChange={(e) => setForm((f) => ({ ...f, justification: e.target.value }))}
-                    required
-                    rows={3}
+                  <textarea value={form.justification} onChange={(e) => setForm((f) => ({ ...f, justification: e.target.value }))} required rows={3}
                     placeholder="Briefly describe how you will use the NEDB dashboard in your official capacity…"
-                    style={{ width: "100%", padding: "8px 12px", fontSize: "0.82rem", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)", color: "var(--ink)", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }}
-                  />
+                    style={{ width: "100%", padding: "8px 12px", fontSize: "0.82rem", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)", color: "var(--ink)", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }} />
                 </div>
 
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
