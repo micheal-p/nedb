@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-const FROM = "NEDB Notifications <noreply@nedb.energy.gov.ng>";
+const FROM = "NEDB Notifications <onboarding@resend.dev>";
 
 function client(): Resend | null {
   if (!process.env.RESEND_API_KEY) return null;
