@@ -113,6 +113,13 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, Props>(function NetworkGraph
         linkDirectionalArrowLength={3.5}
         linkDirectionalArrowRelPos={1}
         onNodeClick={(n: GraphNode) => onNodeClick?.(n)}
+        // Pin nodes where the user drops them — otherwise the force simulation
+        // reheats and pulls the node straight back ("it doesn't let me own my drag")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onNodeDragEnd={(node: any) => {
+          node.fx = node.x;
+          node.fy = node.y;
+        }}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
           const style = NODE_STYLE[node.type as keyof typeof NODE_STYLE] ?? NODE_STYLE.state;

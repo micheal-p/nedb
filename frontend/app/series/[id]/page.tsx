@@ -73,7 +73,11 @@ async function getData(id: string) {
       unit: latest.unit,
       yoy_pct: null, mom_pct: null, cagr: null, rolling_3: null, rolling_12: null,
     };
-    const yoyIdx = desc.length >= 13 ? 12 : 1;
+    // YoY lag depends on the data's actual frequency, not row count:
+    // monthly "YYYY-MM" → 12 periods back; quarterly "YYYY-Qn" → 4; annual → 1
+    const isMonthly   = /^\d{4}-\d{2}$/.test(latest.period);
+    const isQuarterly = /^\d{4}-Q\d$/.test(latest.period);
+    const yoyIdx = isMonthly && desc.length >= 13 ? 12 : isQuarterly && desc.length >= 5 ? 4 : 1;
     if (desc.length > yoyIdx && desc[yoyIdx].value !== 0)
       s.yoy_pct = ((latest.value - desc[yoyIdx].value) / Math.abs(desc[yoyIdx].value)) * 100;
     if (desc.length >= 2 && desc[1].value !== 0)

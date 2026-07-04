@@ -184,7 +184,33 @@ export default function KnowledgeGraphPage() {
                     <div className="gcard-title">Downstream Impact</div>
                     <div style={{ padding: "0.75rem 1rem" }}>
                       <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)", marginBottom: 2 }}>{selected.label}</div>
-                      <div style={{ fontSize: "0.7rem", color: "var(--ink-5)", marginBottom: "0.75rem", textTransform: "capitalize" }}>{selected.type} · {trace.reached.length} entities affected</div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--ink-5)", marginBottom: "0.6rem", textTransform: "capitalize" }}>{selected.type} · {trace.reached.length} entities affected</div>
+                      {/* Node dossier — description + structured facts from meta */}
+                      {(() => {
+                        const m = (selected.meta ?? {}) as Record<string, unknown>;
+                        const facts: [string, string][] = [];
+                        if (m.capacity_mw) facts.push(["Capacity", `${Number(m.capacity_mw).toLocaleString()} MW`]);
+                        if (m.fuel) facts.push(["Fuel", String(m.fuel)]);
+                        if (m.state) facts.push(["State", String(m.state)]);
+                        if (m.operator) facts.push(["Operator", String(m.operator)]);
+                        if (m.year) facts.push(["Since", String(m.year)]);
+                        return (
+                          <>
+                            {typeof m.description === "string" && m.description && (
+                              <p style={{ fontSize: "0.73rem", color: "var(--ink-3)", lineHeight: 1.55, margin: "0 0 0.6rem", padding: "0.5rem 0.6rem", background: "var(--surface)", borderRadius: 6, borderLeft: "2px solid var(--green)" }}>
+                                {m.description}
+                              </p>
+                            )}
+                            {facts.map(([k, v]) => (
+                              <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "0.25rem 0", fontSize: "0.72rem" }}>
+                                <span style={{ color: "var(--ink-5)" }}>{k}</span>
+                                <span style={{ fontWeight: 600, color: "var(--ink)", textAlign: "right" }}>{v}</span>
+                              </div>
+                            ))}
+                            {(facts.length > 0 || m.description) && <div style={{ borderTop: "1px solid var(--border)", margin: "0.5rem 0" }} />}
+                          </>
+                        );
+                      })()}
                       {Object.entries(traceBreakdown).map(([t, n]) => (
                         <div key={t} style={{ display: "flex", justifyContent: "space-between", padding: "0.35rem 0", borderBottom: "1px solid var(--border)", fontSize: "0.76rem" }}>
                           <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--ink-4)" }}>
