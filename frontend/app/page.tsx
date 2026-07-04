@@ -11,6 +11,28 @@ interface SeriesRow {
   created_at: string; record_count: number;
 }
 
+interface CustomSeriesRow {
+  slug: string; name: string; description: string | null;
+  geo_resolution: string; record_count: number; column_count: number;
+}
+
+async function getCustomSeries(): Promise<CustomSeriesRow[]> {
+  try {
+    const { data } = await db()
+      .from("custom_series")
+      .select("slug, name, description, geo_resolution, custom_records(count), custom_columns(count)")
+      .eq("is_public", true)
+      .order("created_at", { ascending: false });
+    return (data ?? []).map((s) => ({
+      slug: s.slug as string, name: s.name as string,
+      description: s.description as string | null,
+      geo_resolution: s.geo_resolution as string,
+      record_count: (s.custom_records as { count: number }[] | null)?.[0]?.count ?? 0,
+      column_count: (s.custom_columns as { count: number }[] | null)?.[0]?.count ?? 0,
+    }));
+  } catch { return []; }
+}
+
 async function getSeries(): Promise<SeriesRow[]> {
   try {
     const { data } = await db()
@@ -94,7 +116,7 @@ const ACTS = [
 ];
 
 export default async function Home() {
-  const series = await getSeries();
+  const [series, customSeries] = await Promise.all([getSeries(), getCustomSeries()]);
   const bySector = series.reduce((acc, s) => {
     if (!acc[s.sector]) acc[s.sector] = [];
     acc[s.sector].push(s);
@@ -162,6 +184,37 @@ export default async function Home() {
           </div>
 
           <SeriesCatalogue series={series} sectorMeta={SECTOR_META} />
+
+          {/* ── CUSTOM DATA TABLES ── */}
+          {customSeries.length > 0 && (
+            <section style={{ marginTop: "3.5rem" }} id="custom-tables">
+              <div className="sec-hd">
+                <h2>Custom Data Tables</h2>
+                <span className="sec-hd-meta">Staff-built series with structured columns</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem", marginTop: "1rem" }}>
+                {customSeries.map((cs) => (
+                  <Link key={cs.slug} href={`/custom-series/${cs.slug}`} style={{ textDecoration: "none" }}>
+                    <div className="act-card" style={{ height: "100%", cursor: "pointer" }}>
+                      <div className="act-year">
+                        {cs.record_count.toLocaleString()} records &nbsp;·&nbsp; {cs.column_count} columns &nbsp;·&nbsp; {cs.geo_resolution}
+                      </div>
+                      <div className="act-name">{cs.name}</div>
+                      {cs.description && (
+                        <div className="act-desc" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                          {cs.description}
+                        </div>
+                      )}
+                      <span className="act-link">
+                        View series
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* ── LEGAL FRAMEWORK ── */}
           <section style={{ marginTop: "4rem", marginBottom: "2rem" }}>

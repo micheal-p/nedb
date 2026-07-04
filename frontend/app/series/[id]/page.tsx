@@ -4,10 +4,12 @@ import Footer from "@/components/layout/Footer";
 import StatCards from "@/components/databank/StatCards";
 import SeriesTable from "@/components/databank/SeriesTable";
 import SeriesChartPanel from "@/components/databank/SeriesChartPanel";
+import StatisticalAnalysisPanel from "@/components/databank/StatisticalAnalysisPanel";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 import PrintButton from "@/components/ui/PrintButton";
 import EmbedButton from "@/components/ui/EmbedButton";
 import { db } from "@/lib/supabase-server";
+import { normLga } from "@/lib/geo";
 import type { AutoStats } from "@/lib/api";
 import { api } from "@/lib/api";
 
@@ -17,10 +19,10 @@ interface Props {
 
 async function getData(id: string) {
   // Query Supabase directly — avoids relative-URL self-fetch issues in server components
-  const [{ data: seriesRaw }, { data: records, count }] = await Promise.all([
+  const [{ data: seriesRaw }, { data: records, count }, { data: lgaRecords }] = await Promise.all([
     db()
       .from("series_types")
-      .select("id, name, sector, subsector, unit_default, frequency, viz_types, created_at, description, methodology, source_agency, energy_records(count)")
+      .select("id, name, sector, subsector, unit_default, frequency, viz_types, created_at, description, methodology, source_agency, what_is, how_to_read, why_it_matters, signal_rules, geo_resolution, energy_records(count)")
       .eq("id", id)
       .single(),
     db()
@@ -29,7 +31,25 @@ async function getData(id: string) {
       .eq("series_type_id", id)
       .order("period_date", { ascending: true })
       .limit(500),
+    // LGA-tagged rows (partial index on lga_id keeps this cheap; empty for most series)
+    db()
+      .from("energy_records")
+      .select("value, period_date, lgas(name)")
+      .eq("series_type_id", id)
+      .not("lga_id", "is", null)
+      .order("period_date", { ascending: false })
+      .limit(2000),
   ]);
+
+  // Latest value per LGA, keyed by normalized name for polygon matching
+  const lgaData: Record<string, number> = {};
+  for (const r of lgaRecords ?? []) {
+    const lgaJoin = r.lgas as unknown as { name: string } | { name: string }[] | null;
+    const lgaName = Array.isArray(lgaJoin) ? lgaJoin[0]?.name : lgaJoin?.name;
+    if (!lgaName || r.value === null) continue;
+    const key = normLga(lgaName);
+    if (!(key in lgaData)) lgaData[key] = Number(r.value); // rows are date-desc → first hit is latest
+  }
 
   const series = seriesRaw
     ? {
@@ -69,10 +89,40 @@ async function getData(id: string) {
     stats = s;
   }
 
+  // Compute current signal from signal_rules JSONB
+  let currentSignal: { text: string; level: "above" | "neutral" | "warn" | "critical" } | null = null;
+  if (rows.length >= 2 && seriesRaw?.signal_rules) {
+    const rules = seriesRaw.signal_rules as {
+      compare_to: string; threshold_warn: number; threshold_critical: number;
+      direction: string; templates: Record<string, string>; unit_label?: string;
+    };
+    const desc = [...rows].reverse();
+    const latest = desc[0].value as number;
+    const refCount = rules.compare_to === "prev_period" ? 1 : Math.min(60, desc.length - 1);
+    const refVals  = desc.slice(1, refCount + 1).map((r) => r.value as number).filter((v) => v !== null);
+    if (refVals.length) {
+      const ref = refVals.reduce((a, b) => a + b, 0) / refVals.length;
+      if (ref !== 0) {
+        const pct = ((latest - ref) / Math.abs(ref)) * 100;
+        const isHigherBetter = rules.direction !== "lower_is_better";
+        const effectivePct   = isHigherBetter ? pct : -pct;
+        let level: "above" | "neutral" | "warn" | "critical" = "neutral";
+        if      (effectivePct <= rules.threshold_critical) level = "critical";
+        else if (effectivePct <= rules.threshold_warn)     level = "warn";
+        else if (effectivePct > 5)                         level = "above";
+        const template = rules.templates?.[level] ?? "";
+        const text = template.replace(/{pct}/g, Math.abs(pct).toFixed(1));
+        currentSignal = { text, level };
+      }
+    }
+  }
+
   return {
     series,
     data: { rows, total: count ?? rows.length, page: 1, limit: 500 },
     stats,
+    currentSignal,
+    lgaData,
   };
 }
 
@@ -84,7 +134,7 @@ const SECTOR_LABELS: Record<string, string> = {
 
 export default async function SeriesDetail({ params }: Props) {
   const { id } = await params;
-  const { series, data, stats } = await getData(id);
+  const { series, data, stats, currentSignal, lgaData } = await getData(id);
 
   if (!series) {
     return (
@@ -154,18 +204,23 @@ export default async function SeriesDetail({ params }: Props) {
               </p>
             </div>
             <div className="no-print" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {/* Documents & sharing */}
+              <Link href={`/series/${series.id}/report`} className="btn btn-secondary btn-sm">Full Report</Link>
               <PrintButton />
               <EmbedButton seriesId={series.id} />
               <Link href={`/compare?a=${series.id}`} className="btn btn-secondary btn-sm">Compare</Link>
+              {/* Data files */}
+              <span aria-hidden style={{ width: 1, height: 20, background: "var(--border)", margin: "0 2px" }} />
               <a href={`/api/series/${series.id}/export?format=csv`} className="btn btn-secondary btn-sm" download>
-                Export CSV
+                CSV
               </a>
               <a href={`/api/series/${series.id}/export?format=xlsx`} className="btn btn-secondary btn-sm" download>
-                Export Excel
+                Excel
               </a>
               <a href={templateUrl} className="btn btn-secondary btn-sm">
                 Template
               </a>
+              {/* Primary action — always last */}
               <Link href="/upload" className="btn btn-primary btn-sm">
                 Upload Dataset
               </Link>
@@ -194,7 +249,61 @@ export default async function SeriesDetail({ params }: Props) {
               data={data.rows}
               unit={series.unit_default}
               seriesId={series.id}
+              lgaData={lgaData}
             />
+          </div>
+
+          {/* ── DATA INTELLIGENCE PANEL ── */}
+          {(series.what_is || series.how_to_read || series.why_it_matters || currentSignal) && (
+            <div style={{ marginBottom: "1.75rem" }}>
+              <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-4)", marginBottom: "0.875rem" }}>Data Intelligence</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
+
+                {series.what_is && (
+                  <div style={{ padding: "1.1rem 1.25rem", background: "#fff", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", borderRadius: "var(--r-md)" }}>
+                    <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.5rem" }}>What Is This?</div>
+                    <p style={{ fontSize: "0.78rem", color: "var(--ink-3)", lineHeight: 1.65, margin: 0 }}>{series.what_is}</p>
+                  </div>
+                )}
+
+                {series.how_to_read && (
+                  <div style={{ padding: "1.1rem 1.25rem", background: "#fff", border: "1px solid var(--border)", borderTop: "3px solid #1D4ED8", borderRadius: "var(--r-md)" }}>
+                    <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#1D4ED8", marginBottom: "0.5rem" }}>How to Read</div>
+                    <p style={{ fontSize: "0.78rem", color: "var(--ink-3)", lineHeight: 1.65, margin: 0 }}>{series.how_to_read}</p>
+                  </div>
+                )}
+
+                {series.why_it_matters && (
+                  <div style={{ padding: "1.1rem 1.25rem", background: "#fff", border: "1px solid var(--border)", borderTop: "3px solid #B45309", borderRadius: "var(--r-md)" }}>
+                    <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#B45309", marginBottom: "0.5rem" }}>Why It Matters</div>
+                    <p style={{ fontSize: "0.78rem", color: "var(--ink-3)", lineHeight: 1.65, margin: 0 }}>{series.why_it_matters}</p>
+                  </div>
+                )}
+
+                {currentSignal && (
+                  <div style={{
+                    padding: "1.1rem 1.25rem", background: "#fff",
+                    border: `1px solid ${currentSignal.level === "critical" ? "#FEE2E2" : currentSignal.level === "warn" ? "#FEF3C7" : currentSignal.level === "above" ? "#DCFCE7" : "var(--border)"}`,
+                    borderTop: `3px solid ${currentSignal.level === "critical" ? "#DC2626" : currentSignal.level === "warn" ? "#D97706" : currentSignal.level === "above" ? "var(--green)" : "var(--ink-5)"}`,
+                    borderRadius: "var(--r-md)",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: "0.5rem" }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: currentSignal.level === "critical" ? "#DC2626" : currentSignal.level === "warn" ? "#D97706" : currentSignal.level === "above" ? "var(--green)" : "var(--ink-5)", flexShrink: 0 }} />
+                      <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: currentSignal.level === "critical" ? "#DC2626" : currentSignal.level === "warn" ? "#D97706" : currentSignal.level === "above" ? "var(--green)" : "var(--ink-4)" }}>
+                        Current Signal
+                      </div>
+                    </div>
+                    <p style={{ fontSize: "0.78rem", color: "var(--ink)", lineHeight: 1.65, margin: 0, fontWeight: 500 }}>{currentSignal.text}</p>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          )}
+
+          {/* ── STATISTICAL ANALYSIS (6 separate overlay charts) ── */}
+          <div className="no-print">
+            <StatisticalAnalysisPanel records={data.rows} unit={series.unit_default} seriesName={series.name} />
           </div>
 
           {/* ── DATA TABLE ── */}

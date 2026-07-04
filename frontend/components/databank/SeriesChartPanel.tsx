@@ -11,6 +11,7 @@ const StackedArea    = dynamic(() => import("@/components/charts/StackedArea"), 
 const HorizontalBar  = dynamic(() => import("@/components/charts/HorizontalBar"),  { ssr: false });
 const CalendarHeatmap = dynamic(() => import("@/components/charts/Heatmap"),       { ssr: false });
 const NigeriaMap     = dynamic(() => import("@/components/datapoint/NigeriaMap"),  { ssr: false });
+const LgaMap         = dynamic(() => import("@/components/datapoint/LgaMap"),      { ssr: false });
 
 const VIZ_LABELS: Record<string, string> = {
   "line":             "Line",
@@ -18,6 +19,7 @@ const VIZ_LABELS: Record<string, string> = {
   "horizontal-bar":   "Rankings",
   "heatmap":          "Nigeria Map",
   "choropleth":       "Nigeria Map",
+  "lga-map":          "LGA Map",
   "small-multiples":  "Small Multiples",
   "sankey":           "Energy Flow",
   "calendar-heatmap": "Calendar",
@@ -65,10 +67,15 @@ interface Props {
   data: EnergyRecord[];
   unit: string;
   seriesId?: string;
+  lgaData?: Record<string, number>;  // normalized-lga-name → latest value (adds an LGA Map tab)
 }
 
-export default function SeriesChartPanel({ title, subtitle, source, vizTypes, data, unit, seriesId }: Props) {
-  const [active, setActive] = useState(vizTypes[0] ?? "line");
+export default function SeriesChartPanel({ title, subtitle, source, vizTypes, data, unit, seriesId, lgaData }: Props) {
+  // LGA Map tab appears only when the series actually carries LGA-tagged records
+  const allVizTypes = lgaData && Object.keys(lgaData).length
+    ? [...vizTypes.filter((v) => v !== "lga-map"), "lga-map"]
+    : vizTypes;
+  const [active, setActive] = useState(allVizTypes[0] ?? "line");
   const [showProjection, setShowProjection] = useState(false);
 
   const stateData = useMemo<Record<string, number>>(() => {
@@ -112,6 +119,16 @@ export default function SeriesChartPanel({ title, subtitle, source, vizTypes, da
       case "stacked-area":    return <StackedArea data={data} unit={unit} />;
       case "horizontal-bar":  return <HorizontalBar data={data} unit={unit} />;
       case "calendar-heatmap": return <CalendarHeatmap data={data} unit={unit} />;
+      case "lga-map":
+        return (
+          <LgaMap
+            lgaData={lgaData ?? {}}
+            title={title}
+            unit={unit}
+            source={source}
+            bare
+          />
+        );
       case "heatmap":
       case "choropleth":
         return (
@@ -163,7 +180,7 @@ export default function SeriesChartPanel({ title, subtitle, source, vizTypes, da
             </a>
           )}
           <div className="viz-tabs">
-            {vizTypes.map((vt) => (
+            {allVizTypes.map((vt) => (
               <button
                 key={vt}
                 className={`viz-tab${active === vt ? " active" : ""}`}
@@ -176,7 +193,7 @@ export default function SeriesChartPanel({ title, subtitle, source, vizTypes, da
         </div>
       </div>
       <div className="chart-panel-body" style={{ minHeight: 320 }}>
-        <Chart />
+        {Chart()}
       </div>
       {showProjection && projectionData && (
         <div style={{ padding: "0.5rem 1rem", background: "var(--green-tint)", borderTop: "1px solid var(--border)", fontSize: "0.72rem", color: "var(--green)", fontWeight: 600 }}>

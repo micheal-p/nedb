@@ -7,7 +7,7 @@ import CoatOfArms from "./CoatOfArms";
 import { isLoggedIn, getFullName, getRole, clearTokens } from "@/lib/auth";
 
 type NavbarProps = {
-  active?: "databank" | "upload" | "datapoint" | "about";
+  active?: "databank" | "upload" | "datapoint" | "about" | "graph";
 };
 
 export default function Navbar({ active }: NavbarProps) {
@@ -69,6 +69,7 @@ export default function Navbar({ active }: NavbarProps) {
         <div className="nav-links-main nav-desktop">
           <Link href="/" className={`nav-link-main${active === "databank" ? " active" : ""}`}>Data Bank</Link>
           <Link href="/data-point" className={`nav-link-main${active === "datapoint" ? " active" : ""}`}>Data Point</Link>
+          <Link href="/knowledge-graph" className={`nav-link-main${active === "graph" ? " active" : ""}`}>Knowledge Graph</Link>
           <Link href="/portal" className="nav-link-main">Intelligence Portal</Link>
           <Link href="/about" className={`nav-link-main${active === "about" ? " active" : ""}`}>About NEDB</Link>
           <Link href="/api-docs" className="nav-link-main">API</Link>
@@ -99,6 +100,7 @@ export default function Navbar({ active }: NavbarProps) {
         <div className="mobile-menu" ref={drawerRef}>
           <Link href="/" className={`mobile-link${active === "databank" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Data Bank</Link>
           <Link href="/data-point" className={`mobile-link${active === "datapoint" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Data Point</Link>
+          <Link href="/knowledge-graph" className={`mobile-link${active === "graph" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Knowledge Graph</Link>
           <Link href="/portal" className="mobile-link" onClick={() => setMenuOpen(false)}>Intelligence Portal</Link>
           <Link href="/about" className={`mobile-link${active === "about" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>About NEDB</Link>
           <Link href="/api-docs" className="mobile-link" onClick={() => setMenuOpen(false)}>API Docs</Link>
