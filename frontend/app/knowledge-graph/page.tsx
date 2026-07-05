@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import CoatOfArms from "@/components/layout/CoatOfArms";
+import dynamic from "next/dynamic";
 import NetworkGraph, { type NetworkGraphHandle } from "@/components/charts/NetworkGraph";
-import AskNedb from "@/components/datapoint/AskNedb";
+
+const ApexAI = dynamic(() => import("@/components/datapoint/ApexAI"), { ssr: false });
 import {
   NODE_STYLE, EDGE_LABEL, traceDownstream, degreeCentrality,
   type GraphData, type GraphNode, type NodeType, type Centrality,
@@ -274,9 +276,6 @@ export default function KnowledgeGraphPage() {
                   </div>
                 )}
 
-                {/* GraphRAG assistant */}
-                <AskNedb />
-
                 {/* Value framing */}
                 <div className="gcard" style={{ borderLeft: "3px solid var(--green)" }}>
                   <div style={{ padding: "0.875rem 1rem", fontSize: "0.74rem", color: "var(--ink-4)", lineHeight: 1.6 }}>
@@ -297,6 +296,9 @@ export default function KnowledgeGraphPage() {
       </div>
 
       <div className="no-print"><Footer /></div>
+
+      {/* Floating GraphRAG assistant — same engine as Data Point's Apex AI */}
+      <div className="no-print"><ApexAI currentView="graph" profileLabel="Knowledge Graph" /></div>
 
       {/* Print-only brief header */}
       <div className="print-only" style={{ display: "none" }}>

@@ -31,7 +31,9 @@ export async function POST(req: NextRequest) {
         query_embedding: qEmbedding,
         match_count: 6,
       });
-      chunks = data ?? [];
+      // Drop weakly-related chunks — graph-only questions (e.g. DisCo coverage)
+      // shouldn't carry misleading document citations.
+      chunks = (data ?? []).filter((c: { similarity: number }) => c.similarity >= 0.55);
     }
 
     // 2. Pull knowledge-graph facts (compact — the graph is small)

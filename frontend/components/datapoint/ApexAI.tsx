@@ -2,19 +2,29 @@
 
 import { useState, useRef, useEffect } from "react";
 
-interface Message { role: "user" | "assistant"; text: string; time: string }
+interface Message { role: "user" | "assistant"; text: string; time: string; sources?: string }
 
 const SUGGESTIONS: Record<string, string[]> = {
-  overview:   ["Summarise Nigeria's energy performance this year", "What is the YoY change in crude oil production?", "Which sector has improved the most?"],
-  downstream: ["Which DisCo has the worst ATC&C loss?", "What is the national average collection efficiency?", "Explain what ATC&C loss means"],
-  upstream:   ["Which OML block produces the most crude?", "How has gas flaring trended over 5 years?", "What is royalty compliance rate?"],
-  power:      ["Compare electricity generation vs. sent out", "Which DisCo improved most in the last year?", "What is the grid installed capacity?"],
-  renewable:  ["How many off-grid connections does REA have?", "What is LPG household penetration?", "Which state has the most mini-grids?"],
-  revenue:    ["What is the oil revenue FAAC contribution?", "Which OML block contributes most royalties?", "Explain PPT and how it is calculated"],
-  default:    ["Explain this dashboard to me", "What data is available in NEDB?", "How is this data collected?"],
+  overview:   ["What does the Petroleum Industry Act say about royalties?", "What is the mandate of the Energy Commission of Nigeria?", "Which states does Kano DisCo serve?"],
+  downstream: ["What does the PIA say about midstream and downstream regulation?", "What is NMDPRA responsible for?", "Explain what ATC&C loss means"],
+  upstream:   ["What is the role of NUPRC under the PIA?", "What does the PIA say about gas flaring penalties?", "How are host community funds structured?"],
+  power:      ["What happens to power supply if TCN fails?", "Which plants feed the national grid?", "Which states does Jos DisCo serve?"],
+  renewable:  ["What does national policy say about renewable energy?", "Which hydro plants are on the grid?", "What is the National LPG Expansion Programme?"],
+  revenue:    ["How are royalties set under the Petroleum Industry Act?", "What is the Frontier Exploration Fund?", "Explain PPT and hydrocarbon tax under the PIA"],
+  graph:      ["What happens to Kano's power if Kano DisCo fails?", "What does the PIA say about royalties?", "Which plants supply the grid through TCN?"],
+  default:    ["What is the mandate of the ECN?", "What documents can you answer from?", "How is this data collected?"],
 };
 
 function now() { return new Date().toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" }); }
+
+// Minimal **bold** renderer — answers use markdown emphasis
+function renderText(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**")
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : <span key={i}>{part}</span>
+  );
+}
 
 export default function ApexAI({ currentView, profileLabel }: { currentView: string; profileLabel: string }) {
   const [open, setOpen]       = useState(false);
@@ -22,7 +32,7 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      text: `Hello! I'm Apex AI, your NEDB intelligence assistant. I can help you understand the energy data on your dashboard, explain trends, compare metrics, and answer questions about Nigeria's energy sector.\n\nI'm currently viewing your **${profileLabel}** dashboard. What would you like to know?`,
+      text: `Hello! I'm Apex AI, the NEDB intelligence assistant. My answers are grounded in Nigeria's energy laws (Petroleum Industry Act 2021, National Energy Policy) and the live Energy Knowledge Graph — with sources cited.\n\nYou're on the **${profileLabel}** view. What would you like to know?`,
       time: now(),
     },
   ]);
@@ -33,21 +43,43 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, thinking]);
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 100); }, [open]);
 
-  function send(text?: string) {
+  async function send(text?: string) {
     const q = (text ?? input).trim();
-    if (!q) return;
+    if (!q || thinking) return;
     setInput("");
     setMessages((m) => [...m, { role: "user", text: q, time: now() }]);
     setThinking(true);
-    // Placeholder — replace with Claude API call when ready
-    setTimeout(() => {
+    try {
+      // GraphRAG backend: grounded in the policy documents + Energy Knowledge Graph
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q }),
+      });
+      const j = await res.json();
+      let reply: Message;
+      if (res.status === 503) {
+        reply = { role: "assistant", text: "The intelligence engine isn't configured on this deployment yet (missing GEMINI_API_KEY).", time: now() };
+      } else if (res.status === 429) {
+        reply = { role: "assistant", text: "You're asking faster than my rate limit allows — give it a few seconds and try again.", time: now() };
+      } else if (!res.ok) {
+        reply = { role: "assistant", text: `Something went wrong: ${j.error ?? res.status}. Please try again.`, time: now() };
+      } else {
+        const srcs = (j.sources ?? []) as { n: number; doc: string }[];
+        const uniqueDocs = [...new Set(srcs.map((s) => s.doc))];
+        reply = {
+          role: "assistant",
+          text: j.answer,
+          time: now(),
+          sources: uniqueDocs.length ? `Sources: ${uniqueDocs.join(" · ")}` : undefined,
+        };
+      }
+      setMessages((m) => [...m, reply]);
+    } catch {
+      setMessages((m) => [...m, { role: "assistant", text: "Network error — please try again.", time: now() }]);
+    } finally {
       setThinking(false);
-      setMessages((m) => [...m, {
-        role: "assistant",
-        text: `I'm processing your question about "${q}". The Apex AI intelligence engine is being configured — once connected to the NEDB data API, I'll provide real-time analysis, trend explanations, and data-driven insights specific to your ${profileLabel} dashboard.\n\n*Apex AI · Pending API configuration*`,
-        time: now(),
-      }]);
-    }, 1200);
+    }
   }
 
   const suggestions = SUGGESTIONS[currentView] ?? SUGGESTIONS.default;
@@ -94,7 +126,7 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
       {open && (
         <div style={{
           position: "fixed", bottom: 84, right: 24, zIndex: 900,
-          width: 360, height: 520, background: "#fff",
+          width: "min(380px, calc(100vw - 32px))", height: "min(540px, calc(100vh - 120px))", background: "#fff",
           border: "1px solid var(--border)", borderRadius: 16,
           boxShadow: "0 8px 40px rgba(0,0,0,0.16)",
           display: "flex", flexDirection: "column", overflow: "hidden",
@@ -139,7 +171,12 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
                     boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
                     whiteSpace: "pre-wrap",
                   }}>
-                    {msg.text}
+                    {renderText(msg.text)}
+                    {msg.sources && (
+                      <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid var(--border)", fontSize: "0.64rem", color: "var(--green)", fontWeight: 600 }}>
+                        {msg.sources}
+                      </div>
+                    )}
                   </div>
                   <div style={{ fontSize: "0.62rem", color: "var(--ink-5)", marginTop: 3, textAlign: msg.role === "user" ? "right" : "left" }}>{msg.time}</div>
                 </div>
