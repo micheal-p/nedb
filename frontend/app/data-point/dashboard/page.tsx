@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { clearTokens, isLoggedIn, getFullName, getRole, getDashboardProfile } from "@/lib/auth";
@@ -411,9 +411,11 @@ function downloadTableCSV(filename: string, headers: string[], rows: (string | n
 
 // ── Period navigator ───────────────────────────────────────────
 function PeriodNav({ year, setYear, availYears, loading }: { year: number; setYear: (y: number) => void; availYears: number[]; loading?: boolean }) {
-  const years = availYears.length ? availYears : [year];
-  const minY  = Math.min(...years);
-  const maxY  = Math.max(...years);
+  // Show at most the 10 most recent years as chips; ‹ still steps further back
+  const allYears = availYears.length ? availYears : [year];
+  const years = allYears.slice(-10);
+  const minY  = Math.min(...allYears);
+  const maxY  = Math.max(...allYears);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: "1.25rem", flexWrap: "wrap" }}>
       <span style={{ fontSize: "0.72rem", color: "var(--ink-4)", fontWeight: 600, marginRight: 4 }}>Period</span>
@@ -466,6 +468,7 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, [router]);
 
+  const didAutoYear = useRef(false);
   useEffect(() => {
     setDataLoading(true);
     fetch(`/api/dashboard-data?year=${selectedYear}`)
@@ -473,7 +476,17 @@ export default function Dashboard() {
       .then((payload) => {
         setDashData(payload.series ?? {});
         setStateMap(payload.stateMap ?? {});
-        if (payload.years?.length) setAvailYears(payload.years);
+        if (payload.years?.length) {
+          setAvailYears(payload.years);
+          // First load: if the default year has no records, snap to the most
+          // recent year that actually has data so the dashboard never opens empty.
+          if (!didAutoYear.current) {
+            didAutoYear.current = true;
+            if (!Object.keys(payload.series ?? {}).length) {
+              setSelectedYear(Math.max(...(payload.years as number[])));
+            }
+          }
+        }
       })
       .catch(() => {})
       .finally(() => setDataLoading(false));
