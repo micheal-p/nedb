@@ -90,7 +90,7 @@ export default function ReportView({ meta, records }: Props) {
       </div>
 
       {/* ── REPORT DOCUMENT ── */}
-      <div className="report-doc" style={{ maxWidth: 900, margin: "0 auto", background: "#fff", padding: "2.5rem", marginTop: "1.5rem", marginBottom: "3rem", border: "1px solid var(--border)" }}>
+      <div className="report-doc" style={{ maxWidth: 900, margin: "0 auto", background: "#fff", padding: "clamp(1rem, 4vw, 2.5rem)", marginTop: "1.5rem", marginBottom: "3rem", border: "1px solid var(--border)" }}>
         {/* Letterhead */}
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", borderBottom: "2px solid var(--green)", paddingBottom: "1rem", marginBottom: "1.5rem" }}>
           <CoatOfArms size={52} />
@@ -105,8 +105,8 @@ export default function ReportView({ meta, records }: Props) {
           </div>
         </div>
 
-        {/* KPI grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1px", background: "var(--border)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", marginBottom: "1.5rem" }}>
+        {/* KPI grid — 4-up desktop, 2-up on phones */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1px", background: "var(--border)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", marginBottom: "1.5rem" }}>
           {[
             { label: "Latest", value: `${fmt(model.kpis.latest)}`, sub: model.kpis.latestPeriod },
             { label: "Year-on-Year", value: pct(model.kpis.yoyPct), sub: "vs. 1 year ago" },
@@ -165,7 +165,7 @@ export default function ReportView({ meta, records }: Props) {
         {/* Analytical overlays */}
         {!isEmpty && (<>
         <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.75rem" }}>Statistical Analysis</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }} className="report-overlays">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: "1rem", marginBottom: "1.5rem" }} className="report-overlays">
           <ReportOverlayCard title="Year-on-Year Change">
             <StatOverlay spec={{ kind: "change", data: overlays.yoy }} unit={meta.unit} height={180} />
           </ReportOverlayCard>
@@ -196,6 +196,7 @@ export default function ReportView({ meta, records }: Props) {
 
         {/* Data table (first 40 for print; full set is in the Excel export) */}
         <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.5rem" }}>Data Table <span style={{ fontWeight: 400, color: "var(--ink-5)" }}>(showing up to 40 periods — full set in Excel export)</span></div>
+        <div style={{ overflowX: "auto" }}>
         <table className="data-table" style={{ fontSize: "0.72rem" }}>
           <thead>
             <tr>
@@ -215,6 +216,7 @@ export default function ReportView({ meta, records }: Props) {
             ))}
           </tbody>
         </table>
+        </div>
         </>)}
 
         {/* Footer */}

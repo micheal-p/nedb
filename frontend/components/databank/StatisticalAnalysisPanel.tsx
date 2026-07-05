@@ -172,7 +172,8 @@ export default function StatisticalAnalysisPanel({ records, unit, seriesName }: 
       </div>
 
       {/* Grid of independent analytical charts */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))", gap: "1.25rem" }}>
+      {/* min(380px,100%) prevents horizontal overflow on phones narrower than 380px */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(380px, 100%), 1fr))", gap: "1.25rem" }}>
         {cards.map((c) => (
           <div key={c.key} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "0.875rem 1.1rem 0.5rem" }}>

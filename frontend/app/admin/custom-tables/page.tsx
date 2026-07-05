@@ -167,7 +167,7 @@ function NewSeriesModal({ onClose, onCreated }: { onClose: () => void; onCreated
                       <button onClick={() => removeCol(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--red)", fontSize: "0.75rem" }}>Remove</button>
                     )}
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 140px 80px", gap: "0.5rem", alignItems: "end" }}>
+                  <div className="colgrid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 140px 80px", gap: "0.5rem", alignItems: "end" }}>
                     <div>
                       <label style={{ fontSize: "0.65rem", fontWeight: 600, color: "var(--ink-4)", display: "block", marginBottom: 2 }}>Label</label>
                       <input value={col.name} onChange={(e) => updateCol(i, "name", e.target.value)} placeholder="Column name" style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 4, fontSize: "0.78rem", boxSizing: "border-box" }} />
@@ -272,7 +272,7 @@ export default function CustomTablesPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {series.map((s) => (
               <Link key={s.slug} href={`/admin/custom-tables/${s.slug}`} style={{ textDecoration: "none" }}>
-                <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", cursor: "pointer", transition: "border-color 0.15s" }}
+                <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", cursor: "pointer", transition: "border-color 0.15s", flexWrap: "wrap" }}
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -305,6 +305,11 @@ export default function CustomTablesPage() {
 
         {showNew && <NewSeriesModal onClose={() => setShowNew(false)} onCreated={load} />}
       </div>
+      <style>{`
+        @media (max-width: 640px) {
+          .colgrid { grid-template-columns: 1fr 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }
