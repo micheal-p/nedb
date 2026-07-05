@@ -57,6 +57,20 @@ function chunkText(text, size = 1400, overlap = 150) {
   return out;
 }
 
+async function withRetry(fn, label, tries = 5) {
+  for (let a = 1; ; a++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (a >= tries) throw e;
+      // Free-tier 429s are per-minute quotas — back off hard so the window resets
+      const wait = e.message?.includes("429") ? 35000 * a : 1500 * a;
+      console.warn(`  retry ${a}/${tries - 1} for ${label} in ${Math.round(wait / 1000)}s (${e.message?.slice(0, 60)})`);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+}
+
 async function embedBatch(texts) {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key=${KEY}`,
@@ -101,12 +115,13 @@ for (const file of files) {
     console.warn(`SKIP ${file}: ${e.message}`);
     continue;
   }
+  if (text.replace(/\s+/g, "").length < 2000) { console.warn(`SKIP ${file}: scanned/no text layer (needs OCR)`); continue; }
   const chunks = chunkText(text);
   console.log(`${file}: ${Math.round(text.length / 1000)}k chars → ${chunks.length} chunks`);
 
-  for (let i = 0; i < chunks.length; i += 90) {
-    const batch = chunks.slice(i, i + 90);
-    const vecs = await embedBatch(batch);
+  for (let i = 0; i < chunks.length; i += 60) {
+    const batch = chunks.slice(i, i + 60);
+    const vecs = await withRetry(() => embedBatch(batch), `embed@${i}`);
     const rows = batch.map((content, j) => ({
       doc_title: TITLES[file] ?? file.replace(/_/g, " ").replace(".pdf", ""),
       source_file: file,
@@ -114,10 +129,14 @@ for (const file of files) {
       content,
       embedding: JSON.stringify(vecs[j]),
     }));
-    await sbInsert(rows);
+    // insert in small slices — very large JSON bodies occasionally get the socket dropped
+    for (let k = 0; k < rows.length; k += 30) {
+      const slice = rows.slice(k, k + 30);
+      await withRetry(() => sbInsert(slice), `insert@${i + k}`);
+    }
     total += rows.length;
     process.stdout.write(`  upserted ${i + batch.length}/${chunks.length}\r`);
-    await new Promise((r) => setTimeout(r, 500)); // stay well under free-tier rate limits
+    await new Promise((r) => setTimeout(r, 13000)); // free tier: ~5 embed calls/min — pace at 1 per 13s
   }
   console.log("");
 }

@@ -33,7 +33,9 @@ export async function geminiGenerate(prompt: string): Promise<string | null> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+      // thinkingBudget 0: gemini-2.5-flash spends "thinking" tokens from the output
+      // budget by default, which truncates answers mid-sentence for RAG use.
+      generationConfig: { temperature: 0.2, maxOutputTokens: 2048, thinkingConfig: { thinkingBudget: 0 } },
     }),
     signal: AbortSignal.timeout(30000),
   });
