@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtCompact } from "@/lib/format";
 import {
   BarChart,
   Bar,
@@ -42,7 +43,7 @@ export default function HorizontalBar({ data, unit }: Props) {
           tick={{ fontSize: 11, fill: "#8E867B" }}
           axisLine={false}
           tickLine={false}
-          tickFormatter={(v: number) => v.toLocaleString()}
+          tickFormatter={fmtCompact}
         />
         <YAxis
           type="category"

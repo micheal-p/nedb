@@ -1,4 +1,5 @@
 "use client";
+import { fmtCompact } from "@/lib/format";
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -118,8 +119,8 @@ export default function ComparePage() {
                   <ComposedChart data={merged} margin={{ top: 8, right: 40, bottom: 8, left: 16 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" />
                     <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#8E867B" }} axisLine={{ stroke: "#E7E5E0" }} tickLine={false} interval="preserveStartEnd" />
-                    <YAxis yAxisId="a" orientation="left"  tick={{ fontSize: 11, fill: COLORS[0] }} axisLine={false} tickLine={false} tickFormatter={(v: number) => v.toLocaleString()} label={{ value: metaA?.unit_default ?? "", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: COLORS[0] } }} />
-                    <YAxis yAxisId="b" orientation="right" tick={{ fontSize: 11, fill: COLORS[1] }} axisLine={false} tickLine={false} tickFormatter={(v: number) => v.toLocaleString()} label={{ value: metaB?.unit_default ?? "", angle: 90,  position: "insideRight", style: { fontSize: 11, fill: COLORS[1] } }} />
+                    <YAxis yAxisId="a" orientation="left"  tick={{ fontSize: 11, fill: COLORS[0] }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} label={{ value: metaA?.unit_default ?? "", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: COLORS[0] } }} />
+                    <YAxis yAxisId="b" orientation="right" tick={{ fontSize: 11, fill: COLORS[1] }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} label={{ value: metaB?.unit_default ?? "", angle: 90,  position: "insideRight", style: { fontSize: 11, fill: COLORS[1] } }} />
                     <Tooltip
                       contentStyle={{ background: "#fff", border: "1px solid #E7E5E0", borderRadius: 8, fontSize: 12 }}
                       formatter={(v: unknown, name: unknown) => [Number(v).toLocaleString(), name === "a" ? (metaA?.name ?? "A") : (metaB?.name ?? "B")]}

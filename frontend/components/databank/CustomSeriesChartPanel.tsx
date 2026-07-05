@@ -7,6 +7,7 @@
 // (map only offered when records carry state-level regions). Values are read out
 // of the JSONB `data` payload keyed by column slug.
 
+import { fmtCompact } from "@/lib/format";
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
@@ -138,7 +139,7 @@ export default function CustomSeriesChartPanel({ seriesName, columns, records }:
             <BarChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" vertical={false} />
               <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={{ stroke: "#E7E5E0" }} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => v.toLocaleString()} />
+              <YAxis tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
               <Tooltip
                 contentStyle={{ background: "#fff", border: "1px solid #E7E5E0", borderRadius: 8, fontSize: 12 }}
                 formatter={(v: unknown) => [`${Number(v).toLocaleString()}${unit ? ` ${unit}` : ""}`, activeCol?.name]}
@@ -151,7 +152,7 @@ export default function CustomSeriesChartPanel({ seriesName, columns, records }:
             <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" />
               <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={{ stroke: "#E7E5E0" }} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => v.toLocaleString()} />
+              <YAxis tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
               <Tooltip
                 contentStyle={{ background: "#fff", border: "1px solid #E7E5E0", borderRadius: 8, fontSize: 12 }}
                 formatter={(v: unknown) => [`${Number(v).toLocaleString()}${unit ? ` ${unit}` : ""}`, activeCol?.name]}

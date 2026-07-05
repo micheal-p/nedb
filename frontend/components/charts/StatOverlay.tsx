@@ -7,6 +7,7 @@
 // shape in a single component means the StatisticalAnalysisPanel just maps specs —
 // no per-overlay chart files to maintain.
 
+import { fmtCompact } from "@/lib/format";
 import {
   ComposedChart, Line, Area, Bar, Cell, ReferenceLine,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -89,7 +90,7 @@ function renderByKind(spec: OverlaySpec, unit: string) {
       return (
         <ComposedChart data={spec.data} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
           {grid}{axisX}
-          <YAxis tick={{ fontSize: 10, fill: INK5 }} width={48} axisLine={false} tickLine={false} tickFormatter={(v: number) => v.toLocaleString()} />
+          <YAxis tick={{ fontSize: 10, fill: INK5 }} width={48} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
           <Tooltip contentStyle={{ background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 12 }} formatter={(v: unknown) => Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 })} />
           <Legend wrapperStyle={{ fontSize: "0.72rem" }} />
           <Line type="monotone" dataKey="actual" name="Actual" stroke={INK5} strokeWidth={1.5} dot={false} opacity={0.55} />
@@ -108,7 +109,7 @@ function renderByKind(spec: OverlaySpec, unit: string) {
             </linearGradient>
           </defs>
           {grid}{axisX}
-          <YAxis tick={{ fontSize: 10, fill: INK5 }} width={48} axisLine={false} tickLine={false} tickFormatter={(v: number) => v.toLocaleString()} />
+          <YAxis tick={{ fontSize: 10, fill: INK5 }} width={48} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
           <Tooltip contentStyle={{ background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 12 }} formatter={(v: unknown) => [`${Number(v).toLocaleString()} ${unit}`, "Cumulative"]} />
           <Area type="monotone" dataKey="value" name="Cumulative" stroke={POS} strokeWidth={2} fill="url(#cumGrad)" dot={false} />
         </ComposedChart>
@@ -137,7 +138,7 @@ function renderByKind(spec: OverlaySpec, unit: string) {
             </linearGradient>
           </defs>
           {grid}{axisX}
-          <YAxis tick={{ fontSize: 10, fill: INK5 }} width={48} axisLine={false} tickLine={false} tickFormatter={(v: number) => v.toLocaleString()} />
+          <YAxis tick={{ fontSize: 10, fill: INK5 }} width={48} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
           <Tooltip contentStyle={{ background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 12 }} formatter={(v: unknown, name: unknown) => [Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 }), String(name)]} />
           <Legend wrapperStyle={{ fontSize: "0.72rem" }} />
           {/* lower as transparent base, then upper-lower as filled band */}
@@ -153,7 +154,7 @@ function renderByKind(spec: OverlaySpec, unit: string) {
       return (
         <ComposedChart data={spec.data} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
           {grid}{axisX}
-          <YAxis tick={{ fontSize: 10, fill: INK5 }} width={48} axisLine={false} tickLine={false} tickFormatter={(v: number) => v.toLocaleString()} />
+          <YAxis tick={{ fontSize: 10, fill: INK5 }} width={48} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
           <Tooltip contentStyle={{ background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 12 }} formatter={(v: unknown, name: unknown) => [Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 }), String(name)]} />
           <Legend wrapperStyle={{ fontSize: "0.72rem" }} />
           <Bar dataKey="residual" name="Residual (noise)" maxBarSize={20}>

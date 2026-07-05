@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtCompact } from "@/lib/format";
 import {
   LineChart as ReLineChart,
   Line,
@@ -44,7 +45,7 @@ export default function LineChart({ data, unit, projectionData }: Props) {
           tick={{ fontSize: 11, fill: "#8E867B" }}
           axisLine={false}
           tickLine={false}
-          tickFormatter={(v: number) => v.toLocaleString()}
+          tickFormatter={fmtCompact}
           label={{ value: unit, angle: -90, position: "insideLeft", offset: -4, style: { fontSize: 11, fill: "#8E867B" } }}
         />
         <Tooltip

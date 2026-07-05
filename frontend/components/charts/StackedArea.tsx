@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtCompact } from "@/lib/format";
 import {
   AreaChart,
   Area,
@@ -34,7 +35,7 @@ export default function StackedArea({ data, unit }: Props) {
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" />
           <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#8E867B" }} tickLine={false} axisLine={{ stroke: "#E7E5E0" }} interval="preserveStartEnd" />
-          <YAxis tick={{ fontSize: 11, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => v.toLocaleString()} />
+          <YAxis tick={{ fontSize: 11, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
           <Tooltip
             contentStyle={{ background: "#FFFFFF", border: "1px solid #E7E5E0", borderRadius: 8, fontSize: 12 }}
             formatter={(v) => [Number(v).toLocaleString(), unit]}
@@ -64,7 +65,7 @@ export default function StackedArea({ data, unit }: Props) {
       <AreaChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" />
         <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#8E867B" }} tickLine={false} axisLine={{ stroke: "#E7E5E0" }} interval="preserveStartEnd" />
-        <YAxis tick={{ fontSize: 11, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => v.toLocaleString()} />
+        <YAxis tick={{ fontSize: 11, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
         <Tooltip
           contentStyle={{ background: "#FFFFFF", border: "1px solid #E7E5E0", borderRadius: 8, fontSize: 12 }}
           formatter={(v) => [Number(v).toLocaleString(), unit]}

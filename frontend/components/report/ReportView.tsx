@@ -6,6 +6,7 @@
 // that the old report never rendered them). The same in-DOM chart is rasterized
 // to PNG for the Excel export. Both outputs are driven by one buildReportModel().
 
+import { fmtCompact } from "@/lib/format";
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -151,7 +152,7 @@ export default function ReportView({ meta, records }: Props) {
               <LineChart data={lineData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" />
                 <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={{ stroke: "#E7E5E0" }} tickLine={false} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => v.toLocaleString()} />
+                <YAxis tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
                 <Tooltip formatter={(v: unknown) => [`${Number(v).toLocaleString()} ${meta.unit}`, meta.name]} />
                 <Line type="monotone" dataKey="value" stroke="#0E7A3C" strokeWidth={2.5} dot={false} />
               </LineChart>
