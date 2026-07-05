@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 import NetworkGraph, { type NetworkGraphHandle } from "@/components/charts/NetworkGraph";
+import AskNedb from "@/components/datapoint/AskNedb";
 import {
   NODE_STYLE, EDGE_LABEL, traceDownstream, degreeCentrality,
   type GraphData, type GraphNode, type NodeType, type Centrality,
@@ -272,6 +273,9 @@ export default function KnowledgeGraphPage() {
                     </div>
                   </div>
                 )}
+
+                {/* GraphRAG assistant */}
+                <AskNedb />
 
                 {/* Value framing */}
                 <div className="gcard" style={{ borderLeft: "3px solid var(--green)" }}>
