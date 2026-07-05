@@ -13,10 +13,10 @@ export function geminiConfigured(): boolean {
 export async function geminiEmbed(text: string): Promise<number[] | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
-  const res = await fetch(`${BASE}/text-embedding-004:embedContent?key=${key}`, {
+  const res = await fetch(`${BASE}/gemini-embedding-001:embedContent?key=${key}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content: { parts: [{ text }] } }),
+    body: JSON.stringify({ content: { parts: [{ text }] }, outputDimensionality: 768 }),
     signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) throw new Error(`Gemini embed failed: ${res.status}`);
@@ -28,7 +28,7 @@ export async function geminiEmbed(text: string): Promise<number[] | null> {
 export async function geminiGenerate(prompt: string): Promise<string | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
-  const res = await fetch(`${BASE}/gemini-2.0-flash:generateContent?key=${key}`, {
+  const res = await fetch(`${BASE}/gemini-2.5-flash:generateContent?key=${key}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

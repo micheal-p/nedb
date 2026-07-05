@@ -8,7 +8,19 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const pdfParse = require("pdf-parse");
+const { PDFParse } = require("pdf-parse"); // v2.x class API
+
+async function extractText(buf) {
+  const parser = new PDFParse({ data: new Uint8Array(buf) });
+  try {
+    const result = await parser.getText();
+    if (typeof result?.text === "string" && result.text.trim()) return result.text;
+    if (Array.isArray(result?.pages)) return result.pages.map((p) => p.text ?? "").join("\n");
+    throw new Error("no text extracted");
+  } finally {
+    await parser.destroy?.();
+  }
+}
 
 // minimal .env.local loader
 for (const line of readFileSync(".env.local", "utf8").split("\n")) {
@@ -47,13 +59,13 @@ function chunkText(text, size = 1400, overlap = 150) {
 
 async function embedBatch(texts) {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=${KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key=${KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         requests: texts.map((t) => ({
-          model: "models/text-embedding-004",
+          model: "models/gemini-embedding-001", outputDimensionality: 768,
           content: { parts: [{ text: t }] },
         })),
       }),
@@ -84,7 +96,7 @@ for (const file of files) {
   const buf = readFileSync(`public/documents/${file}`);
   let text = "";
   try {
-    text = (await pdfParse(buf)).text;
+    text = await extractText(buf);
   } catch (e) {
     console.warn(`SKIP ${file}: ${e.message}`);
     continue;
