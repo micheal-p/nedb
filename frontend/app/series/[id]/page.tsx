@@ -60,11 +60,15 @@ async function getData(id: string) {
     : null;
 
   const rows = records ?? [];
+  // National series only — state-tagged rows exist for the choropleth and must
+  // not distort KPIs, the signal, or the statistical analysis.
+  const NATIONAL = new Set(["NGA", "", "national", "National", "NATIONAL"]);
+  const natRows = rows.filter((r) => !r.region || NATIONAL.has(r.region));
 
   // Compute stats inline (same logic as /api/series/[id]/stats)
   let stats: AutoStats | null = null;
-  if (rows.length) {
-    const desc = [...rows].reverse();
+  if (natRows.length) {
+    const desc = [...natRows].reverse();
     const latest = desc[0];
     const s: AutoStats = {
       series_type_id: id,
@@ -95,12 +99,12 @@ async function getData(id: string) {
 
   // Compute current signal from signal_rules JSONB
   let currentSignal: { text: string; level: "above" | "neutral" | "warn" | "critical" } | null = null;
-  if (rows.length >= 2 && seriesRaw?.signal_rules) {
+  if (natRows.length >= 2 && seriesRaw?.signal_rules) {
     const rules = seriesRaw.signal_rules as {
       compare_to: string; threshold_warn: number; threshold_critical: number;
       direction: string; templates: Record<string, string>; unit_label?: string;
     };
-    const desc = [...rows].reverse();
+    const desc = [...natRows].reverse();
     const latest = desc[0].value as number;
     const refCount = rules.compare_to === "prev_period" ? 1 : Math.min(60, desc.length - 1);
     const refVals  = desc.slice(1, refCount + 1).map((r) => r.value as number).filter((v) => v !== null);
@@ -124,6 +128,7 @@ async function getData(id: string) {
   return {
     series,
     data: { rows, total: count ?? rows.length, page: 1, limit: 500 },
+    natRows,
     stats,
     currentSignal,
     lgaData,
@@ -138,7 +143,7 @@ const SECTOR_LABELS: Record<string, string> = {
 
 export default async function SeriesDetail({ params }: Props) {
   const { id } = await params;
-  const { series, data, stats, currentSignal, lgaData } = await getData(id);
+  const { series, data, natRows, stats, currentSignal, lgaData } = await getData(id);
 
   if (!series) {
     return (
@@ -307,7 +312,7 @@ export default async function SeriesDetail({ params }: Props) {
 
           {/* ── STATISTICAL ANALYSIS (6 separate overlay charts) ── */}
           <div className="no-print">
-            <StatisticalAnalysisPanel records={data.rows} unit={series.unit_default} seriesName={series.name} />
+            <StatisticalAnalysisPanel records={natRows} unit={series.unit_default} seriesName={series.name} />
           </div>
 
           {/* ── DATA TABLE ── */}

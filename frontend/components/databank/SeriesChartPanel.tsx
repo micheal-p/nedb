@@ -71,6 +71,12 @@ interface Props {
 }
 
 export default function SeriesChartPanel({ title, subtitle, source, vizTypes, data, unit, seriesId, lgaData }: Props) {
+  // State-tagged rows exist for choropleths — time-series charts must plot the
+  // national series only, or duplicate periods across states garble the line.
+  const natData = useMemo(
+    () => data.filter((r) => !r.region || NATIONAL_REGIONS.has(r.region)),
+    [data]
+  );
   // LGA Map tab appears only when the series actually carries LGA-tagged records
   const allVizTypes = lgaData && Object.keys(lgaData).length
     ? [...vizTypes.filter((v) => v !== "lga-map"), "lga-map"]
@@ -91,16 +97,16 @@ export default function SeriesChartPanel({ title, subtitle, source, vizTypes, da
   }, [data]);
 
   const projectionData = useMemo(() => {
-    if (!showProjection || data.length < 6) return undefined;
-    const vals = data.map((r) => r.value).filter((v) => v !== null) as number[];
+    if (!showProjection || natData.length < 6) return undefined;
+    const vals = natData.map((r) => r.value).filter((v) => v !== null) as number[];
     const xs = vals.map((_, i) => i);
     const { slope, intercept } = linearRegression(xs, vals);
-    const lastPeriod = data[data.length - 1].period;
+    const lastPeriod = natData[natData.length - 1].period;
     return Array.from({ length: FORECAST_PERIODS }, (_, i) => ({
       period:    nextPeriod(lastPeriod, i + 1),
       projected: Math.max(0, intercept + slope * (vals.length + i)),
     }));
-  }, [showProjection, data]);
+  }, [showProjection, natData]);
 
   function Chart() {
     if (!data.length) {
@@ -115,10 +121,10 @@ export default function SeriesChartPanel({ title, subtitle, source, vizTypes, da
       );
     }
     switch (active) {
-      case "line":            return <LineChart data={data} unit={unit} projectionData={projectionData} />;
-      case "stacked-area":    return <StackedArea data={data} unit={unit} />;
-      case "horizontal-bar":  return <HorizontalBar data={data} unit={unit} />;
-      case "calendar-heatmap": return <CalendarHeatmap data={data} unit={unit} />;
+      case "line":            return <LineChart data={natData} unit={unit} projectionData={projectionData} />;
+      case "stacked-area":    return <StackedArea data={natData} unit={unit} />;
+      case "horizontal-bar":  return <HorizontalBar data={natData} unit={unit} />;
+      case "calendar-heatmap": return <CalendarHeatmap data={natData} unit={unit} />;
       case "lga-map":
         return (
           <LgaMap
@@ -162,7 +168,7 @@ export default function SeriesChartPanel({ title, subtitle, source, vizTypes, da
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {/* Forecast toggle — only on line view */}
-          {active === "line" && data.length >= 6 && (
+          {active === "line" && natData.length >= 6 && (
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <button
                 onClick={() => setShowProjection((p) => !p)}
@@ -197,7 +203,7 @@ export default function SeriesChartPanel({ title, subtitle, source, vizTypes, da
       </div>
       {showProjection && projectionData && (
         <div style={{ padding: "0.5rem 1rem", background: "var(--green-tint)", borderTop: "1px solid var(--border)", fontSize: "0.72rem", color: "var(--green)", fontWeight: 600 }}>
-          Projection: linear regression on {data.length} data points, extended {FORECAST_PERIODS} periods forward. For indicative purposes only.
+          Projection: linear regression on {natData.length} data points, extended {FORECAST_PERIODS} periods forward. For indicative purposes only.
         </div>
       )}
       <div className="chart-source">

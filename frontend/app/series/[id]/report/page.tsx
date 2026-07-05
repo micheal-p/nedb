@@ -46,5 +46,10 @@ export default async function SeriesReport({ params }: Props) {
     whyItMatters: series.why_it_matters,
   };
 
-  return <ReportView meta={meta} records={(records ?? []) as EnergyRecord[]} />;
+  // Report analyses the national series only — state-tagged choropleth rows
+  // would duplicate periods and distort every derived statistic.
+  const NATIONAL = new Set(["NGA", "", "national", "National", "NATIONAL"]);
+  const natRecords = ((records ?? []) as EnergyRecord[]).filter((r) => !r.region || NATIONAL.has(r.region));
+
+  return <ReportView meta={meta} records={natRecords} />;
 }
