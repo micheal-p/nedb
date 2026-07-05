@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     period: r.period as string,
     period_date: r.period_date as string,
     region: (r.region as string) || "NGA",
+    lga_id: (r.lga_id as number) || null,
     value: Number(r.value),
     unit: (r.unit as string) || series.unit_default,
     source: (r.source as string) || null,

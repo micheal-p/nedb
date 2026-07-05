@@ -24,6 +24,7 @@ export default function KnowledgeGraphPage() {
   const [mode, setMode] = useState<"explore" | "spof" | "trace">("explore");
   const [selected, setSelected] = useState<GraphNode | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [printPng, setPrintPng] = useState<string | null>(null);
   const graphRef = useRef<NetworkGraphHandle>(null);
 
   useEffect(() => {
@@ -58,8 +59,19 @@ export default function KnowledgeGraphPage() {
   function reset() { setMode("explore"); setSelected(null); }
   function showSpof() { setMode("spof"); setSelected(null); }
 
-  function exportPng() {
-    const url = graphRef.current?.capturePng();
+  // Every capture goes through a clean frame: clear any trace dimming, re-fit the
+  // view, wait for the canvas to redraw — so exports never inherit a grey, panned,
+  // or zoomed-out state (the "washed-out PNG" problem).
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  async function captureCleanPng(): Promise<string | null> {
+    if (mode !== "explore") { setMode("explore"); setSelected(null); await sleep(350); }
+    graphRef.current?.fitView();
+    await sleep(300);
+    return graphRef.current?.capturePng() ?? null;
+  }
+
+  async function exportPng() {
+    const url = await captureCleanPng();
     if (!url) return;
     const a = document.createElement("a");
     a.href = url; a.download = "nedb-energy-knowledge-graph.png"; a.click();
@@ -73,11 +85,20 @@ export default function KnowledgeGraphPage() {
         graph: data,
         centrality: degreeCentrality(data), // full ranking, not just the API's top 8
         singlePointsOfFailure: analytics.singlePointsOfFailure,
-        graphPng: graphRef.current?.capturePng() ?? null,
+        graphPng: await captureCleanPng(),
       });
     } finally {
       setExporting(false);
     }
+  }
+
+  // Print: browsers won't reliably rasterize a live canvas, so we snapshot it to an
+  // <img> that replaces the canvas in print CSS, then open the print dialog.
+  async function printBrief() {
+    const png = await captureCleanPng();
+    setPrintPng(png);
+    await sleep(200);
+    window.print();
   }
 
   // trace breakdown by type for the insight panel
@@ -117,7 +138,7 @@ export default function KnowledgeGraphPage() {
             <button onClick={exportExcel} disabled={exporting} className="btn btn-secondary btn-sm">
               {exporting ? "Building…" : "Export Excel"}
             </button>
-            <button onClick={() => window.print()} className="btn btn-primary btn-sm">Print Brief</button>
+            <button onClick={printBrief} className="btn btn-primary btn-sm">Print Brief</button>
           </div>
         </div>
       </div>
@@ -146,14 +167,21 @@ export default function KnowledgeGraphPage() {
                   </div>
                 </div>
 
-                <NetworkGraph
-                  ref={graphRef}
-                  data={data}
-                  highlight={highlight}
-                  dimUnhighlighted={mode === "trace"}
-                  onNodeClick={handleNodeClick}
-                  height={560}
-                />
+                <div className="graph-canvas-wrap">
+                  <NetworkGraph
+                    ref={graphRef}
+                    data={data}
+                    highlight={highlight}
+                    dimUnhighlighted={mode === "trace"}
+                    onNodeClick={handleNodeClick}
+                    height={560}
+                  />
+                </div>
+                {/* Print-only snapshot — canvases don't rasterize reliably in print */}
+                {printPng && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={printPng} alt="Energy Knowledge Graph" className="print-graph-img" style={{ display: "none", width: "100%", border: "1px solid #ddd", borderRadius: 8 }} />
+                )}
 
                 {/* Mode explainer under the graph */}
                 <div style={{ marginTop: "0.75rem", padding: "0.75rem 1rem", background: "#fff", border: "1px solid var(--border)", borderLeft: "3px solid var(--green)", borderRadius: "var(--r-md)", fontSize: "0.76rem", color: "var(--ink-4)", lineHeight: 1.6 }}>
@@ -291,6 +319,8 @@ export default function KnowledgeGraphPage() {
           .no-print { display: none !important; }
           .print-only { display: block !important; }
           .graph-layout { grid-template-columns: 1fr !important; }
+          .graph-canvas-wrap { display: none !important; }
+          .print-graph-img { display: block !important; }
         }
       `}</style>
     </>

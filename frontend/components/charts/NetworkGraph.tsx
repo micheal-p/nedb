@@ -26,6 +26,7 @@ const EDGE_COLOR: Record<string, string> = {
 
 export interface NetworkGraphHandle {
   capturePng: () => string | null;
+  fitView: () => void;
 }
 
 interface Props {
@@ -73,6 +74,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, Props>(function NetworkGraph
       const canvas = wrapRef.current?.querySelector("canvas");
       return canvas ? (canvas as HTMLCanvasElement).toDataURL("image/png") : null;
     },
+    fitView: () => fgRef.current?.zoomToFit(0, 40),
   }), []);
 
   // degree per node → node radius

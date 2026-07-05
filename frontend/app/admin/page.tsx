@@ -89,7 +89,10 @@ function periodToDate(period: string): string {
 }
 
 const ENTRY_YEARS = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
-const ENTRY_INIT = { series_type_id: "crude_oil_production", year: 2026, period: "", value: "", state: "NGA", region: "", source: "", notes: "" };
+const ENTRY_INIT = { series_type_id: "crude_oil_production", year: 2026, period: "", value: "", state: "NGA", region: "", lga_id: "", source: "", notes: "" };
+
+// Form state names → lgas.state_name (only FCT differs)
+const LGA_STATE_NAME: Record<string, string> = { "FCT (Abuja)": "FCT Abuja" };
 
 export default function AdminPage() {
   const router = useRouter();
@@ -150,6 +153,7 @@ export default function AdminPage() {
 
   // Data entry state
   const [entryForm, setEntryForm]     = useState(ENTRY_INIT);
+  const [lgaOptions, setLgaOptions]   = useState<{ id: number; name: string }[]>([]);
   const [entrySubmitting, setEntrySubmitting] = useState(false);
   const [entryMsg, setEntryMsg]       = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
@@ -489,6 +493,7 @@ export default function AdminPage() {
       value:       parseFloat(entryForm.value),
       unit:        meta.unit,
       region:      entryForm.state === "NGA" ? "NGA" : entryForm.state,
+      lga_id:      entryForm.lga_id ? Number(entryForm.lga_id) : undefined,
       source:      entryForm.source || undefined,
       notes:       entryForm.notes  || undefined,
       ...(meta.fuel_product ? { fuel_product: meta.fuel_product } : {}),
@@ -852,7 +857,14 @@ export default function AdminPage() {
                         onChange={(e) => {
                           const st = e.target.value;
                           const zone = STATE_TO_ZONE[st] ?? "";
-                          setEntryForm((f) => ({ ...f, state: st, region: zone }));
+                          setEntryForm((f) => ({ ...f, state: st, region: zone, lga_id: "" }));
+                          setLgaOptions([]);
+                          if (st !== "NGA") {
+                            fetch(`/api/lgas?state=${encodeURIComponent(LGA_STATE_NAME[st] ?? st)}`)
+                              .then((r) => r.json())
+                              .then((rows) => Array.isArray(rows) && setLgaOptions(rows))
+                              .catch(() => {});
+                          }
                         }}>
                         <option value="NGA">National (NGA)</option>
                         {ALL_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -871,6 +883,21 @@ export default function AdminPage() {
                         <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 3 }}>Auto-filled from state</div>
                       )}
                     </div>
+
+                    {/* LGA — optional, appears once a state is chosen */}
+                    {entryForm.state !== "NGA" && (
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">LGA (optional)</label>
+                        <select className="form-input form-select" value={entryForm.lga_id}
+                          onChange={(e) => setEntryForm((f) => ({ ...f, lga_id: e.target.value }))}>
+                          <option value="">State-wide (no LGA)</option>
+                          {lgaOptions.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                        </select>
+                        <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 3 }}>
+                          {lgaOptions.length ? `${lgaOptions.length} LGAs in ${entryForm.state} — tagging enables the LGA Map` : "Loading LGAs…"}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Source */}
                     <div className="form-group" style={{ marginBottom: 0 }}>
