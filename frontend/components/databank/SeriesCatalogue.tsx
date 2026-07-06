@@ -49,21 +49,37 @@ function Sparkline({ points }: { points: number[] }) {
   );
 }
 
+// Historical-coverage score: how much of the archive we would EXPECT for this
+// cadence (est. from the mid-1990s) is actually in the bank. A series can be
+// perfectly current yet score "Minimal" — it means little back-history yet.
+function expectedCount(freq: string) {
+  return freq === "monthly" ? 318 : freq === "quarterly" ? 106 : 27;
+}
 function qualityScore(count: number, freq: string) {
-  const expected = freq === "monthly" ? 318 : freq === "quarterly" ? 106 : 27;
-  return Math.min(Math.round((count / expected) * 100), 100);
+  return Math.min(Math.round((count / expectedCount(freq)) * 100), 100);
 }
 
-function QualityDots({ score }: { score: number }) {
+function QualityDots({ count, freq }: { count: number; freq: string }) {
+  const expected = expectedCount(freq);
+  const score = qualityScore(count, freq);
   const filled = Math.max(0, Math.min(5, Math.ceil(score / 20)));
   const color = score >= 76 ? "#0E7A3C" : score >= 51 ? "#7CB342" : score >= 26 ? "#F9A825" : "#E04F39";
   const label = score >= 76 ? "Good" : score >= 51 ? "Moderate" : score >= 26 ? "Sparse" : score > 0 ? "Minimal" : "Empty";
+  const why = count === 0
+    ? "No records in the bank yet"
+    : `${count} of ~${expected} expected ${freq} records (${score}% of the full archive)`;
   return (
-    <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-      {[1,2,3,4,5].map((i) => (
-        <span key={i} style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: i <= filled ? color : "var(--border)" }} />
-      ))}
-      <span style={{ fontSize: "0.6rem", color: "var(--ink-5)", marginLeft: 3 }}>{label}</span>
+    <div
+      title={`Historical coverage: ${why}. This measures back-history depth, not how current the latest figure is.`}
+      style={{ display: "flex", flexDirection: "column", gap: 3 }}
+    >
+      <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+        {[1,2,3,4,5].map((i) => (
+          <span key={i} style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: i <= filled ? color : "var(--border)" }} />
+        ))}
+        <span style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--ink-4)", marginLeft: 3 }}>{label} history</span>
+      </div>
+      <span style={{ fontSize: "0.6rem", color: "var(--ink-5)", lineHeight: 1.35 }}>{why}</span>
     </div>
   );
 }
@@ -132,7 +148,7 @@ export default function SeriesCatalogue({ series, sectorMeta, trends }: Props) {
           {s.viz_types.map((vt) => <span key={vt} className="viz-chip">{vt}</span>)}
         </div>
         <div style={{ marginTop: "0.5rem" }}>
-          <QualityDots score={qualityScore(s.record_count, s.frequency)} />
+          <QualityDots count={s.record_count} freq={s.frequency} />
         </div>
       </Link>
     );
