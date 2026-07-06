@@ -3,6 +3,7 @@ import { db } from "@/lib/supabase-server";
 import { ok, err } from "@/lib/api-helpers";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { geminiConfigured, geminiEmbed, geminiGenerate } from "@/lib/gemini";
+import { getGeminiUsage, quotaResetISO } from "@/lib/usage";
 
 // POST /api/ask — GraphRAG policy assistant.
 // Grounding = (a) top document chunks by pgvector cosine similarity over the
@@ -16,7 +17,12 @@ export async function POST(req: NextRequest) {
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "anon";
   const rl = checkRateLimit(`ask:${ip}`, 10, 60_000);
-  if (!rl.allowed) return err(`Rate limited — retry in ${rl.resetIn}s`, 429);
+  if (!rl.allowed) {
+    return Response.json(
+      { error: "chat_rate_limit", resetIn: rl.resetIn, message: `You're asking quickly — you can ask again in ${rl.resetIn}s.` },
+      { status: 429 }
+    );
+  }
 
   const body = await req.json().catch(() => null);
   const question = (body?.question ?? "").toString().trim().slice(0, 500);
@@ -82,8 +88,20 @@ QUESTION: ${question}`;
         similarity: Math.round(c.similarity * 100) / 100,
       })),
       grounded_on: { chunks: chunks.length, graph_nodes: (nodes ?? []).length },
+      usage: {
+        chat: { remaining: rl.remaining, resetIn: rl.resetIn },       // our 10/min limit
+        ai: await getGeminiUsage(),                                    // self-metered daily Gemini usage
+      },
     });
   } catch (e) {
-    return err(e instanceof Error ? e.message : "Assistant error", 500);
+    const msg = e instanceof Error ? e.message : "Assistant error";
+    // Gemini free-tier quota exhausted → tell the user exactly when it resets
+    if (/429/.test(msg)) {
+      return Response.json(
+        { error: "ai_quota", resetsAt: quotaResetISO(), message: "Today's free AI allowance is used up." },
+        { status: 429 }
+      );
+    }
+    return err(msg, 500);
   }
 }

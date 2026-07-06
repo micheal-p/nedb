@@ -3,6 +3,8 @@
 // Key-gated: everything returns null/throws cleanly when GEMINI_API_KEY is absent,
 // so the assistant degrades to a "not configured" notice instead of crashing.
 
+import { bumpGeminiUsage } from "@/lib/usage";
+
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export function geminiConfigured(): boolean {
@@ -20,6 +22,7 @@ export async function geminiEmbed(text: string): Promise<number[] | null> {
     signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) throw new Error(`Gemini embed failed: ${res.status}`);
+  void bumpGeminiUsage("embed");
   const j = await res.json();
   return j?.embedding?.values ?? null;
 }
@@ -40,6 +43,7 @@ export async function geminiGenerate(prompt: string): Promise<string | null> {
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) throw new Error(`Gemini generate failed: ${res.status}`);
+  void bumpGeminiUsage("gen");
   const j = await res.json();
   return j?.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
 }

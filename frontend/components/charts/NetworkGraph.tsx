@@ -63,10 +63,11 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, Props>(function NetworkGraph
     const t = setTimeout(() => {
       if (!didFit.current) {
         didFit.current = true;
-        fgRef.current?.zoomToFit(0, 40);
+        fitConnected();
       }
     }, 3000);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useImperativeHandle(ref, () => ({
@@ -74,7 +75,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, Props>(function NetworkGraph
       const canvas = wrapRef.current?.querySelector("canvas");
       return canvas ? (canvas as HTMLCanvasElement).toDataURL("image/png") : null;
     },
-    fitView: () => fgRef.current?.zoomToFit(0, 40),
+    fitView: () => fitConnected(),
   }), []);
 
   // degree per node → node radius
@@ -86,6 +87,13 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, Props>(function NetworkGraph
     }
     return d;
   }, [data]);
+
+  // Zoom-to-fit framed on CONNECTED nodes only — a disconnected node drifts to
+  // the canvas edge and would otherwise shrink the whole cluster to a dot.
+  const fitConnected = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fgRef.current?.zoomToFit(0, 40, (n: any) => (degree.get(n.key) ?? 0) > 0);
+  };
 
   const graphData = useMemo(() => ({
     nodes: data.nodes.map((n) => ({ ...n, id: n.key })),
@@ -107,7 +115,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, Props>(function NetworkGraph
           // legible on load instead of a small cluster lost in a large canvas.
           if (!didFit.current) {
             didFit.current = true;
-            fgRef.current?.zoomToFit(0, 40);
+            fitConnected();
           }
         }}
         linkColor={(l: { type: string }) => EDGE_COLOR[l.type] ?? "rgba(0,0,0,0.15)"}

@@ -17,6 +17,15 @@ const SUGGESTIONS: Record<string, string[]> = {
 
 function now() { return new Date().toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" }); }
 
+function fmtReset(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const t = d.toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" });
+    const sameDay = d.toDateString() === new Date().toDateString();
+    return sameDay ? `today at ${t}` : `tomorrow at ${t}`;
+  } catch { return "soon"; }
+}
+
 // Minimal **bold** renderer — answers use markdown emphasis
 function renderText(text: string) {
   return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
@@ -37,6 +46,8 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
     },
   ]);
   const [thinking, setThinking] = useState(false);
+  const [usage, setUsage] = useState<{ pct: number; resetsAt: string } | null>(null);
+  const [chatLeft, setChatLeft] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
 
@@ -60,8 +71,11 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
       let reply: Message;
       if (res.status === 503) {
         reply = { role: "assistant", text: "The intelligence engine isn't configured on this deployment yet (missing GEMINI_API_KEY).", time: now() };
+      } else if (res.status === 429 && j.error === "ai_quota") {
+        setUsage({ pct: 100, resetsAt: j.resetsAt });
+        reply = { role: "assistant", text: `Today's free AI allowance is fully used. It resets ${fmtReset(j.resetsAt)} — your questions will work again then.`, time: now() };
       } else if (res.status === 429) {
-        reply = { role: "assistant", text: "You're asking faster than my rate limit allows — give it a few seconds and try again.", time: now() };
+        reply = { role: "assistant", text: `You're asking quickly — you can ask again in ${j.resetIn ?? "a few"}s.`, time: now() };
       } else if (!res.ok) {
         reply = { role: "assistant", text: `Something went wrong: ${j.error ?? res.status}. Please try again.`, time: now() };
       } else {
@@ -73,6 +87,8 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
           time: now(),
           sources: uniqueDocs.length ? `Sources: ${uniqueDocs.join(" · ")}` : undefined,
         };
+        if (j.usage?.ai) setUsage({ pct: j.usage.ai.pct, resetsAt: j.usage.ai.resetsAt });
+        if (j.usage?.chat) setChatLeft(j.usage.chat.remaining);
       }
       setMessages((m) => [...m, reply]);
     } catch {
@@ -205,6 +221,25 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
               </button>
             ))}
           </div>
+
+          {/* Usage meter — Claude-style allowance visibility */}
+          {usage && usage.pct >= 70 && (
+            <div style={{ padding: "6px 12px", borderTop: "1px solid var(--border)", background: usage.pct >= 100 ? "#FEE2E2" : "#FEF3C7", fontSize: "0.66rem", color: usage.pct >= 100 ? "#991B1B" : "#92400E", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+              <div style={{ flex: 1 }}>
+                {usage.pct >= 100
+                  ? <>Daily free AI allowance used up — resets {fmtReset(usage.resetsAt)}</>
+                  : <>You&apos;ve used <strong>{usage.pct}%</strong> of today&apos;s free AI allowance · resets {fmtReset(usage.resetsAt)}</>}
+              </div>
+              <div style={{ width: 56, height: 5, borderRadius: 3, background: "rgba(0,0,0,0.1)", overflow: "hidden", flexShrink: 0 }}>
+                <div style={{ width: `${Math.min(100, usage.pct)}%`, height: "100%", background: usage.pct >= 100 ? "#DC2626" : "#D97706" }} />
+              </div>
+            </div>
+          )}
+          {chatLeft !== null && chatLeft <= 3 && (!usage || usage.pct < 70) && (
+            <div style={{ padding: "4px 12px", borderTop: "1px solid var(--border)", background: "var(--surface)", fontSize: "0.64rem", color: "var(--ink-5)", flexShrink: 0 }}>
+              {chatLeft} question{chatLeft === 1 ? "" : "s"} left this minute
+            </div>
+          )}
 
           {/* Input */}
           <div style={{ padding: "10px 12px", borderTop: "1px solid var(--border)", background: "#fff", display: "flex", gap: 8 }}>
