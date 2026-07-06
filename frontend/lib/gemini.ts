@@ -16,7 +16,7 @@ export async function geminiEmbed(text: string): Promise<number[] | null> {
   const res = await fetch(`${BASE}/gemini-embedding-001:embedContent?key=${key}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content: { parts: [{ text }] }, outputDimensionality: 768 }),
+    body: JSON.stringify({ content: { parts: [{ text }] }, outputDimensionality: 768, taskType: "RETRIEVAL_QUERY" }),
     signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) throw new Error(`Gemini embed failed: ${res.status}`);

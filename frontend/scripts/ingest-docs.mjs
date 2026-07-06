@@ -79,7 +79,7 @@ async function embedBatch(texts) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         requests: texts.map((t) => ({
-          model: "models/gemini-embedding-001", outputDimensionality: 768,
+          model: "models/gemini-embedding-001", outputDimensionality: 768, taskType: "RETRIEVAL_DOCUMENT",
           content: { parts: [{ text: t }] },
         })),
       }),

@@ -4,7 +4,7 @@
 // embedded and upserted into doc_chunks like the text-layer documents.
 // Run from frontend/:  node scripts/ocr-ingest.mjs
 
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 
 for (const line of readFileSync(".env.local", "utf8").split("\n")) {
   const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
@@ -102,7 +102,7 @@ async function embedBatch(texts) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         requests: texts.map((t) => ({
-          model: "models/gemini-embedding-001", outputDimensionality: 768,
+          model: "models/gemini-embedding-001", outputDimensionality: 768, taskType: "RETRIEVAL_DOCUMENT",
           content: { parts: [{ text: t }] },
         })),
       }),
@@ -130,8 +130,12 @@ mkdirSync("scripts/transcripts", { recursive: true });
 let total = 0;
 for (const [file, title] of Object.entries(DOCS)) {
   console.log(`OCR: ${file}`);
-  const text = await transcribe(file);
-  writeFileSync(`scripts/transcripts/${file}.txt`, text);
+  // Reuse a saved transcript when available — re-runs only re-embed
+  const tPath = `scripts/transcripts/${file}.txt`;
+  const text = existsSync(tPath) && readFileSync(tPath, "utf8").length > 2000
+    ? readFileSync(tPath, "utf8")
+    : await transcribe(file);
+  writeFileSync(tPath, text);
   const chunks = chunkText(text);
   console.log(`  ${Math.round(text.length / 1000)}k chars → ${chunks.length} chunks`);
   if (chunks.length < 3) { console.warn(`  SKIP ${file}: transcription too short`); continue; }
