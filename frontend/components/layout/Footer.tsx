@@ -32,6 +32,8 @@ export default function Footer() {
           <Link href="/data-point">Data Point</Link>
           <Link href="/about">About NEDB</Link>
           <Link href="/data-point/login">Portal Login</Link>
+          <Link href="/revisions">Data Revision Log</Link>
+          <Link href="/africa">Nigeria in Africa</Link>
         </div>
         <div className="ft-col">
           <h4>Policy &amp; Legal</h4>

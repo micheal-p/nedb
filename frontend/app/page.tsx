@@ -180,6 +180,7 @@ export default async function Home() {
             ))}
             <Link href="/bulletin" className="sub-nav-link">Intelligence Bulletin</Link>
             <Link href="/compare" className="sub-nav-link">Compare Series</Link>
+            <Link href="/africa" className="sub-nav-link">Nigeria in Africa</Link>
             <Link href="/request-data" className="sub-nav-link">Request Data</Link>
           </div>
 
