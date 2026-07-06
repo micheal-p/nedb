@@ -44,7 +44,7 @@ export default function Footer() {
       </div>
       <div className="ft-bottom">
         <span>
-          &copy; {new Date().getFullYear()} Energy Commission of Nigeria. All rights reserved.
+          &copy; {new Date().getFullYear()} Energy Commission of Nigeria. All rights reserved. &nbsp;·&nbsp; Powered by Norgroup Ltd
         </span>
         <span>NEDB Platform v1.0 &nbsp;·&nbsp; Data updated monthly</span>
       </div>

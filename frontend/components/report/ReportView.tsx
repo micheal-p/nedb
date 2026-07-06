@@ -221,7 +221,7 @@ export default function ReportView({ meta, records }: Props) {
 
         {/* Footer */}
         <div style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid var(--border)", fontSize: "0.65rem", color: "var(--ink-5)" }}>
-          Source: {meta.sourceAgency ?? "ECN / NEDB"} · Cite as: ECN-NEDB, {new Date().getFullYear()} · Generated automatically from committed NEDB records.
+          Source: {meta.sourceAgency ?? "ECN / NEDB"} · Cite as: ECN-NEDB, {new Date().getFullYear()} · Generated automatically from committed NEDB records. · Powered by Norgroup Ltd
         </div>
       </div>
 
