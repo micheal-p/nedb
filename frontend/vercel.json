@@ -45,7 +45,7 @@
     },
     {
       "path": "/api/cron/monthly-brief",
-      "schedule": "30 6 1 * *"
+      "schedule": "30 6 * * *"
     }
   ]
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SubscribeForm from "./SubscribeForm";
 
 export default function Footer() {
   return (
@@ -35,6 +36,14 @@ export default function Footer() {
           <Link href="/revisions">Data Revision Log</Link>
           <Link href="/africa">Nigeria in Africa</Link>
         </div>
+        <div className="ft-col">
+          <h4>Monthly Report</h4>
+          <p style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.5, margin: "0 0 0.6rem" }}>
+            Get the NEDB Energy Report in your inbox every cycle — latest figures, YoY moves and signals.
+          </p>
+          <SubscribeForm />
+        </div>
+
         <div className="ft-col">
           <h4>Policy &amp; Legal</h4>
           <a href="/documents/ecn_act.pdf" target="_blank" rel="noopener noreferrer">ECN Act, CAP. E10</a>
