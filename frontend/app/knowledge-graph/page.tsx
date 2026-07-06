@@ -245,8 +245,9 @@ export default function KnowledgeGraphPage() {
 
               {/* ── RIGHT: insight sidebar ── */}
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                {/* Find a node */}
-                <div className="gcard">
+                {/* Find a node — overflow must stay visible or the results
+                    dropdown is clipped by the card's rounded-corner overflow:hidden */}
+                <div className="gcard" style={{ overflow: "visible", position: "relative", zIndex: 30 }}>
                   <div className="gcard-title">Find a node</div>
                   <div style={{ padding: "0.75rem 1rem", position: "relative" }}>
                     <input
@@ -256,7 +257,7 @@ export default function KnowledgeGraphPage() {
                       style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", fontSize: "0.78rem", border: "1px solid var(--border)", borderRadius: 6 }}
                     />
                     {matches.length > 0 && (
-                      <div style={{ position: "absolute", left: "1rem", right: "1rem", top: "calc(100% - 4px)", zIndex: 20, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", left: "1rem", right: "1rem", top: "calc(100% - 4px)", zIndex: 60, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", overflow: "hidden" }}>
                         {matches.map((n) => (
                           <button key={n.key} onClick={() => pickSearchResult(n)}
                             style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", background: "none", border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer", textAlign: "left", fontSize: "0.75rem", color: "var(--ink)" }}>
