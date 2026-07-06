@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -9,18 +9,19 @@ export const metadata: Metadata = {
   title: "NEDB — National Energy Data Bank",
   description:
     "Nigeria's authoritative repository of energy statistics. Official platform of the Energy Commission of Nigeria.",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    viewportFit: "cover",
-  },,
   openGraph: {
     siteName: "NEDB — National Energy Data Bank",
     type: "website",
     images: ["/ecn-logo.png"],
   },
   twitter: { card: "summary" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
