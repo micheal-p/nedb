@@ -22,6 +22,11 @@ const EDGE_COLOR: Record<string, string> = {
   wheels:      "rgba(192,57,43,0.40)",
   distributes: "rgba(29,78,216,0.30)",
   governs:     "rgba(10,10,10,0.18)",
+  regulates:   "rgba(124,58,237,0.25)",
+  supplies:    "rgba(8,145,178,0.30)",
+  produces:    "rgba(234,88,12,0.35)",
+  exports:     "rgba(15,118,110,0.35)",
+  operates:    "rgba(87,83,78,0.30)",
 };
 
 export interface NetworkGraphHandle {

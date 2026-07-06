@@ -5,8 +5,8 @@
 // (articulation points). No React, no I/O — the same modular contract as
 // analytics.ts and report-model.ts.
 
-export type NodeType = "fuel" | "genco" | "transmission" | "disco" | "state" | "policy";
-export type EdgeType = "fuel_supply" | "generates" | "wheels" | "distributes" | "governs";
+export type NodeType = "fuel" | "genco" | "transmission" | "disco" | "state" | "policy" | "institution" | "terminal" | "refinery" | "gasplant" | "product" | "export";
+export type EdgeType = "fuel_supply" | "generates" | "wheels" | "distributes" | "governs" | "regulates" | "supplies" | "produces" | "exports" | "operates";
 
 export interface GraphNode {
   key: string;
@@ -34,6 +34,12 @@ export const NODE_STYLE: Record<NodeType, { color: string; label: string; size: 
   disco:        { color: "#1D4ED8", label: "Distribution (DisCo)",   size: 6 },
   state:        { color: "#6B21A8", label: "State (Demand)",         size: 5 },
   policy:       { color: "#0A0A0A", label: "Policy Instrument",      size: 6 },
+  institution:  { color: "#7C3AED", label: "Institution / Regulator", size: 8 },
+  terminal:     { color: "#0891B2", label: "Export Terminal",         size: 6 },
+  refinery:     { color: "#EA580C", label: "Refinery",                size: 7 },
+  gasplant:     { color: "#4338CA", label: "Gas Processing / LNG",    size: 7 },
+  product:      { color: "#57534E", label: "Petroleum Product",       size: 5 },
+  export:       { color: "#0F766E", label: "Export Market",           size: 8 },
 };
 
 export const EDGE_LABEL: Record<EdgeType, string> = {
@@ -42,6 +48,11 @@ export const EDGE_LABEL: Record<EdgeType, string> = {
   wheels:       "wheels to",
   distributes:  "distributes to",
   governs:      "governs",
+  regulates:    "regulates",
+  supplies:     "supplies",
+  produces:     "produces",
+  exports:      "exports to",
+  operates:     "operates",
 };
 
 // ── Degree centrality ───────────────────────────────────────────────────────
