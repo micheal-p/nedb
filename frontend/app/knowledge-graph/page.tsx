@@ -220,6 +220,8 @@ export default function KnowledgeGraphPage() {
                       {(() => {
                         const m = (selected.meta ?? {}) as Record<string, unknown>;
                         const facts: [string, string][] = [];
+                        const live = m.live as { value: number; unit: string; period: string } | undefined;
+                        if (live) facts.push(["Live reading", `${live.value.toLocaleString()} ${live.unit} (${live.period})`]);
                         if (m.capacity_mw) facts.push(["Capacity", `${Number(m.capacity_mw).toLocaleString()} MW`]);
                         if (m.fuel) facts.push(["Fuel", String(m.fuel)]);
                         if (m.state) facts.push(["State", String(m.state)]);
