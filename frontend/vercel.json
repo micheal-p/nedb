@@ -5,18 +5,39 @@
   "outputDirectory": ".next",
   "installCommand": "npm install --legacy-peer-deps",
   "functions": {
-    "app/api/upload/validate/route": { "maxDuration": 30 },
-    "app/api/upload/commit/[sessionId]/route": { "maxDuration": 30 },
-    "app/api/templates/[id]/route": { "maxDuration": 15 }
+    "app/api/upload/validate/route": {
+      "maxDuration": 30
+    },
+    "app/api/upload/commit/[sessionId]/route": {
+      "maxDuration": 30
+    },
+    "app/api/templates/[id]/route": {
+      "maxDuration": 15
+    }
   },
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin",  "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE,OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type,Authorization" }
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET,POST,PUT,DELETE,OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type,Authorization"
+        }
       ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/pull-annuals",
+      "schedule": "0 6 15 * *"
     }
   ]
 }

@@ -130,6 +130,9 @@ export default function UploadPage() {
     setState("committing"); setError("");
     try {
       const result = await api.commitUpload(validation.session_id, token);
+      if ((result as unknown as { pending_review?: boolean }).pending_review) {
+        setState("submitted"); setValidation(null); setFile(null); return;
+      }
       setCommittedRows(result.committed_rows); setState("committed"); setValidation(null); setFile(null);
     } catch (e) { setState("error"); setError(e instanceof Error ? e.message : "Commit failed."); }
   }

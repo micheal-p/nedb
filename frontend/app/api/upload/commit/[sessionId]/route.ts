@@ -9,6 +9,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ses
   if (!claims) return err("authentication required", 401);
 
   const { sessionId } = await params;
+
+  // Server-side enforcement of the approval workflow: only administrators
+  // commit. A staff call is converted into a review submission instead —
+  // the UI already routes staff there; this closes the direct-API path.
+  if ((claims as { role?: string }).role !== "admin") {
+    await db().from("upload_sessions").update({ status: "pending_review" }).eq("id", sessionId);
+    return ok({ pending_review: true, message: "Submitted for admin approval" });
+  }
   const client = db();
 
   const { data: session } = await client

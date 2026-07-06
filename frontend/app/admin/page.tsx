@@ -539,6 +539,7 @@ export default function AdminPage() {
             <Link href="/admin/databank" className="btn btn-ghost btn-sm">Storage Bank</Link>
             <Link href="/admin/custom-tables" className="btn btn-ghost btn-sm">Custom Tables</Link>
             <Link href="/admin/apex" className="btn btn-ghost btn-sm">Apex AI</Link>
+            <Link href="/admin/freshness" className="btn btn-ghost btn-sm">Freshness</Link>
             <Link href="/upload" className="btn btn-ghost btn-sm">Upload Data</Link>
             <Link href="/data-point/dashboard" className="btn btn-ghost btn-sm">Dashboard</Link>
             <button onClick={() => { import("@/lib/auth").then(m => { m.clearTokens(); window.location.href = "/"; }); }} className="btn btn-ghost btn-sm" style={{ color: "#fca5a5" }}>Log Out</button>
@@ -561,6 +562,7 @@ export default function AdminPage() {
             <Link href="/admin/databank" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Storage Bank</Link>
             <Link href="/admin/custom-tables" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Custom Tables</Link>
             <Link href="/admin/apex" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Apex AI</Link>
+            <Link href="/admin/freshness" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Freshness</Link>
             <Link href="/upload" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Upload Data</Link>
             <Link href="/data-point/dashboard" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Dashboard</Link>
             <button onClick={() => { import("@/lib/auth").then(m => { m.clearTokens(); window.location.href = "/"; }); setHeaderOpen(false); }} className="admin-header-item admin-header-item--logout">Log Out</button>
