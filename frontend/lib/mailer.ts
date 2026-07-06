@@ -78,3 +78,31 @@ export async function sendRejectionEmail(opts: {
     });
   } catch { /* non-fatal */ }
 }
+
+/** Generic branded system email — used by the alert and briefing crons. */
+export async function sendSystemEmail(opts: {
+  to: string | string[];
+  subject: string;
+  heading: string;
+  bodyHtml: string;   // trusted internal HTML (tables, paragraphs)
+}) {
+  const r = client(); if (!r) return;
+  try {
+    await r.emails.send({
+      from: FROM,
+      to: opts.to,
+      subject: opts.subject,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#0A0A0A">
+          <div style="background:#0E7A3C;padding:20px 24px;border-radius:8px 8px 0 0">
+            <p style="color:#fff;font-size:13px;font-weight:700;margin:0;letter-spacing:0.08em;text-transform:uppercase">National Energy Data Bank · ECN</p>
+          </div>
+          <div style="border:1px solid #E7E5E0;border-top:none;border-radius:0 0 8px 8px;padding:28px 24px">
+            <h2 style="font-size:18px;font-weight:700;color:#0A0A0A;margin:0 0 12px">${opts.heading}</h2>
+            ${opts.bodyHtml}
+            <p style="font-size:11px;color:#8E867B;margin:24px 0 0">Automated message from the National Energy Data Bank · Powered by Norgroup Ltd</p>
+          </div>
+        </div>`,
+    });
+  } catch { /* email must never break a cron */ }
+}

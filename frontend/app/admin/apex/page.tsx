@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getToken, getRole } from "@/lib/auth";
 
+interface ApiKey { id: number; key: string; label: string; owner: string | null; is_active: boolean; created_at: string; last_used: string | null }
+
 interface ApexData {
   today: { used: number; limit: number; pct: number; resetsAt: string };
   limits: { gen: number; embed: number };
@@ -28,6 +30,34 @@ export default function ApexAdmin() {
   const router = useRouter();
   const [data, setData] = useState<ApexData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [keys, setKeys] = useState<ApiKey[]>([]);
+  const [newLabel, setNewLabel] = useState("");
+  const [newOwner, setNewOwner] = useState("");
+
+  const loadKeys = useCallback(() => {
+    fetch("/api/admin/apikeys", { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then((r) => r.json()).then((j) => Array.isArray(j) && setKeys(j)).catch(() => {});
+  }, []);
+
+  async function createKey(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newLabel.trim()) return;
+    await fetch("/api/admin/apikeys", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ label: newLabel.trim(), owner: newOwner.trim() || undefined }),
+    });
+    setNewLabel(""); setNewOwner(""); loadKeys();
+  }
+
+  async function toggleKey(k: ApiKey) {
+    await fetch("/api/admin/apikeys", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ id: k.id, is_active: !k.is_active }),
+    });
+    loadKeys();
+  }
 
   const load = useCallback(() => {
     setLoading(true);
@@ -42,7 +72,8 @@ export default function ApexAdmin() {
     if (!getToken()) { router.replace("/data-point/login?redirect=/admin/apex"); return; }
     if (getRole() !== "admin") { router.replace("/data-point/dashboard"); return; }
     load();
-  }, [router, load]);
+    loadKeys();
+  }, [router, load, loadKeys]);
 
   const maxGen = Math.max(1, ...(data?.history ?? []).map((h) => h.gen));
 
@@ -131,6 +162,38 @@ export default function ApexAdmin() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            </div>
+            {/* API keys */}
+            <div className="panel" style={{ marginTop: "1.5rem" }}>
+              <div className="panel-header"><span className="panel-title">Public API keys</span><span style={{ fontSize: "0.7rem", color: "var(--ink-5)" }}>for researchers, media &amp; partner agencies</span></div>
+              <div style={{ padding: "1rem 1.25rem" }}>
+                <form onSubmit={createKey} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: "1rem" }}>
+                  <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="Label — e.g. Premium Times data desk" style={{ flex: 2, minWidth: 180, padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: "0.78rem" }} />
+                  <input value={newOwner} onChange={(e) => setNewOwner(e.target.value)} placeholder="Contact (optional)" style={{ flex: 1, minWidth: 140, padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: "0.78rem" }} />
+                  <button type="submit" className="btn btn-primary btn-sm" disabled={!newLabel.trim()}>Issue key</button>
+                </form>
+                {keys.length === 0 ? (
+                  <div style={{ fontSize: "0.75rem", color: "var(--ink-5)" }}>No keys issued yet (run migration 028 first).</div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table className="data-table" style={{ fontSize: "0.73rem" }}>
+                      <thead><tr><th>Label</th><th>Key</th><th>Contact</th><th>Issued</th><th>Status</th><th></th></tr></thead>
+                      <tbody>
+                        {keys.map((k) => (
+                          <tr key={k.id} style={{ opacity: k.is_active ? 1 : 0.5 }}>
+                            <td className="td-primary">{k.label}</td>
+                            <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.68rem" }}>{k.key}</td>
+                            <td>{k.owner ?? "—"}</td>
+                            <td style={{ fontSize: "0.68rem", color: "var(--ink-5)" }}>{new Date(k.created_at).toLocaleDateString("en-NG")}</td>
+                            <td><span style={{ fontSize: "0.62rem", fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: k.is_active ? "var(--green-tint)" : "#FEE2E2", color: k.is_active ? "var(--green)" : "#991B1B" }}>{k.is_active ? "active" : "revoked"}</span></td>
+                            <td><button onClick={() => toggleKey(k)} className="btn btn-secondary btn-sm" style={{ fontSize: "0.65rem", padding: "2px 10px" }}>{k.is_active ? "Revoke" : "Restore"}</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           </>
