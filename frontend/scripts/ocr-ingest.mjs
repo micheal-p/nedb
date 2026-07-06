@@ -140,9 +140,6 @@ for (const [file, title] of Object.entries(DOCS)) {
   console.log(`  ${Math.round(text.length / 1000)}k chars → ${chunks.length} chunks`);
   if (chunks.length < 3) { console.warn(`  SKIP ${file}: transcription too short`); continue; }
 
-  // remove any junk chunks stored from the failed pdf-parse pass
-  await withRetry(() => sb("DELETE", `doc_chunks?source_file=eq.${encodeURIComponent(file)}`), `clear ${file}`);
-
   for (let i = 0; i < chunks.length; i += 60) {
     const batch = chunks.slice(i, i + 60);
     const vecs = await withRetry(() => embedBatch(batch), `embed ${file}@${i}`);
@@ -156,6 +153,9 @@ for (const [file, title] of Object.entries(DOCS)) {
     total += rows.length;
     await sleep(13000);
   }
+  // Only after a fully successful upsert: trim any stale chunks beyond the new
+  // count (non-destructive ordering — a mid-run failure never leaves a gap).
+  await withRetry(() => sb("DELETE", `doc_chunks?source_file=eq.${encodeURIComponent(file)}&chunk_index=gte.${chunks.length}`), `trim ${file}`);
   await sleep(8000);
 }
 console.log(`DONE — ${total} OCR chunks embedded and stored.`);
