@@ -32,6 +32,7 @@ const EDGE_COLOR: Record<string, string> = {
 export interface NetworkGraphHandle {
   capturePng: () => string | null;
   fitView: () => void;
+  focusNode: (key: string) => void;
 }
 
 interface Props {
@@ -75,14 +76,6 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, Props>(function NetworkGraph
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useImperativeHandle(ref, () => ({
-    capturePng: () => {
-      const canvas = wrapRef.current?.querySelector("canvas");
-      return canvas ? (canvas as HTMLCanvasElement).toDataURL("image/png") : null;
-    },
-    fitView: () => fitConnected(),
-  }), []);
-
   // degree per node → node radius
   const degree = useMemo(() => {
     const d = new Map<string, number>();
@@ -104,6 +97,23 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, Props>(function NetworkGraph
     nodes: data.nodes.map((n) => ({ ...n, id: n.key })),
     links: data.edges.map((e) => ({ ...e })),
   }), [data]);
+
+  useImperativeHandle(ref, () => ({
+    capturePng: () => {
+      const canvas = wrapRef.current?.querySelector("canvas");
+      return canvas ? (canvas as HTMLCanvasElement).toDataURL("image/png") : null;
+    },
+    fitView: () => fitConnected(),
+    focusNode: (key: string) => {
+      // graphData node objects are mutated in place by the force engine (x/y)
+      const n = (graphData.nodes as unknown as { key: string; x?: number; y?: number }[])
+        .find((g) => g.key === key);
+      if (n && Number.isFinite(n.x) && Number.isFinite(n.y)) {
+        fgRef.current?.centerAt(n.x, n.y, 500);
+        fgRef.current?.zoom(2.4, 500);
+      }
+    },
+  }), [graphData]);
 
   return (
     <div ref={wrapRef} style={{ width: "100%", height, background: "#FBFAF6", borderRadius: "var(--r-md)", border: "1px solid var(--border)", overflow: "hidden" }}>

@@ -28,6 +28,8 @@ export default function KnowledgeGraphPage() {
   const [selected, setSelected] = useState<GraphNode | null>(null);
   const [exporting, setExporting] = useState(false);
   const [printPng, setPrintPng] = useState<string | null>(null);
+  const [q, setQ] = useState("");                                   // node search
+  const [hiddenTypes, setHiddenTypes] = useState<Set<NodeType>>(new Set()); // layer toggles
   const graphRef = useRef<NetworkGraphHandle>(null);
 
   useEffect(() => {
@@ -43,11 +45,53 @@ export default function KnowledgeGraphPage() {
 
   const nodeByKey = useMemo(() => new Map((data?.nodes ?? []).map((n) => [n.key, n])), [data]);
 
+  // Layer filtering: hidden families disappear along with their edges
+  const filteredData = useMemo<GraphData | null>(() => {
+    if (!data) return null;
+    if (!hiddenTypes.size) return data;
+    const keep = new Set(data.nodes.filter((n) => !hiddenTypes.has(n.type)).map((n) => n.key));
+    return {
+      nodes: data.nodes.filter((n) => keep.has(n.key)),
+      edges: data.edges.filter((e) => keep.has(e.source) && keep.has(e.target)),
+    };
+  }, [data, hiddenTypes]);
+
+  const typeCounts = useMemo(() => {
+    const c = new Map<NodeType, number>();
+    for (const n of data?.nodes ?? []) c.set(n.type, (c.get(n.type) ?? 0) + 1);
+    return c;
+  }, [data]);
+
+  function toggleType(t: NodeType) {
+    setHiddenTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t); else next.add(t);
+      return next;
+    });
+  }
+
+  // Search: label match across ALL nodes (hidden types are re-enabled on pick)
+  const matches = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (needle.length < 2 || !data) return [];
+    return data.nodes.filter((n) => n.label.toLowerCase().includes(needle)).slice(0, 8);
+  }, [q, data]);
+
+  function pickSearchResult(node: GraphNode) {
+    setQ("");
+    setHiddenTypes((prev) => {
+      if (!prev.has(node.type)) return prev;
+      const next = new Set(prev); next.delete(node.type); return next;
+    });
+    handleNodeClick(node);
+    setTimeout(() => graphRef.current?.focusNode(node.key), 450);
+  }
+
   // Highlight set depends on mode
   const trace = useMemo(() => {
-    if (mode !== "trace" || !selected || !data) return null;
-    return traceDownstream(data, selected.key);
-  }, [mode, selected, data]);
+    if (mode !== "trace" || !selected || !filteredData) return null;
+    return traceDownstream(filteredData, selected.key);
+  }, [mode, selected, filteredData]);
 
   const highlight = useMemo(() => {
     if (mode === "spof" && analytics) return new Set(analytics.singlePointsOfFailure);
@@ -173,7 +217,7 @@ export default function KnowledgeGraphPage() {
                 <div className="graph-canvas-wrap">
                   <NetworkGraph
                     ref={graphRef}
-                    data={data}
+                    data={filteredData ?? data}
                     highlight={highlight}
                     dimUnhighlighted={mode === "trace"}
                     onNodeClick={handleNodeClick}
@@ -186,6 +230,11 @@ export default function KnowledgeGraphPage() {
                   <img src={printPng} alt="Energy Knowledge Graph" className="print-graph-img" style={{ display: "none", width: "100%", border: "1px solid #ddd", borderRadius: 8 }} />
                 )}
 
+                {/* Relationship key */}
+                <div style={{ marginTop: "0.6rem", display: "flex", gap: "0.9rem", flexWrap: "wrap", fontSize: "0.66rem", color: "var(--ink-5)" }}>
+                  {Object.entries(EDGE_LABEL).map(([k, v]) => <span key={k}>— {v}</span>)}
+                </div>
+
                 {/* Mode explainer under the graph */}
                 <div style={{ marginTop: "0.75rem", padding: "0.75rem 1rem", background: "#fff", border: "1px solid var(--border)", borderLeft: "3px solid var(--green)", borderRadius: "var(--r-md)", fontSize: "0.76rem", color: "var(--ink-4)", lineHeight: 1.6 }}>
                   {mode === "explore" && <>Each node is an entity in Nigeria&apos;s energy system; each link is a real relationship (fuel supply, generation, wheeling, distribution, policy). Node size reflects how connected it is.</>}
@@ -196,16 +245,51 @@ export default function KnowledgeGraphPage() {
 
               {/* ── RIGHT: insight sidebar ── */}
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                {/* Legend */}
+                {/* Find a node */}
                 <div className="gcard">
-                  <div className="gcard-title">Legend</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "0.75rem 1rem" }}>
-                    {(Object.keys(NODE_STYLE) as NodeType[]).map((t) => (
-                      <div key={t} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.75rem", color: "var(--ink-3)" }}>
-                        <span style={{ width: 12, height: 12, borderRadius: "50%", background: NODE_STYLE[t].color, flexShrink: 0 }} />
-                        {NODE_STYLE[t].label}
+                  <div className="gcard-title">Find a node</div>
+                  <div style={{ padding: "0.75rem 1rem", position: "relative" }}>
+                    <input
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      placeholder="Search 100+ entities — try Dangote, Kano…"
+                      style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", fontSize: "0.78rem", border: "1px solid var(--border)", borderRadius: 6 }}
+                    />
+                    {matches.length > 0 && (
+                      <div style={{ position: "absolute", left: "1rem", right: "1rem", top: "calc(100% - 4px)", zIndex: 20, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", overflow: "hidden" }}>
+                        {matches.map((n) => (
+                          <button key={n.key} onClick={() => pickSearchResult(n)}
+                            style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", background: "none", border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer", textAlign: "left", fontSize: "0.75rem", color: "var(--ink)" }}>
+                            <span style={{ width: 9, height: 9, borderRadius: "50%", background: NODE_STYLE[n.type].color, flexShrink: 0 }} />
+                            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.label}</span>
+                            <span style={{ fontSize: "0.6rem", color: "var(--ink-5)" }}>{NODE_STYLE[n.type].label}</span>
+                          </button>
+                        ))}
                       </div>
-                    ))}
+                    )}
+                  </div>
+                </div>
+
+                {/* Layers — interactive legend with live counts */}
+                <div className="gcard">
+                  <div className="gcard-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>Layers</span>
+                    {hiddenTypes.size > 0 && (
+                      <button onClick={() => setHiddenTypes(new Set())} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.62rem", fontWeight: 700, color: "var(--green)" }}>Show all</button>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0.5rem 0.6rem" }}>
+                    {(Object.keys(NODE_STYLE) as NodeType[]).filter((t) => (typeCounts.get(t) ?? 0) > 0).map((t) => {
+                      const off = hiddenTypes.has(t);
+                      return (
+                        <button key={t} onClick={() => toggleType(t)}
+                          style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", background: off ? "transparent" : "var(--surface)", border: "none", borderRadius: 6, cursor: "pointer", fontSize: "0.74rem", color: off ? "var(--ink-5)" : "var(--ink-3)", opacity: off ? 0.55 : 1, textAlign: "left" }}>
+                          <span style={{ width: 12, height: 12, borderRadius: "50%", background: NODE_STYLE[t].color, flexShrink: 0, opacity: off ? 0.35 : 1 }} />
+                          <span style={{ flex: 1, textDecoration: off ? "line-through" : "none" }}>{NODE_STYLE[t].label}</span>
+                          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.66rem", color: "var(--ink-5)" }}>{typeCounts.get(t)}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -289,13 +373,6 @@ export default function KnowledgeGraphPage() {
           )}
         </div>
       </main>
-
-      {/* Edge-type key (print + screen footer) */}
-      <div className="page-wrap no-print" style={{ paddingBottom: "2rem", display: "flex", gap: "1.25rem", flexWrap: "wrap", fontSize: "0.7rem", color: "var(--ink-5)" }}>
-        {Object.entries(EDGE_LABEL).map(([k, v]) => (
-          <span key={k}>— {v}</span>
-        ))}
-      </div>
 
       <div className="no-print"><Footer /></div>
 
