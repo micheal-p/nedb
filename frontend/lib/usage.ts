@@ -47,6 +47,30 @@ export interface AiUsage {
   resetsAt: string;     // ISO — midnight Pacific
 }
 
+function pacificDateOffset(daysAgo: number): string {
+  const la = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  la.setDate(la.getDate() - daysAgo);
+  return `${la.getFullYear()}-${String(la.getMonth() + 1).padStart(2, "0")}-${String(la.getDate()).padStart(2, "0")}`;
+}
+
+export interface UsageDay { date: string; gen: number; embed: number }
+
+/** Last N days of self-metered Gemini calls (today first). */
+export async function getUsageHistory(days = 7): Promise<UsageDay[]> {
+  const out: UsageDay[] = [];
+  try {
+    const r = getRedis();
+    for (let i = 0; i < days; i++) {
+      const date = pacificDateOffset(i);
+      const [gen, embed] = r
+        ? await Promise.all([r.get(`gemini:gen:${date}`), r.get(`gemini:embed:${date}`)])
+        : [0, 0];
+      out.push({ date, gen: Number(gen ?? 0), embed: Number(embed ?? 0) });
+    }
+  } catch { /* degrade to zeros */ }
+  return out;
+}
+
 export async function getGeminiUsage(): Promise<AiUsage> {
   let used = 0;
   try {

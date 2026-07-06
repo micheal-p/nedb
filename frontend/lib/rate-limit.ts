@@ -1,7 +1,11 @@
-// Simple in-process sliding-window rate limiter.
-// Works for single-instance Vercel deployments (each function is isolated,
-// but login attempts within the same cold-start window are tracked).
-// Swap for Upstash @upstash/ratelimit when Redis is configured.
+// Rate limiting.
+// checkRateLimit          — in-process sliding window (per serverless instance).
+// checkRateLimitDurable   — Redis-backed fixed window, keyed however the caller
+//                           chooses (typically per IP). Survives redeploys and
+//                           applies across all instances; falls back to the
+//                           in-process limiter when Redis is unavailable.
+
+import { getRedis } from "@/lib/redis";
 
 interface Window {
   count: number;
@@ -39,4 +43,28 @@ export function checkRateLimit(
   }
 
   return { allowed: true, remaining, resetIn };
+}
+
+/** Redis-backed fixed-window limiter — durable across deploys and instances. */
+export async function checkRateLimitDurable(
+  key: string,
+  maxRequests: number,
+  windowSec: number
+): Promise<{ allowed: boolean; remaining: number; resetIn: number }> {
+  const r = getRedis();
+  if (!r) return checkRateLimit(key, maxRequests, windowSec * 1000);
+  try {
+    const bucket = Math.floor(Date.now() / (windowSec * 1000));
+    const k = `rl:${key}:${bucket}`;
+    const count = await r.incr(k);
+    if (count === 1) await r.expire(k, windowSec + 5);
+    const resetIn = windowSec - Math.floor((Date.now() / 1000) % windowSec);
+    return {
+      allowed: count <= maxRequests,
+      remaining: Math.max(0, maxRequests - count),
+      resetIn,
+    };
+  } catch {
+    return checkRateLimit(key, maxRequests, windowSec * 1000);
+  }
 }

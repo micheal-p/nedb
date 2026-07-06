@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok, err } from "@/lib/api-helpers";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimitDurable } from "@/lib/rate-limit";
 import { geminiConfigured, geminiEmbed, geminiGenerate } from "@/lib/gemini";
 import { getGeminiUsage, quotaResetISO } from "@/lib/usage";
 
@@ -15,8 +15,16 @@ export async function POST(req: NextRequest) {
     return err("Assistant not configured — set GEMINI_API_KEY", 503);
   }
 
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "anon";
-  const rl = checkRateLimit(`ask:${ip}`, 10, 60_000);
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
+  const started = Date.now();
+  const log = (question: string, status: string, sources = 0) => {
+    // fire-and-forget admin telemetry — must never affect the response
+    db().from("ask_logs").insert({
+      ip, question: question.slice(0, 300), status, sources,
+      duration_ms: Date.now() - started,
+    }).then(() => {}, () => {});
+  };
+  const rl = await checkRateLimitDurable(`ask:${ip}`, 10, 60);
   if (!rl.allowed) {
     return Response.json(
       { error: "chat_rate_limit", resetIn: rl.resetIn, message: `You're asking quickly — you can ask again in ${rl.resetIn}s.` },
@@ -66,7 +74,8 @@ export async function POST(req: NextRequest) {
     ].join("\n\n");
 
     const prompt = `You are the NEDB Policy & Research Assistant for the Energy Commission of Nigeria.
-Answer primarily from the context below, citing document excerpts as [1], [2] etc.
+Answer primarily from the context below, in clear plain English.
+Do NOT include bracketed citation markers like [1] or [2] in your answer — the interface lists the source documents separately.
 If the question is a GENERAL definition or concept (an energy term, a statistical method, an acronym) that the context does not cover, you may give a brief standard definition without a citation.
 But NEVER invent Nigeria-specific facts: names, appointments, figures, dates, locations or section numbers must come from the context — if they are not there, say so plainly.
 Keep the answer under 200 words, in clear plain English.
@@ -77,8 +86,9 @@ ${context}
 QUESTION: ${question}`;
 
     const answer = await geminiGenerate(prompt);
-    if (!answer) return err("No answer generated", 502);
+    if (!answer) { log(question, "error"); return err("No answer generated", 502); }
 
+    log(question, "ok", chunks.length);
     return ok({
       answer,
       sources: chunks.map((c, i) => ({
@@ -97,11 +107,13 @@ QUESTION: ${question}`;
     const msg = e instanceof Error ? e.message : "Assistant error";
     // Gemini free-tier quota exhausted → tell the user exactly when it resets
     if (/429/.test(msg)) {
+      log(question, "ai_quota");
       return Response.json(
         { error: "ai_quota", resetsAt: quotaResetISO(), message: "Today's free AI allowance is used up." },
         { status: 429 }
       );
     }
+    log(question, "error");
     return err(msg, 500);
   }
 }
