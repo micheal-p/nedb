@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { getToken } from "@/lib/auth";
 
 interface Message { role: "user" | "assistant"; text: string; time: string; sources?: string }
 
@@ -11,7 +12,8 @@ const SUGGESTIONS: Record<string, string[]> = {
   power:      ["What happens to power supply if TCN fails?", "Which plants feed the national grid?", "Which states does Jos DisCo serve?"],
   renewable:  ["What does national policy say about renewable energy?", "Which hydro plants are on the grid?", "What is the National LPG Expansion Programme?"],
   revenue:    ["How are royalties set under the Petroleum Industry Act?", "What is the Frontier Exploration Fund?", "Explain PPT and hydrocarbon tax under the PIA"],
-  graph:      ["What happens to Kano's power if Kano DisCo fails?", "What does the PIA say about royalties?", "Which plants supply the grid through TCN?"],
+  graph:      ["Explain what I'm seeing on this page", "What happens to Kano's power if Kano DisCo fails?", "Which plants supply the grid through TCN?"],
+  series:     ["Explain this page to me", "What does the Year-on-Year change mean?", "Why does this indicator matter for Nigeria?"],
   default:    ["What is the mandate of the ECN?", "What documents can you answer from?", "How is this data collected?"],
 };
 
@@ -35,7 +37,7 @@ function renderText(text: string) {
   );
 }
 
-export default function ApexAI({ currentView, profileLabel }: { currentView: string; profileLabel: string }) {
+export default function ApexAI({ currentView, profileLabel, screenContext }: { currentView: string; profileLabel: string; screenContext?: string }) {
   const [open, setOpen]       = useState(false);
   const [input, setInput]     = useState("");
   const [messages, setMessages] = useState<Message[]>([
@@ -130,10 +132,11 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
     setThinking(true);
     try {
       // GraphRAG backend: grounded in the policy documents + Energy Knowledge Graph
+      const token = getToken();
       const res = await fetch("/api/ask", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q }),
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ question: q, context: screenContext }),
       });
       const j = await res.json();
       let reply: Message;

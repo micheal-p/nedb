@@ -766,7 +766,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <ApexAI currentView={view} profileLabel={profile.label} />
+      <ApexAI
+        currentView={view}
+        profileLabel={profile.label}
+        screenContext={`Data Point dashboard — ${profile.label}. Section: ${NAV_ITEMS[view]?.label ?? view}. Year: ${selectedYear}. Visible KPIs: ${profile.kpis.map((d) => { const m = computeKPI(d, dashData); return `${m.label}: ${m.value}${m.unit && m.value !== "—" ? " " + m.unit : ""}${m.change ? ` (${m.up ? "+" : "-"}${m.change} vs prev, ${m.period})` : ""}`; }).join("; ")}`}
+      />
     </div>
   );
 }

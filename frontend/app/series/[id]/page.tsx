@@ -5,6 +5,7 @@ import StatCards from "@/components/databank/StatCards";
 import SeriesTable from "@/components/databank/SeriesTable";
 import SeriesChartPanel from "@/components/databank/SeriesChartPanel";
 import StatisticalAnalysisPanel from "@/components/databank/StatisticalAnalysisPanel";
+import ApexAI from "@/components/datapoint/ApexAI";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 import PrintButton from "@/components/ui/PrintButton";
 import EmbedButton from "@/components/ui/EmbedButton";
@@ -368,6 +369,19 @@ export default async function SeriesDetail({ params }: Props) {
       </div>
 
       <div className="no-print"><Footer /></div>
+
+      {/* Floating assistant — knows exactly what this page is showing */}
+      <div className="no-print">
+        <ApexAI
+          currentView="series"
+          profileLabel={series.name}
+          screenContext={`Public Data Bank series page: ${series.name} (${sectorLabel}, ${series.frequency}, unit: ${series.unit_default}, ${series.record_count} records). ${
+            stats
+              ? `Latest value: ${stats.latest?.toLocaleString()} ${stats.unit} (${stats.latest_period}). YoY change: ${stats.yoy_pct !== null ? stats.yoy_pct.toFixed(1) + "%" : "n/a"}. CAGR: ${stats.cagr !== null ? stats.cagr.toFixed(1) + "%" : "n/a"}.`
+              : "No data committed yet."
+          }${currentSignal ? ` Current signal: ${currentSignal.text}` : ""}`}
+        />
+      </div>
     </>
   );
 }

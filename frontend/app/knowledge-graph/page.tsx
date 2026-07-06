@@ -298,7 +298,11 @@ export default function KnowledgeGraphPage() {
       <div className="no-print"><Footer /></div>
 
       {/* Floating GraphRAG assistant — same engine as Data Point's Apex AI */}
-      <div className="no-print"><ApexAI currentView="graph" profileLabel="Knowledge Graph" /></div>
+      <div className="no-print"><ApexAI
+        currentView="graph"
+        profileLabel="Knowledge Graph"
+        screenContext={`Public Energy Knowledge Graph page. Mode: ${mode === "spof" ? "Single Points of Failure highlighted" : mode === "trace" && selected ? `tracing downstream of ${selected.label}` : "explore"}. Network: ${analytics?.nodeCount ?? "?"} nodes, ${analytics?.edgeCount ?? "?"} relationships, ${analytics?.singlePointsOfFailure.length ?? "?"} critical nodes. Most connected: ${analytics?.centrality.slice(0, 3).map((c) => `${c.label} (${c.degree})`).join(", ") ?? ""}.`}
+      /></div>
 
       {/* Print-only brief header */}
       <div className="print-only" style={{ display: "none" }}>

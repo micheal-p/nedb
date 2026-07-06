@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
-import { ok, err } from "@/lib/api-helpers";
+import { ok, err, requireAuth } from "@/lib/api-helpers";
 import { checkRateLimitDurable } from "@/lib/rate-limit";
 import { geminiConfigured, geminiEmbed, geminiGenerate } from "@/lib/gemini";
 import { getGeminiUsage, quotaResetISO } from "@/lib/usage";
@@ -24,7 +24,12 @@ export async function POST(req: NextRequest) {
       duration_ms: Date.now() - started,
     }).then(() => {}, () => {});
   };
-  const rl = await checkRateLimitDurable(`ask:${ip}`, 10, 60);
+  // Authenticated Data Point staff get a much higher ceiling (keyed by account,
+  // not IP); the public 10/min guard applies to anonymous visitors only.
+  const auth = await requireAuth(req);
+  const rl = auth
+    ? await checkRateLimitDurable(`ask:user:${(auth as { username?: string }).username ?? "staff"}`, 60, 60)
+    : await checkRateLimitDurable(`ask:${ip}`, 10, 60);
   if (!rl.allowed) {
     return Response.json(
       { error: "chat_rate_limit", resetIn: rl.resetIn, message: `You're asking quickly — you can ask again in ${rl.resetIn}s.` },
@@ -35,6 +40,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const question = (body?.question ?? "").toString().trim().slice(0, 500);
   if (!question) return err("question is required", 400);
+  // What the user is currently looking at (view name, visible KPI values…)
+  const screen = (body?.context ?? "").toString().trim().slice(0, 700);
 
   try {
     // 1. Retrieve relevant document chunks
@@ -71,12 +78,14 @@ export async function POST(req: NextRequest) {
         : "DOCUMENT EXCERPTS: none ingested yet.",
       "ENERGY KNOWLEDGE GRAPH — ENTITY NOTES:\n" + nodeFacts,
       "ENERGY KNOWLEDGE GRAPH — RELATIONSHIPS:\n" + graphFacts,
-    ].join("\n\n");
+      screen ? "WHAT THE USER IS CURRENTLY VIEWING ON SCREEN:\n" + screen : "",
+    ].filter(Boolean).join("\n\n");
 
     const prompt = `You are the NEDB Policy & Research Assistant for the Energy Commission of Nigeria.
 Answer primarily from the context below, in clear plain English.
 Do NOT include bracketed citation markers like [1] or [2] in your answer — the interface lists the source documents separately.
 If the question is a GENERAL definition or concept (an energy term, a statistical method, an acronym) that the context does not cover, you may give a brief standard definition without a citation.
+If the user refers to "this page", "this chart" or "what I'm seeing", use the WHAT THE USER IS CURRENTLY VIEWING section.
 But NEVER invent Nigeria-specific facts: names, appointments, figures, dates, locations or section numbers must come from the context — if they are not there, say so plainly.
 Keep the answer under 200 words, in clear plain English.
 
