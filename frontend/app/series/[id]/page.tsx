@@ -7,8 +7,7 @@ import SeriesChartPanel from "@/components/databank/SeriesChartPanel";
 import StatisticalAnalysisPanel from "@/components/databank/StatisticalAnalysisPanel";
 import ApexAI from "@/components/datapoint/ApexAI";
 import CoatOfArms from "@/components/layout/CoatOfArms";
-import PrintButton from "@/components/ui/PrintButton";
-import EmbedButton from "@/components/ui/EmbedButton";
+import ExportMenu from "@/components/ui/ExportMenu";
 import { db } from "@/lib/supabase-server";
 import { normLga } from "@/lib/geo";
 import type { AutoStats } from "@/lib/api";
@@ -16,6 +15,27 @@ import { api } from "@/lib/api";
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: Props) {
+  const { id } = await params;
+  const [{ data: s }, { data: latest }] = await Promise.all([
+    db().from("series_types").select("name, unit_default, sector").eq("id", id).single(),
+    db().from("energy_records").select("value, period, region").eq("series_type_id", id)
+      .order("period_date", { ascending: false }).limit(20),
+  ]);
+  if (!s) return { title: "Series not found — NEDB" };
+  const nat = (latest ?? []).find((r) => !r.region || ["NGA", "", "national"].includes(r.region));
+  const description = nat
+    ? `Latest: ${Number(nat.value).toLocaleString()} ${s.unit_default} (${nat.period}). Official ${s.sector} statistics from the Energy Commission of Nigeria.`
+    : `Official ${s.sector} statistics from the Energy Commission of Nigeria — validated, sourced and citable.`;
+  const title = `${s.name} — NEDB`;
+  return {
+    title,
+    description,
+    openGraph: { title, description },
+    twitter: { card: "summary", title, description },
+  };
 }
 
 async function getData(id: string) {
@@ -214,22 +234,9 @@ export default async function SeriesDetail({ params }: Props) {
               </p>
             </div>
             <div className="no-print" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              {/* Documents & sharing */}
               <Link href={`/series/${series.id}/report`} className="btn btn-secondary btn-sm">Full Report</Link>
-              <PrintButton />
-              <EmbedButton seriesId={series.id} />
               <Link href={`/compare?a=${series.id}`} className="btn btn-secondary btn-sm">Compare</Link>
-              {/* Data files */}
-              <span aria-hidden style={{ width: 1, height: 20, background: "var(--border)", margin: "0 2px" }} />
-              <a href={`/api/series/${series.id}/export?format=csv`} className="btn btn-secondary btn-sm" download>
-                CSV
-              </a>
-              <a href={`/api/series/${series.id}/export?format=xlsx`} className="btn btn-secondary btn-sm" download>
-                Excel
-              </a>
-              <a href={templateUrl} className="btn btn-secondary btn-sm">
-                Template
-              </a>
+              <ExportMenu seriesId={series.id} templateUrl={templateUrl} />
               {/* Primary action — always last */}
               <Link href="/upload" className="btn btn-primary btn-sm">
                 Upload Dataset

@@ -2,7 +2,8 @@ import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { db } from "@/lib/supabase-server";
-import SeriesCatalogue from "@/components/databank/SeriesCatalogue";
+import SeriesCatalogue, { type Trend } from "@/components/databank/SeriesCatalogue";
+import { computeSignal, type SignalRules, type SignalLevel } from "@/lib/signals";
 
 
 interface SeriesRow {
@@ -37,7 +38,7 @@ async function getSeries(): Promise<SeriesRow[]> {
   try {
     const { data } = await db()
       .from("series_types")
-      .select("id, name, sector, subsector, unit_default, frequency, viz_types, created_at, energy_records(count)")
+      .select("id, name, sector, subsector, unit_default, frequency, viz_types, created_at, signal_rules, energy_records(count)")
       .order("sector").order("name");
     return (data ?? []).map((s) => ({
       id: s.id as string, name: s.name as string, sector: s.sector as string,
@@ -45,7 +46,20 @@ async function getSeries(): Promise<SeriesRow[]> {
       frequency: s.frequency as string, viz_types: s.viz_types as string[],
       created_at: s.created_at as string,
       record_count: (s.energy_records as { count: number }[] | null)?.[0]?.count ?? 0,
+      signal_rules: s.signal_rules as SignalRules | null,
     }));
+  } catch { return []; }
+}
+
+// Recent national values per series → sparkline trends + home signal strip
+async function getTrendRows() {
+  try {
+    const { data } = await db()
+      .from("energy_records")
+      .select("series_type_id, period, period_date, value, region")
+      .order("period_date", { ascending: true })
+      .limit(3000);
+    return (data ?? []).filter((r) => (!r.region || ["NGA", "", "national"].includes(r.region)) && r.value !== null);
   } catch { return []; }
 }
 
@@ -116,7 +130,39 @@ const ACTS = [
 ];
 
 export default async function Home() {
-  const [series, customSeries] = await Promise.all([getSeries(), getCustomSeries()]);
+  const [series, customSeries, trendRows] = await Promise.all([getSeries(), getCustomSeries(), getTrendRows()]);
+
+  // Build per-series trend (last 24 points) + YoY, and the public signals strip
+  const rowsBySeries = new Map<string, { period: string; value: number }[]>();
+  for (const r of trendRows) {
+    if (!rowsBySeries.has(r.series_type_id)) rowsBySeries.set(r.series_type_id, []);
+    rowsBySeries.get(r.series_type_id)!.push({ period: r.period as string, value: Number(r.value) });
+  }
+  const trends: Record<string, Trend> = {};
+  const signals: { id: string; name: string; level: SignalLevel }[] = [];
+  for (const s of series) {
+    const rows = rowsBySeries.get(s.id) ?? [];
+    if (rows.length >= 2) {
+      const latest = rows[rows.length - 1];
+      const isMonthly = /^\d{4}-\d{2}$/.test(latest.period);
+      const lag = isMonthly && rows.length >= 13 ? 12 : 1;
+      const prev = rows.length > lag ? rows[rows.length - 1 - lag] : null;
+      trends[s.id] = {
+        points: rows.slice(-24).map((r) => r.value),
+        latest: latest.value,
+        period: latest.period,
+        yoyPct: prev && prev.value !== 0 ? ((latest.value - prev.value) / Math.abs(prev.value)) * 100 : null,
+      };
+      const rules = (s as unknown as { signal_rules: SignalRules | null }).signal_rules;
+      if (rules) {
+        const sig = computeSignal(rules, rows);
+        if (sig) signals.push({ id: s.id, name: s.name, level: sig.level });
+      }
+    }
+  }
+  const LEVEL_DOT: Record<SignalLevel, string> = { above: "#0E7A3C", neutral: "#8E867B", warn: "#D97706", critical: "#DC2626" };
+  const order: SignalLevel[] = ["critical", "warn", "above", "neutral"];
+  signals.sort((a, b) => order.indexOf(a.level) - order.indexOf(b.level));
   const bySector = series.reduce((acc, s) => {
     if (!acc[s.sector]) acc[s.sector] = [];
     acc[s.sector].push(s);
@@ -146,6 +192,23 @@ export default async function Home() {
           </div>
         </div>
       </div>
+
+      {/* ── CURRENT SIGNALS ── */}
+      {signals.length > 0 && (
+        <div style={{ background: "var(--surface-white)", borderBottom: "1px solid var(--border)", padding: "0.65rem 0" }}>
+          <div className="page-wrap" style={{ display: "flex", alignItems: "center", gap: "0.5rem", overflowX: "auto" }}>
+            <span style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-5)", flexShrink: 0 }}>Current signals</span>
+            {signals.map((sig) => (
+              <Link key={sig.id} href={`/series/${sig.id}`}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 20, border: "1px solid var(--border)", background: "var(--surface)", fontSize: "0.7rem", fontWeight: 600, color: "var(--ink-3)", whiteSpace: "nowrap", textDecoration: "none", flexShrink: 0 }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: LEVEL_DOT[sig.level], flexShrink: 0 }} />
+                {sig.name}
+                <span style={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", color: LEVEL_DOT[sig.level] }}>{sig.level}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── MANDATE BAND ── */}
       <div className="info-band">
@@ -184,7 +247,7 @@ export default async function Home() {
             <Link href="/request-data" className="sub-nav-link">Request Data</Link>
           </div>
 
-          <SeriesCatalogue series={series} sectorMeta={SECTOR_META} />
+          <SeriesCatalogue series={series} sectorMeta={SECTOR_META} trends={trends} />
 
           {/* ── CUSTOM DATA TABLES ── */}
           {customSeries.length > 0 && (

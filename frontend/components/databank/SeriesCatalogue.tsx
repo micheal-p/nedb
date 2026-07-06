@@ -11,9 +11,42 @@ interface SeriesRow {
 
 interface SectorMeta { label: string; desc: string; subsectors: string }
 
+export interface Trend {
+  points: number[];        // recent national values, oldest → newest
+  latest: number;
+  period: string;
+  yoyPct: number | null;
+}
+
 interface Props {
   series: SeriesRow[];
   sectorMeta: Record<string, SectorMeta>;
+  trends?: Record<string, Trend>;
+}
+
+function fmtShort(v: number): string {
+  const a = Math.abs(v);
+  if (a >= 1e9) return (v / 1e9).toFixed(1) + "B";
+  if (a >= 1e6) return (v / 1e6).toFixed(1) + "M";
+  if (a >= 1e3) return (v / 1e3).toFixed(1) + "K";
+  return a >= 100 ? v.toFixed(0) : v.toFixed(1);
+}
+
+function Sparkline({ points }: { points: number[] }) {
+  if (points.length < 2) return null;
+  const w = 132, h = 34, pad = 2;
+  const min = Math.min(...points), max = Math.max(...points);
+  const span = max - min || 1;
+  const step = (w - pad * 2) / (points.length - 1);
+  const d = points
+    .map((v, i) => `${(pad + i * step).toFixed(1)},${(h - pad - ((v - min) / span) * (h - pad * 2)).toFixed(1)}`)
+    .join(" ");
+  const rising = points[points.length - 1] >= points[0];
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden style={{ display: "block" }}>
+      <polyline points={d} fill="none" stroke={rising ? "#0E7A3C" : "#C0392B"} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
 }
 
 function qualityScore(count: number, freq: string) {
@@ -35,7 +68,7 @@ function QualityDots({ score }: { score: number }) {
   );
 }
 
-export default function SeriesCatalogue({ series, sectorMeta }: Props) {
+export default function SeriesCatalogue({ series, sectorMeta, trends }: Props) {
   const [query, setQuery]     = useState("");
   const [sector, setSector]   = useState("all");
 
@@ -66,6 +99,7 @@ export default function SeriesCatalogue({ series, sectorMeta }: Props) {
   const sectors = Object.keys(sectorMeta).filter((s) => series.some((r) => r.sector === s));
 
   function SeriesCard({ s }: { s: SeriesRow }) {
+    const t = trends?.[s.id];
     return (
       <Link href={`/series/${s.id}`} className="series-cell">
         <div className="series-meta">
@@ -73,18 +107,27 @@ export default function SeriesCatalogue({ series, sectorMeta }: Props) {
           {s.record_count > 0 && <span className="tag tag-muted">{s.record_count.toLocaleString()} records</span>}
         </div>
         <div className="series-name">{s.name}</div>
-        <div style={{ display: "flex", gap: "1.5rem", margin: "0.625rem 0" }}>
-          <div>
-            <div style={{ fontSize: "1.375rem", fontFamily: "var(--font-mono)", fontWeight: 600, lineHeight: 1, color: s.record_count > 0 ? "var(--ink)" : "var(--ink-5)" }}>
-              {s.record_count > 0 ? s.record_count.toLocaleString() : "—"}
+        {t ? (
+          <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", margin: "0.625rem 0", flexWrap: "wrap" }}>
+            <div style={{ minWidth: 110 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                <span style={{ fontSize: "1.375rem", fontFamily: "var(--font-mono)", fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>{fmtShort(t.latest)}</span>
+                {t.yoyPct !== null && (
+                  <span style={{ fontSize: "0.68rem", fontWeight: 700, color: t.yoyPct >= 0 ? "var(--green)" : "var(--red)" }}>
+                    {t.yoyPct >= 0 ? "▲" : "▼"} {Math.abs(t.yoyPct).toFixed(1)}%
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", marginTop: 3 }}>{s.unit_default} · {t.period}</div>
             </div>
-            <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 2 }}>Records</div>
+            <Sparkline points={t.points} />
           </div>
-          <div>
-            <div style={{ fontSize: "0.82rem", fontWeight: 500, color: "var(--ink-3)", lineHeight: 1.5 }}>{s.unit_default}</div>
-            <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 2 }}>Unit</div>
+        ) : (
+          <div style={{ margin: "0.625rem 0" }}>
+            <div style={{ fontSize: "0.8rem", color: "var(--ink-5)", fontStyle: "italic" }}>Awaiting first submission</div>
+            <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 4 }}>{s.unit_default}</div>
           </div>
-        </div>
+        )}
         <div className="viz-chips">
           {s.viz_types.map((vt) => <span key={vt} className="viz-chip">{vt}</span>)}
         </div>

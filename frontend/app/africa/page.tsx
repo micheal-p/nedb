@@ -8,6 +8,11 @@ import AfricaCompare, { type AfricaRow } from "@/components/charts/AfricaCompare
 
 export const revalidate = 86400;
 
+export const metadata = {
+  title: "Nigeria in Africa — Electricity Benchmarking | NEDB",
+  description: "How Nigeria's grid electricity generation compares with Ghana, Egypt, South Africa and Kenya since 2000. Official ECN data platform.",
+};
+
 const COUNTRIES = ["Nigeria", "Ghana", "Egypt", "South Africa", "Kenya"];
 
 async function getData(): Promise<{ rows: AfricaRow[]; latest: { country: string; twh: number; year: number }[] }> {

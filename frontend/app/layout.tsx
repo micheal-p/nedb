@@ -5,6 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://nedb.vercel.app"),
   title: "NEDB — National Energy Data Bank",
   description:
     "Nigeria's authoritative repository of energy statistics. Official platform of the Energy Commission of Nigeria.",
@@ -13,7 +14,13 @@ export const metadata: Metadata = {
     initialScale: 1,
     maximumScale: 1,
     viewportFit: "cover",
+  },,
+  openGraph: {
+    siteName: "NEDB — National Energy Data Bank",
+    type: "website",
+    images: ["/ecn-logo.png"],
   },
+  twitter: { card: "summary" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
