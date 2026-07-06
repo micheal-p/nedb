@@ -3,11 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names \"API,WEB\" --prefix-colors \"green,blue\" \"cd backend && go run ./cmd/server/main.go\" \"cd frontend && npm run dev\"",
+    "dev": "npm run dev --prefix frontend",
     "build": "npm run build --prefix frontend",
-    "start": "concurrently --names \"API,WEB\" --prefix-colors \"green,blue\" \"cd backend && go run ./cmd/server/main.go\" \"cd frontend && npm start\""
-  },
-  "devDependencies": {
-    "concurrently": "^10.0.3"
+    "start": "npm run start --prefix frontend"
   }
 }
