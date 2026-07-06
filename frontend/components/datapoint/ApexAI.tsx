@@ -50,6 +50,74 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
   const [chatLeft, setChatLeft] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
+  const panelRef  = useRef<HTMLDivElement>(null);
+  const btnRef    = useRef<HTMLButtonElement>(null);
+
+  // Draggable widget: pos = button top-left; null = default bottom-right corner
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { return JSON.parse(localStorage.getItem("apexai-pos") ?? "null"); } catch { return null; }
+  });
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number; moved: boolean } | null>(null);
+
+  function onBtnPointerDown(e: React.PointerEvent) {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: r.left, origY: r.top, moved: false };
+    const move = (ev: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const dx = ev.clientX - d.startX, dy = ev.clientY - d.startY;
+      if (!d.moved && Math.hypot(dx, dy) < 6) return;   // click vs drag threshold
+      d.moved = true;
+      setPos({
+        x: Math.min(Math.max(4, d.origX + dx), window.innerWidth - 56),
+        y: Math.min(Math.max(4, d.origY + dy), window.innerHeight - 56),
+      });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      const d = dragRef.current;
+      dragRef.current = null;
+      if (d?.moved) {
+        setPos((p) => { try { localStorage.setItem("apexai-pos", JSON.stringify(p)); } catch {} return p; });
+      } else {
+        setOpen((o) => !o);                              // plain tap toggles
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
+  // Tap anywhere outside the panel (or its button) to close
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (panelRef.current?.contains(t) || btnRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
+  }, [open]);
+
+  // Panel anchored to the (possibly dragged) button, kept inside the viewport
+  function panelStyle(): React.CSSProperties {
+    const base: React.CSSProperties = {
+      position: "fixed", zIndex: 900,
+      width: "min(380px, calc(100vw - 32px))", height: "min(540px, calc(100vh - 120px))",
+      background: "#fff", border: "1px solid var(--border)", borderRadius: 16,
+      boxShadow: "0 8px 40px rgba(0,0,0,0.16)", display: "flex", flexDirection: "column", overflow: "hidden",
+    };
+    if (!pos || typeof window === "undefined") return { ...base, bottom: 84, right: 24 };
+    const pw = Math.min(380, window.innerWidth - 32);
+    const ph = Math.min(540, window.innerHeight - 120);
+    const left = Math.min(Math.max(8, pos.x + 52 - pw), window.innerWidth - pw - 8);
+    const openUp = pos.y - ph - 10 >= 8;
+    const top = openUp ? pos.y - ph - 10 : Math.min(pos.y + 62, window.innerHeight - ph - 8);
+    return { ...base, left, top };
+  }
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, thinking]);
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 100); }, [open]);
@@ -104,9 +172,12 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
     <>
       {/* Floating trigger */}
       <button
-        onClick={() => setOpen((o) => !o)}
+        ref={btnRef}
+        onPointerDown={onBtnPointerDown}
         style={{
-          position: "fixed", bottom: 24, right: 24, zIndex: 900,
+          position: "fixed", zIndex: 900,
+          ...(pos ? { left: pos.x, top: pos.y } : { bottom: 24, right: 24 }),
+          touchAction: "none",
           width: 52, height: 52, borderRadius: "50%",
           background: "linear-gradient(135deg, #0E7A3C 0%, #065F46 100%)",
           border: "2px solid rgba(255,255,255,0.2)",
@@ -132,7 +203,7 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
       </button>
 
       {/* Label when closed */}
-      {!open && (
+      {!open && !pos && (
         <div style={{ position: "fixed", bottom: 30, right: 84, zIndex: 899, background: "var(--ink)", color: "#fff", borderRadius: 6, padding: "4px 10px", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.04em", pointerEvents: "none", opacity: 0.85 }}>
           Apex AI
         </div>
@@ -140,13 +211,7 @@ export default function ApexAI({ currentView, profileLabel }: { currentView: str
 
       {/* Chat panel */}
       {open && (
-        <div style={{
-          position: "fixed", bottom: 84, right: 24, zIndex: 900,
-          width: "min(380px, calc(100vw - 32px))", height: "min(540px, calc(100vh - 120px))", background: "#fff",
-          border: "1px solid var(--border)", borderRadius: 16,
-          boxShadow: "0 8px 40px rgba(0,0,0,0.16)",
-          display: "flex", flexDirection: "column", overflow: "hidden",
-        }}>
+        <div ref={panelRef} style={panelStyle()}>
           {/* Header */}
           <div style={{ background: "linear-gradient(135deg, #0A0A0A 0%, #1a1a1a 100%)", padding: "14px 16px", display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg, #0E7A3C, #065F46)", display: "flex", alignItems: "center", justifyContent: "center" }}>
