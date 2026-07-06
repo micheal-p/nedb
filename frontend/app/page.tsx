@@ -234,7 +234,7 @@ export default async function Home() {
       <main style={{ background: "var(--surface)", padding: "2.5rem 0 4rem" }}>
         <div className="page-wrap">
 
-          <div className="sub-nav" style={{ marginBottom: "2rem", marginLeft: "-2rem", marginRight: "-2rem", paddingLeft: "2rem" }}>
+          <div className="sub-nav" style={{ marginBottom: "2rem", borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
             <Link href="/" className="sub-nav-link active">All Sectors<span className="count">{series.length}</span></Link>
             {Object.entries(SECTOR_META).filter(([sec]) => bySector[sec]?.length).map(([sec, meta]) => (
               <a key={sec} href={`#sector-${sec}`} className="sub-nav-link">

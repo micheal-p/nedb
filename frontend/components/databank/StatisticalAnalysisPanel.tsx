@@ -7,7 +7,7 @@
 // computed live from the series (e.g. "Latest YoY change: +8.3%"). Each analysis
 // is its own separate chart — never a toggle on the main series chart.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { EnergyRecord } from "@/lib/api";
 import StatOverlay from "@/components/charts/StatOverlay";
 import {
@@ -29,7 +29,10 @@ function signed(n: number, dp = 1): string {
   return `${n >= 0 ? "+" : ""}${n.toFixed(dp)}`;
 }
 
+const INITIAL_VISIBLE = 3;
+
 export default function StatisticalAnalysisPanel({ records, unit, seriesName }: Props) {
+  const [expanded, setExpanded] = useState(false);
   const analysis = useMemo(() => {
     const points = toPoints(records);
     const freq = detectFrequency(points);
@@ -174,7 +177,7 @@ export default function StatisticalAnalysisPanel({ records, unit, seriesName }: 
       {/* Grid of independent analytical charts */}
       {/* min(380px,100%) prevents horizontal overflow on phones narrower than 380px */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(380px, 100%), 1fr))", gap: "1.25rem" }}>
-        {cards.map((c) => (
+        {(expanded ? cards : cards.slice(0, INITIAL_VISIBLE)).map((c) => (
           <div key={c.key} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "0.875rem 1.1rem 0.5rem" }}>
               <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--ink)" }}>{c.title}</div>
@@ -191,6 +194,17 @@ export default function StatisticalAnalysisPanel({ records, unit, seriesName }: 
           </div>
         ))}
       </div>
+
+      {cards.length > INITIAL_VISIBLE && (
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "1rem" }}>
+          <button
+            onClick={() => setExpanded((e) => !e)}
+            style={{ padding: "0.5rem 1.5rem", fontSize: "0.78rem", fontWeight: 700, background: expanded ? "transparent" : "var(--surface-white)", color: "var(--green)", border: "1px solid var(--green-line, var(--border))", borderRadius: 20, cursor: "pointer" }}
+          >
+            {expanded ? "Show fewer analyses ↑" : `See ${cards.length - INITIAL_VISIBLE} more analyses ↓`}
+          </button>
+        </div>
+      )}
 
       <div style={{ marginTop: "0.75rem", fontSize: "0.68rem", color: "var(--ink-5)", fontStyle: "italic" }}>
         All analyses computed at query time from committed NEDB records for {seriesName}. Percentages are in percentage points; ±2σ covers ~95% of normal variation.
