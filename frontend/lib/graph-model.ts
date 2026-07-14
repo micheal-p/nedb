@@ -6,7 +6,7 @@
 // analytics.ts and report-model.ts.
 
 export type NodeType = "fuel" | "genco" | "transmission" | "disco" | "state" | "policy" | "institution" | "terminal" | "refinery" | "gasplant" | "product" | "export" | "databank" | "platform";
-export type EdgeType = "fuel_supply" | "generates" | "wheels" | "distributes" | "governs" | "regulates" | "supplies" | "produces" | "exports" | "operates" | "tracks";
+export type EdgeType = "fuel_supply" | "generates" | "wheels" | "distributes" | "governs" | "regulates" | "supplies" | "produces" | "exports" | "operates" | "tracks" | "finances" | "displaces";
 
 export interface GraphNode {
   key: string;
@@ -56,6 +56,8 @@ export const EDGE_LABEL: Record<EdgeType, string> = {
   exports:      "exports to",
   operates:     "operates",
   tracks:       "tracks data for",
+  finances:     "finances",
+  displaces:    "displaces",
 };
 
 // ── Degree centrality ───────────────────────────────────────────────────────
