@@ -5,8 +5,8 @@
 // (articulation points). No React, no I/O — the same modular contract as
 // analytics.ts and report-model.ts.
 
-export type NodeType = "fuel" | "genco" | "transmission" | "disco" | "state" | "policy" | "institution" | "terminal" | "refinery" | "gasplant" | "product" | "export";
-export type EdgeType = "fuel_supply" | "generates" | "wheels" | "distributes" | "governs" | "regulates" | "supplies" | "produces" | "exports" | "operates";
+export type NodeType = "fuel" | "genco" | "transmission" | "disco" | "state" | "policy" | "institution" | "terminal" | "refinery" | "gasplant" | "product" | "export" | "databank" | "platform";
+export type EdgeType = "fuel_supply" | "generates" | "wheels" | "distributes" | "governs" | "regulates" | "supplies" | "produces" | "exports" | "operates" | "tracks";
 
 export interface GraphNode {
   key: string;
@@ -40,6 +40,8 @@ export const NODE_STYLE: Record<NodeType, { color: string; label: string; size: 
   gasplant:     { color: "#4338CA", label: "Gas Processing / LNG",    size: 7 },
   product:      { color: "#57534E", label: "Petroleum Product",       size: 5 },
   export:       { color: "#0F766E", label: "Export Market",           size: 8 },
+  databank:     { color: "#1EB06A", label: "NEDB (Data Backbone)",    size: 14 },
+  platform:     { color: "#E8B84B", label: "NEIIA Product",           size: 6 },
 };
 
 export const EDGE_LABEL: Record<EdgeType, string> = {
@@ -53,6 +55,7 @@ export const EDGE_LABEL: Record<EdgeType, string> = {
   produces:     "produces",
   exports:      "exports to",
   operates:     "operates",
+  tracks:       "tracks data for",
 };
 
 // ── Degree centrality ───────────────────────────────────────────────────────

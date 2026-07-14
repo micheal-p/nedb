@@ -27,6 +27,7 @@ const EDGE_COLOR: Record<string, string> = {
   produces:    "rgba(234,88,12,0.35)",
   exports:     "rgba(15,118,110,0.35)",
   operates:    "rgba(87,83,78,0.30)",
+  tracks:      "rgba(30,176,106,0.35)",
 };
 
 export interface NetworkGraphHandle {
