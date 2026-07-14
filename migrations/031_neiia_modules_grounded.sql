@@ -16,12 +16,22 @@
 -- New node: Federal Ministry of Environment (regulates the ESG Clearance
 -- product) — the one NEIIA module whose real counterpart institution wasn't
 -- already in the graph.
+--
+-- Also: 024 deleted fuel_diesel (and fuel_coal) as orphans, on the stated
+-- reasoning that they "should return only when off-grid/self-generation
+-- modelling is added." eVillage's diesel-genset displacement is exactly that
+-- case, so fuel_diesel is re-seeded here before anything references it.
+-- fuel_coal is NOT re-added — nothing in this migration gives it a real edge.
 
 ALTER TABLE graph_edges DROP CONSTRAINT IF EXISTS graph_edges_edge_type_check;
 ALTER TABLE graph_edges ADD CONSTRAINT graph_edges_edge_type_check
   CHECK (edge_type IN ('fuel_supply','generates','wheels','distributes','governs',
                        'regulates','supplies','produces','exports','operates','tracks',
                        'finances','displaces'));
+
+INSERT INTO graph_nodes (node_key, label, node_type, meta) VALUES
+('fuel_diesel','Diesel / AGO','fuel','{"backup":true,"description":"Off-grid backup and self-generation fuel — the fossil-fuel baseline eVillage''s solar/mini-grid financing is displacing at the household and community level."}')
+ON CONFLICT (node_key) DO NOTHING;
 
 -- ── Correct the National Energy Assets description (it's a trading simulator,
 --    not a physical asset registry) ───────────────────────────────────────────
