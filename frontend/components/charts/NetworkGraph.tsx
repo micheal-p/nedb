@@ -30,6 +30,7 @@ const EDGE_COLOR: Record<string, string> = {
   tracks:      "rgba(30,176,106,0.35)",
   finances:    "rgba(232,184,75,0.40)",
   displaces:   "rgba(224,79,57,0.35)",
+  located_in:  "rgba(107,33,168,0.22)",
 };
 
 export interface NetworkGraphHandle {
