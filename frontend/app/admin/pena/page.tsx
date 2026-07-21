@@ -18,7 +18,7 @@ const STATUS_STYLE: Record<string, { bg: string; fg: string; label: string }> = 
   closed: { bg: "var(--red-tint)",   fg: "var(--red)",       label: "CLOSED" },
 };
 
-function NewAssessmentModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function NewAssessmentModal({ onClose, onCreated }: { onClose: () => void; onCreated: (form: PenaForm) => void }) {
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [desc, setDesc] = useState("");
@@ -37,12 +37,12 @@ function NewAssessmentModal({ onClose, onCreated }: { onClose: () => void; onCre
         credentials: "include",
         body: JSON.stringify({ title: title.trim(), slug: slug.trim(), description: desc, is_public_stats: pubStats }),
       });
+      const j = await res.json();
       if (!res.ok) {
-        const j = await res.json();
         setError(j.error ?? "Failed to create assessment");
         return;
       }
-      onCreated();
+      onCreated(j);
       onClose();
     } catch {
       setError("Network error");
@@ -128,6 +128,18 @@ export default function PenaAdminPage() {
     });
   }
 
+  // Native share sheet (WhatsApp, SMS, mail…) where available; copy elsewhere
+  function shareLink(f: PenaForm, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/f/${f.share_token}`;
+    if (navigator.share) {
+      navigator.share({ title: f.title, text: `${f.title} — Nigeria Energy Data Bank assessment`, url }).catch(() => {});
+    } else {
+      copyLink(f, e);
+    }
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface)", padding: "2rem" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -185,6 +197,10 @@ export default function PenaAdminPage() {
                       <button onClick={(e) => copyLink(f, e)} style={{ padding: "6px 12px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-tint)", color: "var(--green)", cursor: "pointer" }}>
                         {copied === f.id ? "Copied ✓" : "Copy Link"}
                       </button>
+                      <button onClick={(e) => shareLink(f, e)} style={{ padding: "6px 12px", fontSize: "0.72rem", fontWeight: 700, border: "none", borderRadius: 4, background: "var(--green)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/></svg>
+                        Share
+                      </button>
                     </div>
                   </div>
                 </Link>
@@ -193,7 +209,7 @@ export default function PenaAdminPage() {
           </div>
         )}
 
-        {showNew && <NewAssessmentModal onClose={() => setShowNew(false)} onCreated={load} />}
+        {showNew && <NewAssessmentModal onClose={() => setShowNew(false)} onCreated={(f) => router.push(`/admin/pena/${f.id}`)} />}
       </div>
     </div>
   );

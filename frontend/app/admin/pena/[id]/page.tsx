@@ -150,6 +150,14 @@ export default function PenaBuilderPage() {
               style={{ padding: "5px 12px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-tint)", color: "var(--green)", cursor: "pointer" }}>
               {copied ? "Copied ✓" : "Copy"}
             </button>
+            <button onClick={() => {
+              if (navigator.share) navigator.share({ title: form.title, text: `${form.title} — Nigeria Energy Data Bank assessment`, url: shareUrl }).catch(() => {});
+              else { navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 1500); }
+            }}
+              style={{ padding: "5px 12px", fontSize: "0.72rem", fontWeight: 700, border: "none", borderRadius: 4, background: "var(--green)", color: "#fff", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/></svg>
+              Share
+            </button>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
