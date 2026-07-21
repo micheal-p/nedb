@@ -9,6 +9,7 @@ import Navbar from "@/components/layout/Navbar";
 type PubForm = {
   slug: string; title: string; description: string | null;
   status: string; created_at: string; response_count: number;
+  share_token: string | null;
 };
 
 export default function AssessmentsIndexPage() {
@@ -58,9 +59,18 @@ export default function AssessmentsIndexPage() {
                     </div>
                     {f.description && <div style={{ fontSize: "0.75rem", color: "var(--ink-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.description}</div>}
                   </div>
-                  <div style={{ textAlign: "center", flexShrink: 0 }}>
-                    <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--green)", fontFamily: "var(--font-mono)" }}>{f.response_count.toLocaleString()}</div>
-                    <div style={{ fontSize: "0.62rem", color: "var(--ink-5)", textTransform: "uppercase" }}>Responses</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", flexShrink: 0 }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--green)", fontFamily: "var(--font-mono)" }}>{f.response_count.toLocaleString()}</div>
+                      <div style={{ fontSize: "0.62rem", color: "var(--ink-5)", textTransform: "uppercase" }}>Responses</div>
+                    </div>
+                    {f.share_token && (
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/f/${f.share_token}`; }}
+                        style={{ padding: "0.55rem 1.1rem", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.76rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        Fill it →
+                      </button>
+                    )}
                   </div>
                 </div>
               </Link>

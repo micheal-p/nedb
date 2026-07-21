@@ -7,7 +7,7 @@ import { ok, err } from "@/lib/api-helpers";
 export async function GET() {
   const { data, error } = await db()
     .from("pena_forms")
-    .select("slug, title, description, status, created_at, pena_responses(count)")
+    .select("slug, share_token, title, description, status, created_at, pena_responses(count)")
     .eq("is_public_stats", true)
     .neq("status", "draft")
     .order("created_at", { ascending: false });
@@ -21,5 +21,7 @@ export async function GET() {
     status: f.status,
     created_at: f.created_at,
     response_count: (f.pena_responses as { count: number }[])?.[0]?.count ?? 0,
+    // Open published surveys are fillable straight from the data bank
+    share_token: f.status === "open" ? f.share_token : null,
   })));
 }

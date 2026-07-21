@@ -17,6 +17,7 @@ type Group = { name: string; count: number; avg_income: number | null; avg_light
 
 type PubData = {
   assessment: { slug: string; title: string; description: string | null; status: string; created_at: string };
+  share_token?: string | null;
   license: string;
   total_responses: number;
   collecting?: boolean;
@@ -98,7 +99,12 @@ export default function PublicAssessmentPage() {
             </div>
           </div>
           <div className="no-print" style={{ display: "flex", gap: "0.625rem", flexWrap: "wrap" }}>
-            <button onClick={() => window.print()} style={{ padding: "0.6rem 1.25rem", background: "var(--green)", border: "none", color: "#fff", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
+            {data.share_token && (
+              <Link href={`/f/${data.share_token}`} style={{ padding: "0.6rem 1.25rem", background: "var(--green)", border: "none", color: "#fff", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, textDecoration: "none" }}>
+                Fill This Assessment
+              </Link>
+            )}
+            <button onClick={() => window.print()} style={{ padding: "0.6rem 1.25rem", background: "#fff", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
               Download PDF
             </button>
             <button onClick={downloadJSON} style={{ padding: "0.6rem 1.25rem", background: "#fff", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
@@ -123,6 +129,12 @@ export default function PublicAssessmentPage() {
               This privacy floor (NDPA 2023) prevents any individual&apos;s income or living situation from being
               identifiable in the open data. Full detail is already live for NEDB analysts on the internal dashboard.
             </p>
+            {data.share_token && (
+              <Link href={`/f/${data.share_token}`} className="no-print"
+                style={{ display: "inline-block", marginTop: "1.5rem", padding: "0.75rem 2rem", background: "var(--green)", color: "#fff", borderRadius: 8, fontSize: "0.88rem", fontWeight: 700, textDecoration: "none" }}>
+                Fill This Assessment — be one of the first {needed}
+              </Link>
+            )}
           </div>
         ) : (
           <>
