@@ -75,6 +75,7 @@ export default function PenaPublicForm() {
   const [already, setAlready] = useState(false);
   const [offlineQueued, setOfflineQueued] = useState(false);
   const [error, setError] = useState("");
+  const errorRef = useRef<HTMLDivElement>(null);
   const [googleToken, setGoogleToken] = useState<string | null>(null);
   const [googleEmail, setGoogleEmail] = useState<string | null>(null);
   const geoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -187,6 +188,11 @@ export default function PenaPublicForm() {
       else { try { localStorage.removeItem(queueKey); } catch { /* ignore */ } setOfflineQueued(false); setError(r.body.error ?? "Submission failed."); }
     } catch { /* still offline — keep the queue */ }
   }, [queueKey, postPayload, markDone]);
+
+  // A validation error must be seen — scroll it into view when it appears
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [error]);
 
   useEffect(() => {
     if (!offlineQueued) return;
@@ -431,7 +437,7 @@ export default function PenaPublicForm() {
           <span style={{ fontSize: "0.76rem", color: "var(--ink-3)", lineHeight: 1.6 }}>{def.consent_text}</span>
         </label>
 
-        {error && <div style={{ fontSize: "0.8rem", color: "var(--red)", background: "var(--red-tint)", padding: "0.625rem 0.875rem", borderRadius: 6, marginTop: "0.875rem" }}>{error}</div>}
+        {error && <div ref={errorRef} style={{ fontSize: "0.8rem", color: "var(--red)", background: "var(--red-tint)", padding: "0.625rem 0.875rem", borderRadius: 6, marginTop: "0.875rem" }}>{error}</div>}
 
         <button onClick={submit} disabled={submitting || preview}
           style={{ marginTop: "1rem", width: "100%", padding: "0.8rem", background: submitting || preview ? "var(--ink-5)" : "var(--green)", color: "#fff", border: "none", borderRadius: 8, fontSize: "0.9rem", fontWeight: 700, cursor: submitting || preview ? "not-allowed" : "pointer" }}>

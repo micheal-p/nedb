@@ -19,9 +19,11 @@ import { computeTier, type TierConfig } from "@/lib/pena";
 //   2. DB-unique email per form (033).
 //   3. One submission per IP per form (hash compare) — holds even if the
 //      respondent signs out or switches Google accounts on the same device.
-//      NOTE: Nigerian mobile carriers CGNAT thousands of users behind one IP;
-//      if the field reports legit people blocked, raise MAX_PER_IP.
-const MAX_PER_IP = 1;
+//      NOTE: Nigerian mobile carriers CGNAT thousands of users behind one IP,
+//      so a hard 1-per-IP silently locks out neighbours on the same carrier —
+//      3 tolerates shared networks while still stopping bulk stuffing (the
+//      email and device locks continue to block genuine double-fills).
+const MAX_PER_IP = 3;
 
 type Question = {
   id: number; label: string; slug: string; qtype: string; unit: string | null;
