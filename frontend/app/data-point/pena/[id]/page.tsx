@@ -304,7 +304,8 @@ export default function PenaInsightsPage() {
         {/* Maps */}
         <Kicker>Geography</Kicker>
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", marginBottom: "1.5rem" }}>
-          <LgaMap lgaData={ins.lga_income_map} stateAware title="Average Monthly Income by LGA — click an LGA to filter the table" unit="₦/month" source="PENA field assessment / NEDB" onSelect={onLgaClick} />
+          <LgaMap lgaData={ins.lga_income_map} stateAware title="Average Monthly Income by LGA — click an LGA to filter the table" unit="₦/month" source="PENA field assessment / NEDB" onSelect={onLgaClick}
+            emptyTitle="No LGA averages yet" emptyHint="An LGA colours in once at least one verified response reports both an income and a Local Government Area." />
           <PenaPointsMap points={ins.points} title="Assessed Locations" source="PENA field assessment / NEDB" />
         </div>
 

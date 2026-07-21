@@ -51,6 +51,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     if (!data || data.length < 1000) break;
   }
 
+  // Below the anonymity floor even the overall averages describe an
+  // identifiable handful of people — publish only the progress count.
+  if (rows.length < K_ANON_MIN) {
+    const collecting = {
+      assessment: { slug: form.slug, title: form.title, description: form.description, status: form.status, created_at: form.created_at },
+      license: "Open data — aggregates publish automatically once " + K_ANON_MIN + " verified responses are collected (NDPA 2023 privacy floor).",
+      collecting: true,
+      needed: K_ANON_MIN,
+      total_responses: rows.length,
+    };
+    await cacheSet(cacheKey, collecting, 300);
+    return ok(collecting);
+  }
+
   const group = (key: (r: Row) => string | null) => {
     const g = new Map<string, Row[]>();
     for (const r of rows) {

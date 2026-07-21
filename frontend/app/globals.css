@@ -1327,6 +1327,11 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   overflow: hidden;
   background: #F4F2EC;
   touch-action: pan-y;
+  /* Contain Leaflet's internal z-indexes (panes/controls run 400–1000) so the
+     map can never paint above the site navbar (z 200) while scrolling */
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
 }
 /* Override Leaflet's touch-action: none so page scroll passes through */
 .nigeria-map-canvas .leaflet-container,

@@ -26,6 +26,8 @@ interface LgaMapProps {
   source?: string;
   bare?: boolean;
   onSelect?: (normName: string, rawName: string) => void;  // click an LGA polygon
+  emptyTitle?: string;   // sidebar copy when no values are present
+  emptyHint?: string;
 }
 
 // ── Geometry helpers for duplicate-name disambiguation ──────────────────────
@@ -60,7 +62,7 @@ function lerp(a: string, b: string, t: number): string {
   return `rgb(${Math.round(ar + (br - ar) * t)},${Math.round(ag + (bg - ag) * t)},${Math.round(ab + (bb - ab) * t)})`;
 }
 
-export default function LgaMap({ lgaData, title, unit, stateAware = false, colorLow = "#C8E6C9", colorHigh = "#1B5E20", source, bare = false, onSelect }: LgaMapProps) {
+export default function LgaMap({ lgaData, title, unit, stateAware = false, colorLow = "#C8E6C9", colorHigh = "#1B5E20", source, bare = false, onSelect, emptyTitle, emptyHint }: LgaMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<unknown>(null);
   const onSelectRef = useRef(onSelect);
@@ -241,8 +243,8 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
             </>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", paddingTop: "1rem" }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--ink-4)" }}>No LGA-level data</div>
-              <div style={{ fontSize: "0.7rem", color: "var(--ink-5)", lineHeight: 1.5 }}>Upload records tagged with a Local Government Area to populate this map.</div>
+              <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--ink-4)" }}>{emptyTitle ?? "No LGA-level data"}</div>
+              <div style={{ fontSize: "0.7rem", color: "var(--ink-5)", lineHeight: 1.5 }}>{emptyHint ?? "Upload records tagged with a Local Government Area to populate this map."}</div>
             </div>
           )}
         </div>
