@@ -12,8 +12,18 @@ import { TIER_ORDER } from "@/lib/pena";
 type Row = {
   state_name: string | null; lga_name: string | null; lat: number | null; lng: number | null;
   income: number | null; light_hours: number | null; energy_expense: number | null;
-  tier: string | null; answers: Record<string, unknown>;
+  tier: string | null; answers: Record<string, unknown>; created_at: string;
 };
+
+// Income histogram buckets (₦/month)
+const INCOME_BUCKETS: { label: string; min: number; max: number }[] = [
+  { label: "< 30k",      min: 0,       max: 30_000 },
+  { label: "30–70k",     min: 30_000,  max: 70_000 },
+  { label: "70–150k",    min: 70_000,  max: 150_000 },
+  { label: "150–300k",   min: 150_000, max: 300_000 },
+  { label: "300–600k",   min: 300_000, max: 600_000 },
+  { label: "600k+",      min: 600_000, max: Infinity },
+];
 
 const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const median = (xs: number[]) => {
@@ -31,17 +41,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { data: form } = await db().from("pena_forms").select("id, title, slug, status, is_public_stats").eq("id", id).single();
   if (!form) return err("Assessment not found", 404);
 
-  // Energy-source question slug (if the form kept one)
-  const { data: srcQ } = await db()
-    .from("pena_questions").select("slug").eq("form_id", form.id).eq("analytics_key", "energy_source").limit(1);
-  const srcSlug = srcQ?.[0]?.slug ?? null;
+  const { data: allQs } = await db()
+    .from("pena_questions")
+    .select("label, slug, qtype, analytics_key")
+    .eq("form_id", form.id)
+    .order("display_order");
+  const srcSlug = (allQs ?? []).find((q) => q.analytics_key === "energy_source")?.slug ?? null;
 
   // Page through everything — assessments are field-survey sized, not big data
   const rows: Row[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db()
       .from("pena_responses")
-      .select("state_name, lga_name, lat, lng, income, light_hours, energy_expense, tier, answers")
+      .select("state_name, lga_name, lat, lng, income, light_hours, energy_expense, tier, answers, created_at")
       .eq("form_id", form.id)
       .range(from, from + 999);
     if (error) return err(error.message, 500);
@@ -93,8 +105,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
+  // Submissions per day, oldest → newest
+  const byDay = new Map<string, number>();
+  for (const r of rows) {
+    const d = r.created_at?.slice(0, 10);
+    if (d) byDay.set(d, (byDay.get(d) ?? 0) + 1);
+  }
+  const timeline = [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, count]) => ({ date, count }));
+
+  const income_histogram = INCOME_BUCKETS.map((b) => ({
+    label: b.label,
+    count: incomes.filter((v) => v >= b.min && v < b.max).length,
+  }));
+
   return ok({
     form: { id: form.id, title: form.title, slug: form.slug, status: form.status, is_public_stats: form.is_public_stats },
+    questions: (allQs ?? []).map((q) => ({ label: q.label, slug: q.slug })),
+    timeline,
+    income_histogram,
     total: rows.length,
     stats: {
       avg_income: avg(incomes),          median_income: median(incomes),

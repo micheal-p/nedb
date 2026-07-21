@@ -2,10 +2,49 @@ import { NextRequest } from "next/server";
 import { createHash } from "node:crypto";
 import { resolveMx, resolve4 } from "node:dns/promises";
 import { db } from "@/lib/supabase-server";
-import { ok, err } from "@/lib/api-helpers";
+import { ok, err, requireAuth } from "@/lib/api-helpers";
 import { checkRateLimitDurable } from "@/lib/rate-limit";
 import { cacheGet, cacheSet } from "@/lib/redis";
-import { computeTier } from "@/lib/pena";
+import { computeTier, type TierConfig } from "@/lib/pena";
+
+// Public respondent endpoints, keyed by the unguessable share token.
+// GET  /api/pena/r/:token            — form definition (open forms only)
+// GET  /api/pena/r/:token?preview=1  — staff-only preview, any status
+// POST /api/pena/r/:token            — submit a response
+//
+// Identity & dedupe ("you have filled this form already"):
+//   1. Google Sign-In id_token when provided — Google has already verified the
+//      email, no OTP needed. Falls back to typed email + MX check otherwise.
+//   2. DB-unique email per form (033).
+//   3. One submission per IP per form (hash compare) — holds even if the
+//      respondent signs out or switches Google accounts on the same device.
+//      NOTE: Nigerian mobile carriers CGNAT thousands of users behind one IP;
+//      if the field reports legit people blocked, raise MAX_PER_IP.
+const MAX_PER_IP = 1;
+
+type Question = {
+  id: number; label: string; slug: string; qtype: string; unit: string | null;
+  is_required: boolean; analytics_key: string | null;
+  config: { options?: string[]; min?: number; max?: number } | null;
+};
+
+async function loadForm(token: string) {
+  const { data } = await db()
+    .from("pena_forms")
+    .select("id, title, description, consent_text, status, tier_config")
+    .eq("share_token", token)
+    .single();
+  return data;
+}
+
+async function loadQuestions(formId: number) {
+  const { data } = await db()
+    .from("pena_questions")
+    .select("id, label, slug, qtype, unit, is_required, analytics_key, config, display_order")
+    .eq("form_id", formId)
+    .order("display_order");
+  return (data ?? []) as (Question & { display_order: number })[];
+}
 
 // Email domain must actually receive mail (MX, or at least an A record) —
 // format-valid-but-fake domains are the cheapest bot signature. Verdicts are
@@ -32,43 +71,47 @@ async function emailDomainAcceptsMail(email: string): Promise<boolean> {
   return valid;
 }
 
-// Public respondent endpoints, keyed by the unguessable share token.
-// GET  /api/pena/r/:token — form definition (open forms only, no admin fields)
-// POST /api/pena/r/:token — submit a response
-
-type Question = {
-  id: number; label: string; slug: string; qtype: string; unit: string | null;
-  is_required: boolean; analytics_key: string | null;
-  config: Record<string, unknown> | null; display_order: number;
-};
-
-async function loadForm(token: string) {
-  const { data } = await db()
-    .from("pena_forms")
-    .select("id, title, description, consent_text, status")
-    .eq("share_token", token)
-    .single();
-  return data;
+// Verify a Google Identity Services id_token and return its verified email.
+// Uses Google's tokeninfo endpoint — fine at survey volume, no extra deps.
+async function verifyGoogleToken(idToken: string): Promise<string | null> {
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  if (!clientId) return null;
+  try {
+    const res = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return null;
+    const t = await res.json();
+    if (t.aud !== clientId) return null;
+    if (t.email_verified !== "true" && t.email_verified !== true) return null;
+    return typeof t.email === "string" ? t.email.toLowerCase() : null;
+  } catch {
+    return null;
+  }
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const form = await loadForm(token);
   if (!form) return err("Assessment not found", 404);
+
+  const preview = new URL(req.url).searchParams.get("preview") === "1";
+  if (preview) {
+    const auth = await requireAuth(req);
+    if (!auth) return err("Preview is staff-only", 403);
+    return ok({
+      status: "open", preview: true, title: form.title, description: form.description,
+      consent_text: form.consent_text, questions: await loadQuestions(form.id),
+      google_client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? null,
+    });
+  }
+
   if (form.status !== "open") return ok({ status: form.status, title: form.title });
-
-  const { data: questions } = await db()
-    .from("pena_questions")
-    .select("id, label, slug, qtype, unit, is_required, analytics_key, config, display_order")
-    .eq("form_id", form.id)
-    .order("display_order");
-
   return ok({
-    status: "open",
-    title: form.title,
-    description: form.description,
-    consent_text: form.consent_text,
-    questions: questions ?? [],
+    status: "open", title: form.title, description: form.description,
+    consent_text: form.consent_text, questions: await loadQuestions(form.id),
+    google_client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? null,
   });
 }
 
@@ -82,6 +125,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   const { token } = await params;
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
+  const ipHash = createHash("sha256").update(ip).digest("hex");
   const rl = await checkRateLimitDurable(`pena-submit:${ip}`, 5, 3600);
   if (!rl.allowed) return err(`Too many submissions. Try again in ${Math.ceil(rl.resetIn / 60)} min.`, 429);
 
@@ -94,37 +138,71 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   if (!form) return err("Assessment not found", 404);
   if (form.status !== "open") return err("This assessment is not accepting responses.", 403);
 
-  const { data: qs } = await db()
-    .from("pena_questions")
-    .select("id, label, slug, qtype, is_required, analytics_key, config")
-    .eq("form_id", form.id);
-  const questions = (qs ?? []) as Question[];
+  // One per IP per form — holds across sign-in/sign-out on the same connection
+  if (ip !== "anon") {
+    const { count } = await db()
+      .from("pena_responses")
+      .select("id", { count: "exact", head: true })
+      .eq("form_id", form.id)
+      .eq("ip_hash", ipHash);
+    if ((count ?? 0) >= MAX_PER_IP)
+      return err("You have already filled this assessment from this connection.", 409);
+  }
+
+  const questions = await loadQuestions(form.id);
+
+  // Google identity first: a valid id_token carries a Google-verified email
+  let googleEmail: string | null = null;
+  if (typeof body.google_token === "string" && body.google_token) {
+    googleEmail = await verifyGoogleToken(body.google_token);
+    if (!googleEmail) return err("Google sign-in could not be verified — please try again.");
+  }
 
   // Validate + collect answers keyed by question slug
   const answers: Record<string, unknown> = {};
   for (const q of questions) {
-    const raw = body.answers[q.slug];
-    const empty = raw === undefined || raw === null || String(raw).trim() === "";
+    let raw = body.answers[q.slug];
+    // The email question is auto-filled from Google when signed in
+    if (q.qtype === "email" && googleEmail) raw = googleEmail;
+    const empty = raw === undefined || raw === null ||
+      (Array.isArray(raw) ? raw.length === 0 : String(raw).trim() === "");
     if (empty) {
       if (q.is_required) return err(`"${q.label}" is required.`);
       continue;
     }
+    const cfg = q.config ?? {};
     if (q.qtype === "number") {
       const n = num(raw);
       if (n === null) return err(`"${q.label}" must be a number.`);
-      const cfg = q.config ?? {};
       if (typeof cfg.min === "number" && n < cfg.min) return err(`"${q.label}" must be at least ${cfg.min}.`);
       if (typeof cfg.max === "number" && n > cfg.max) return err(`"${q.label}" must be at most ${cfg.max}.`);
       answers[q.slug] = n;
+    } else if (q.qtype === "rating") {
+      const n = num(raw);
+      if (n === null || n < 1 || n > 5 || !Number.isInteger(n)) return err(`"${q.label}" must be a rating from 1 to 5.`);
+      answers[q.slug] = n;
+    } else if (q.qtype === "date") {
+      const s = String(raw);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || isNaN(Date.parse(s))) return err(`"${q.label}" must be a valid date.`);
+      answers[q.slug] = s;
     } else if (q.qtype === "email") {
       const e = String(raw).trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return err(`"${q.label}" must be a valid email address.`);
-      if (!(await emailDomainAcceptsMail(e))) return err(`"${q.label}": this email domain does not exist — please use a real email address.`);
+      // Google-verified emails skip the DNS check — Google already proved them
+      if (!googleEmail && !(await emailDomainAcceptsMail(e)))
+        return err(`"${q.label}": this email domain does not exist — please use a real email address.`);
       answers[q.slug] = e;
     } else if (q.qtype === "select") {
-      const opts = (q.config?.options as string[]) ?? [];
+      const opts = cfg.options ?? [];
       if (opts.length && !opts.includes(String(raw))) return err(`"${q.label}": choose one of the listed options.`);
       answers[q.slug] = String(raw);
+    } else if (q.qtype === "multiselect") {
+      const arr = Array.isArray(raw) ? raw.map(String) : [String(raw)];
+      const opts = cfg.options ?? [];
+      if (opts.length && arr.some((v) => !opts.includes(v))) return err(`"${q.label}": choose only from the listed options.`);
+      answers[q.slug] = arr;
+    } else if (q.qtype === "longtext") {
+      answers[q.slug] = String(raw).trim().slice(0, 5000);
     } else {
       answers[q.slug] = String(raw).trim().slice(0, 2000);
     }
@@ -138,7 +216,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   const income        = num(byKey("income"));
   const lightHours    = num(byKey("light_hours"));
   const energyExpense = num(byKey("energy_expense"));
-  const email         = (byKey("email") as string) ?? null;
+  const email         = googleEmail ?? ((byKey("email") as string) ?? null);
 
   // Geography: the LGA picker sends the picked lgas.id alongside the answers
   const lgaId = num(body.lga_id);
@@ -177,18 +255,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     lga_id: lga?.id ?? null,
     lga_name: lga?.name ?? null,
     email,
+    email_source: email ? (googleEmail ? "google" : "typed") : null,
     address_text: addressText,
     lat, lng,
     geocode_source: geocodeSource,
     income,
     light_hours: lightHours,
     energy_expense: energyExpense,
-    tier: computeTier(income, lightHours, energyExpense),
-    ip_hash: createHash("sha256").update(ip).digest("hex"),
+    tier: computeTier(income, lightHours, energyExpense, form.tier_config as Partial<TierConfig> | null),
+    ip_hash: ipHash,
   });
 
   if (error) {
-    if (error.code === "23505") return err("A response with this email address has already been submitted.", 409);
+    if (error.code === "23505") return err("You have already filled this assessment with this email address.", 409);
     return err("Failed to submit. Please try again.");
   }
   return ok({ success: true, message: "Response recorded. Thank you for contributing to Nigeria's energy planning." });

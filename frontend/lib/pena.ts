@@ -22,22 +22,34 @@ export const TIER_ORDER: PenaTier[] = ["A", "B", "C", "D", "E"];
 // Deterministic and explainable. Two signals:
 //   burden = monthly energy expense ÷ monthly income (share of income on energy)
 //   light  = average hours of electricity per day (0–24)
-// A tier requires BOTH thresholds; a response missing income or light hours is
-// left unclassified (null) rather than guessed.
+// A–C require BOTH thresholds; D requires either; a response missing income or
+// light hours is left unclassified (null) rather than guessed. Thresholds can
+// be overridden per form via pena_forms.tier_config (same shape as DEFAULT_TIER_CONFIG).
+export type TierConfig = Record<"A" | "B" | "C" | "D", { light: number; burden: number }>;
+
+export const DEFAULT_TIER_CONFIG: TierConfig = {
+  A: { light: 20, burden: 0.05 },
+  B: { light: 14, burden: 0.10 },
+  C: { light: 8,  burden: 0.18 },
+  D: { light: 4,  burden: 0.30 },
+};
+
 export function computeTier(
   income: number | null,
   lightHours: number | null,
-  energyExpense: number | null
+  energyExpense: number | null,
+  config?: Partial<TierConfig> | null
 ): PenaTier | null {
   if (income == null || lightHours == null || !isFinite(income) || !isFinite(lightHours)) return null;
   if (income <= 0) return "E";
   const burden = energyExpense != null && isFinite(energyExpense) ? energyExpense / income : null;
   if (burden == null) return null;
 
-  if (lightHours >= 20 && burden <= 0.05) return "A";
-  if (lightHours >= 14 && burden <= 0.10) return "B";
-  if (lightHours >= 8  && burden <= 0.18) return "C";
-  if (lightHours >= 4  || burden <= 0.30) return "D";
+  const c: TierConfig = { ...DEFAULT_TIER_CONFIG, ...(config ?? {}) };
+  if (lightHours >= c.A.light && burden <= c.A.burden) return "A";
+  if (lightHours >= c.B.light && burden <= c.B.burden) return "B";
+  if (lightHours >= c.C.light && burden <= c.C.burden) return "C";
+  if (lightHours >= c.D.light || burden <= c.D.burden) return "D";
   return "E";
 }
 
@@ -56,14 +68,18 @@ export const ANALYTICS_KEYS = [
 ];
 
 export const QTYPES = [
-  { value: "text",      label: "Text" },
-  { value: "number",    label: "Number" },
-  { value: "select",    label: "Select (dropdown)" },
-  { value: "phone",     label: "Phone" },
-  { value: "email",     label: "Email" },
-  { value: "state_ref", label: "State picker" },
-  { value: "lga_ref",   label: "LGA picker" },
-  { value: "address",   label: "Address / landmark (geocoded)" },
+  { value: "text",        label: "Text" },
+  { value: "longtext",    label: "Long text (paragraph)" },
+  { value: "number",      label: "Number" },
+  { value: "date",        label: "Date" },
+  { value: "select",      label: "Select (dropdown)" },
+  { value: "multiselect", label: "Checkboxes (multi-select)" },
+  { value: "rating",      label: "Rating (1–5)" },
+  { value: "phone",       label: "Phone" },
+  { value: "email",       label: "Email" },
+  { value: "state_ref",   label: "State picker" },
+  { value: "lga_ref",     label: "LGA picker" },
+  { value: "address",     label: "Address / landmark (geocoded)" },
 ];
 
 export type PenaQuestionDef = {

@@ -19,6 +19,7 @@ interface LgaMapProps {
   colorHigh?: string;
   source?: string;
   bare?: boolean;
+  onSelect?: (normName: string, rawName: string) => void;  // click an LGA polygon
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -31,9 +32,11 @@ function lerp(a: string, b: string, t: number): string {
   return `rgb(${Math.round(ar + (br - ar) * t)},${Math.round(ag + (bg - ag) * t)},${Math.round(ab + (bb - ab) * t)})`;
 }
 
-export default function LgaMap({ lgaData, title, unit, colorLow = "#C8E6C9", colorHigh = "#1B5E20", source, bare = false }: LgaMapProps) {
+export default function LgaMap({ lgaData, title, unit, colorLow = "#C8E6C9", colorHigh = "#1B5E20", source, bare = false, onSelect }: LgaMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<unknown>(null);
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;   // stable ref so the map never re-inits on parent re-renders
 
   const values = Object.values(lgaData).filter((v) => isFinite(v));
   const hasData = values.length > 0;
@@ -99,6 +102,7 @@ export default function LgaMap({ lgaData, title, unit, colorLow = "#C8E6C9", col
           layer.bindTooltip(label, { sticky: true, className: "nedb-map-tooltip" });
           (layer as L.Path).on("mouseover", function (this: L.Path) { this.setStyle({ weight: 1.5, color: "#0E7A3C" }); });
           (layer as L.Path).on("mouseout", function (this: L.Path) { this.setStyle({ weight: 0.5, color: "#fff" }); });
+          (layer as L.Path).on("click", () => { onSelectRef.current?.(norm, raw); });
         },
       }).addTo(map);
 

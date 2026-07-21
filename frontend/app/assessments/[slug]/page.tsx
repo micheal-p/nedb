@@ -7,6 +7,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/layout/Navbar";
 import LgaMap from "@/components/datapoint/LgaMap";
 import { TIERS, TIER_ORDER, type PenaTier } from "@/lib/pena";
 
@@ -52,6 +53,8 @@ export default function PublicAssessmentPage() {
   const maxTier = Math.max(1, ...data.tier_distribution.map((t) => t.count));
 
   return (
+    <>
+    <Navbar active="assessments" />
     <div style={{ minHeight: "100vh", background: "var(--surface)", padding: "2.5rem 1.5rem" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
@@ -153,5 +156,6 @@ export default function PublicAssessmentPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

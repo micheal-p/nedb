@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { isLoggedIn, getRole } from "@/lib/auth";
-import { QTYPES, ANALYTICS_KEYS, penaSlugify } from "@/lib/pena";
+import { QTYPES, ANALYTICS_KEYS, penaSlugify, DEFAULT_TIER_CONFIG, TIERS, type TierConfig } from "@/lib/pena";
 
 type Question = {
   label: string; slug: string; qtype: string; unit: string | null;
@@ -15,6 +15,7 @@ type Question = {
 type FormDetail = {
   id: number; slug: string; share_token: string; title: string; description: string | null;
   consent_text: string; status: "draft" | "open" | "closed"; is_public_stats: boolean;
+  tier_config: TierConfig | null;
   questions: Question[]; response_count: number;
 };
 
@@ -27,6 +28,7 @@ export default function PenaBuilderPage() {
   const [form, setForm] = useState<FormDetail | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [consent, setConsent] = useState("");
+  const [tiers, setTiers] = useState<TierConfig>(DEFAULT_TIER_CONFIG);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
@@ -40,6 +42,7 @@ export default function PenaBuilderPage() {
         setForm(f);
         setQuestions(f.questions);
         setConsent(f.consent_text);
+        setTiers({ ...DEFAULT_TIER_CONFIG, ...(f.tier_config ?? {}) });
       })
       .catch(() => setError("Failed to load"));
   }, [id]);
@@ -114,6 +117,10 @@ export default function PenaBuilderPage() {
           </div>
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
             <Link href="/admin/pena" style={{ fontSize: "0.78rem", color: "var(--ink-4)", textDecoration: "none" }}>← Assessments</Link>
+            <a href={`/f/${form.share_token}?preview=1`} target="_blank" rel="noopener noreferrer"
+              style={{ padding: "0.5rem 1rem", background: "#fff", border: "1px solid var(--border)", color: "var(--ink-3)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, textDecoration: "none" }}>
+              Preview Form
+            </a>
             <Link href={`/data-point/pena/${form.id}`} style={{ padding: "0.5rem 1rem", background: "#fff", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, textDecoration: "none" }}>
               View Insights →
             </Link>
@@ -241,6 +248,48 @@ export default function PenaBuilderPage() {
             <button onClick={() => patch({ questions }, "Questions saved")} disabled={saving}
               style={{ padding: "0.6rem 1.5rem", background: saving ? "var(--ink-5)" : "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.82rem", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer" }}>
               {saving ? "Saving…" : "Save Questions"}
+            </button>
+          </div>
+        </div>
+
+        {/* Tier thresholds */}
+        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.25rem", marginBottom: "1rem" }}>
+          <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--ink)", margin: "0 0 0.375rem" }}>Tier Thresholds</h2>
+          <p style={{ fontSize: "0.72rem", color: "var(--ink-4)", margin: "0 0 1rem", lineHeight: 1.5 }}>
+            A response earns a tier when it has at least the light hours AND at most the energy burden
+            (energy spend ÷ income). Tier D needs either; anything below is Tier E. Saving recomputes every
+            existing response with the new thresholds.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {(["A", "B", "C", "D"] as const).map((k) => (
+              <div key={k} style={{ display: "grid", gridTemplateColumns: "170px 1fr 1fr", gap: "0.75rem", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <span style={{ width: 11, height: 11, borderRadius: 3, background: TIERS[k].color, border: "1px solid rgba(0,0,0,0.08)", flexShrink: 0 }} />
+                  <span style={{ fontSize: "0.75rem", color: "var(--ink-2)" }}><strong>{k}</strong> · {TIERS[k].label}</span>
+                </div>
+                <div>
+                  <label style={labelStyle}>Min light hours/day</label>
+                  <input type="number" min={0} max={24} step={0.5} value={tiers[k].light}
+                    onChange={(e) => setTiers((tc) => ({ ...tc, [k]: { ...tc[k], light: Number(e.target.value) } }))}
+                    style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Max energy burden (% of income)</label>
+                  <input type="number" min={0} max={100} step={1} value={Math.round(tiers[k].burden * 100)}
+                    onChange={(e) => setTiers((tc) => ({ ...tc, [k]: { ...tc[k], burden: Number(e.target.value) / 100 } }))}
+                    style={inputStyle} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.875rem" }}>
+            <button onClick={() => patch({ tier_config: tiers }, "Thresholds saved — tiers recomputed")} disabled={saving}
+              style={{ padding: "0.5rem 1.25rem", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
+              Save &amp; Recompute Tiers
+            </button>
+            <button onClick={() => { setTiers(DEFAULT_TIER_CONFIG); patch({ tier_config: null }, "Reset to default thresholds"); }} disabled={saving}
+              style={{ padding: "0.5rem 1rem", background: "none", border: "1px solid var(--border)", borderRadius: 6, fontSize: "0.78rem", color: "var(--ink-4)", cursor: "pointer" }}>
+              Reset to Defaults
             </button>
           </div>
         </div>

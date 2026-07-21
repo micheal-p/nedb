@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase-server";
-import { ok, err, requireAuth } from "@/lib/api-helpers";
+import { ok, err, requireAuth, requireAdmin } from "@/lib/api-helpers";
+import { cacheDel } from "@/lib/redis";
 
 // GET /api/pena/forms/:id/responses — filterable response list (staff only).
-// Filters: ?state=Lagos&lga_id=123&tier=D&income_min=0&income_max=50000
+// Filters: ?state=Lagos&lga=Ikeja&tier=D&income_min=0&income_max=50000
 // ?format=csv streams the full filtered set as CSV (internal use — includes PII).
+// DELETE ?response_id=N — remove one response (admin only; NDPA removal right).
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req);
@@ -21,6 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     .order("created_at", { ascending: false });
 
   if (sp.get("state"))      q = q.eq("state_name", sp.get("state"));
+  if (sp.get("lga"))        q = q.eq("lga_name", sp.get("lga"));
   if (sp.get("lga_id"))     q = q.eq("lga_id", sp.get("lga_id"));
   if (sp.get("tier"))       q = q.eq("tier", sp.get("tier"));
   if (sp.get("income_min")) q = q.gte("income", Number(sp.get("income_min")));
@@ -62,4 +65,29 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   return ok({ total: count ?? 0, rows: data ?? [] });
+}
+
+// DELETE /api/pena/forms/:id/responses?response_id=N — NDPA "right to removal".
+// Admin-only; busts the public aggregate cache so the open-data page updates.
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req);
+  if (!auth) return err("Forbidden", 403);
+  const { id } = await params;
+
+  const responseId = new URL(req.url).searchParams.get("response_id");
+  if (!responseId) return err("response_id is required");
+
+  const { data: gone, error } = await db()
+    .from("pena_responses")
+    .delete()
+    .eq("form_id", id)
+    .eq("id", responseId)
+    .select("id")
+    .single();
+  if (error || !gone) return err("Response not found", 404);
+
+  const { data: form } = await db().from("pena_forms").select("slug").eq("id", id).single();
+  if (form?.slug) await cacheDel(`pena:pub:${form.slug}`);
+
+  return ok({ success: true, deleted: gone.id });
 }

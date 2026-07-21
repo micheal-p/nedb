@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok, err, requireAuth, requireAdmin } from "@/lib/api-helpers";
-import { penaSlugify } from "@/lib/pena";
+import { penaSlugify, computeTier, DEFAULT_TIER_CONFIG, type TierConfig } from "@/lib/pena";
 
 // GET /api/pena/forms/:id — form detail + questions + response count (staff)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -40,6 +40,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!["draft", "open", "closed"].includes(body.status)) return err("Invalid status");
     patch.status = body.status;
   }
+  let retier = false;
+  if (body.tier_config !== undefined) {
+    if (body.tier_config !== null) {
+      const tc = body.tier_config as Partial<TierConfig>;
+      for (const k of ["A", "B", "C", "D"] as const) {
+        const t = tc[k];
+        if (!t || typeof t.light !== "number" || typeof t.burden !== "number" ||
+            t.light < 0 || t.light > 24 || t.burden < 0 || t.burden > 1)
+          return err(`Invalid tier config for tier ${k} — light 0–24, burden 0–1.`);
+      }
+    }
+    patch.tier_config = body.tier_config;
+    retier = true;
+  }
 
   const { data: form, error: fe } = await db().from("pena_forms").update(patch).eq("id", id).select("*").single();
   if (fe || !form) return err("Assessment not found", 404);
@@ -65,7 +79,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (ins.error) return err(ins.error.message, 500);
   }
 
-  return ok(form);
+  // Threshold change → recompute every stored tier so old and new responses
+  // are classified consistently (assessments are field-survey sized).
+  let retiered = 0;
+  if (retier) {
+    const cfg = (form.tier_config ?? DEFAULT_TIER_CONFIG) as Partial<TierConfig>;
+    for (let from = 0; ; from += 1000) {
+      const { data: rs } = await db()
+        .from("pena_responses")
+        .select("id, income, light_hours, energy_expense, tier")
+        .eq("form_id", form.id)
+        .range(from, from + 999);
+      for (const r of rs ?? []) {
+        const t = computeTier(r.income, r.light_hours, r.energy_expense, cfg);
+        if (t !== r.tier) {
+          await db().from("pena_responses").update({ tier: t }).eq("id", r.id);
+          retiered++;
+        }
+      }
+      if (!rs || rs.length < 1000) break;
+    }
+  }
+
+  return ok({ ...form, retiered });
 }
 
 // DELETE /api/pena/forms/:id — remove the assessment and all responses (admin)

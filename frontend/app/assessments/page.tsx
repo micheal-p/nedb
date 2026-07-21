@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Navbar from "@/components/layout/Navbar";
 
 type PubForm = {
   slug: string; title: string; description: string | null;
@@ -23,6 +24,8 @@ export default function AssessmentsIndexPage() {
   }, []);
 
   return (
+    <>
+    <Navbar active="assessments" />
     <div style={{ minHeight: "100vh", background: "var(--surface)", padding: "2.5rem 1.5rem" }}>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
         <div style={{ marginBottom: "2rem" }}>
@@ -66,5 +69,6 @@ export default function AssessmentsIndexPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

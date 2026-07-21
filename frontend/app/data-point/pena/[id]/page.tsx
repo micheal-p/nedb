@@ -9,11 +9,15 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import LgaMap from "@/components/datapoint/LgaMap";
 import PenaPointsMap, { type PenaPoint } from "@/components/pena/PenaPointsMap";
-import { isLoggedIn } from "@/lib/auth";
+import { isLoggedIn, getRole } from "@/lib/auth";
 import { TIERS, TIER_ORDER, type PenaTier } from "@/lib/pena";
+import { normLga } from "@/lib/geo";
 
 type Insights = {
   form: { id: number; title: string; slug: string; status: string; is_public_stats: boolean };
+  questions: { label: string; slug: string }[];
+  timeline: { date: string; count: number }[];
+  income_histogram: { label: string; count: number }[];
   total: number;
   stats: {
     avg_income: number | null; median_income: number | null; avg_light_hours: number | null;
@@ -22,6 +26,7 @@ type Insights = {
   tier_distribution: { tier: PenaTier; count: number }[];
   unclassified: number;
   by_state: { name: string; count: number; avg_income: number | null; avg_light_hours: number | null; avg_energy_expense: number | null; tiers: number[] }[];
+  by_lga: { name: string; count: number; avg_income: number | null; avg_light_hours: number | null; avg_energy_expense: number | null; tiers: number[] }[];
   lga_income_map: Record<string, number>;
   energy_sources: { name: string; count: number }[];
   points: PenaPoint[];
@@ -29,9 +34,13 @@ type Insights = {
 
 type ResponseRow = {
   id: number; email: string | null; state_name: string | null; lga_name: string | null;
+  address_text: string | null; lat: number | null; lng: number | null;
+  answers: Record<string, unknown>;
   income: number | null; light_hours: number | null; energy_expense: number | null;
   tier: string | null; created_at: string;
 };
+
+const PAGE_SIZE = 50;
 
 const naira = (v: number | null) => (v == null ? "—" : `₦${Math.round(v).toLocaleString()}`);
 const fixed = (v: number | null, d = 1) => (v == null ? "—" : v.toFixed(d));
@@ -53,26 +62,52 @@ export default function PenaInsightsPage() {
   const [rows, setRows] = useState<ResponseRow[]>([]);
   const [total, setTotal] = useState(0);
   const [fState, setFState] = useState("");
+  const [fLga, setFLga] = useState("");
   const [fTier, setFTier] = useState("");
   const [fMin, setFMin] = useState("");
   const [fMax, setFMax] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [detail, setDetail] = useState<ResponseRow | null>(null);
   const [failed, setFailed] = useState(false);
 
   const filterQS = useCallback(() => {
     const p = new URLSearchParams();
     if (fState) p.set("state", fState);
+    if (fLga)   p.set("lga", fLga);
     if (fTier)  p.set("tier", fTier);
     if (fMin)   p.set("income_min", fMin);
     if (fMax)   p.set("income_max", fMax);
     return p.toString();
-  }, [fState, fTier, fMin, fMax]);
+  }, [fState, fLga, fTier, fMin, fMax]);
 
   const loadRows = useCallback(() => {
-    fetch(`/api/pena/forms/${id}/responses?limit=100&${filterQS()}`, { credentials: "include" })
+    fetch(`/api/pena/forms/${id}/responses?limit=${PAGE_SIZE}&offset=${offset}&${filterQS()}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : { total: 0, rows: [] }))
       .then((j) => { setRows(j.rows ?? []); setTotal(j.total ?? 0); })
       .catch(() => {});
-  }, [id, filterQS]);
+  }, [id, filterQS, offset]);
+
+  // Clicking an LGA polygon filters the response table to that LGA
+  const onLgaClick = useCallback((norm: string) => {
+    setIns((cur) => {
+      const g = cur?.by_lga.find((x) => normLga(x.name) === norm);
+      if (g) { setFLga(g.name); setOffset(0); }
+      return cur;
+    });
+  }, []);
+
+  async function deleteResponse(r: ResponseRow) {
+    if (!confirm(`Delete response #${r.id} (${r.email ?? "no email"}) permanently? This honours an NDPA removal request and cannot be undone.`)) return;
+    const res = await fetch(`/api/pena/forms/${id}/responses?response_id=${r.id}`, { method: "DELETE", credentials: "include" });
+    if (res.ok) {
+      setDetail(null);
+      loadRows();
+      fetch(`/api/pena/forms/${id}/insights`, { credentials: "include" })
+        .then((x) => (x.ok ? x.json() : null)).then((j) => j && setIns(j)).catch(() => {});
+    } else {
+      alert("Delete failed.");
+    }
+  }
 
   useEffect(() => {
     if (!isLoggedIn()) { router.replace(`/data-point/login?redirect=/data-point/pena/${id}`); return; }
@@ -163,9 +198,65 @@ export default function PenaInsightsPage() {
           </div>
         </div>
 
+        {/* Submissions over time + income distribution */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem", marginBottom: "1.25rem" }}>
+          <div className="chart-panel">
+            <div className="chart-panel-head">
+              <div>
+                <div className="chart-panel-title">Submissions Over Time</div>
+                <div className="chart-panel-sub">Responses per day</div>
+              </div>
+            </div>
+            {ins.timeline.length === 0 ? (
+              <div style={{ padding: "1rem 0", fontSize: "0.75rem", color: "var(--ink-5)" }}>No submissions yet.</div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 130, padding: "0.75rem 0 0.25rem" }}>
+                {ins.timeline.map((d) => {
+                  const maxC = Math.max(...ins.timeline.map((x) => x.count));
+                  return (
+                    <div key={d.date} title={`${d.date} — ${d.count} response${d.count === 1 ? "" : "s"}`}
+                      style={{ flex: 1, minWidth: 4, height: `${(d.count / maxC) * 100}%`, background: "var(--green)", borderRadius: "3px 3px 0 0" }} />
+                  );
+                })}
+              </div>
+            )}
+            {ins.timeline.length > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.62rem", color: "var(--ink-5)", fontFamily: "var(--font-mono)" }}>
+                <span>{ins.timeline[0].date}</span>
+                <span>{ins.timeline[ins.timeline.length - 1].date}</span>
+              </div>
+            )}
+            <div className="chart-source">Hover a bar for the daily count</div>
+          </div>
+
+          <div className="chart-panel">
+            <div className="chart-panel-head">
+              <div>
+                <div className="chart-panel-title">Income Distribution</div>
+                <div className="chart-panel-sub">₦ per month, respondent-reported</div>
+              </div>
+            </div>
+            <div style={{ padding: "0.75rem 0", display: "flex", flexDirection: "column", gap: 10 }}>
+              {ins.income_histogram.map((b) => {
+                const maxB = Math.max(1, ...ins.income_histogram.map((x) => x.count));
+                return (
+                  <div key={b.label} style={{ display: "grid", gridTemplateColumns: "80px 1fr 44px", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: "0.72rem", color: "var(--ink-2)", fontFamily: "var(--font-mono)" }}>{b.label}</span>
+                    <div style={{ height: 14, background: "var(--surface)", borderRadius: 4, overflow: "hidden" }}>
+                      <div style={{ width: `${(b.count / maxB) * 100}%`, height: "100%", background: "var(--green)", borderRadius: 4, minWidth: b.count ? 3 : 0 }} />
+                    </div>
+                    <div style={{ fontSize: "0.72rem", fontFamily: "var(--font-mono)", color: "var(--ink-3)", textAlign: "right" }}>{b.count}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="chart-source">Data source: PENA field assessment / NEDB</div>
+          </div>
+        </div>
+
         {/* Maps */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", marginBottom: "1.25rem" }}>
-          <LgaMap lgaData={ins.lga_income_map} title="Average Monthly Income by LGA" unit="₦/month" source="PENA field assessment / NEDB" />
+          <LgaMap lgaData={ins.lga_income_map} title="Average Monthly Income by LGA — click an LGA to filter the table" unit="₦/month" source="PENA field assessment / NEDB" onSelect={onLgaClick} />
           <PenaPointsMap points={ins.points} title="Assessed Locations" source="PENA field assessment / NEDB" />
         </div>
 
@@ -210,7 +301,7 @@ export default function PenaInsightsPage() {
           <div className="chart-panel-head">
             <div>
               <div className="chart-panel-title">Responses</div>
-              <div className="chart-panel-sub">{total.toLocaleString()} matching · showing first {Math.min(100, rows.length)}</div>
+              <div className="chart-panel-sub">{total.toLocaleString()} matching · showing {total === 0 ? 0 : offset + 1}–{offset + rows.length} · click a row for full answers</div>
             </div>
             <a href={`/api/pena/forms/${id}/responses?format=csv&${filterQS()}`}
               style={{ padding: "4px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-tint)", color: "var(--green)", textDecoration: "none" }}>
@@ -230,9 +321,15 @@ export default function PenaInsightsPage() {
             </select>
             <input value={fMin} onChange={(e) => setFMin(e.target.value)} placeholder="Income min ₦" inputMode="numeric" style={{ padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 4, fontSize: "0.74rem", width: 110 }} />
             <input value={fMax} onChange={(e) => setFMax(e.target.value)} placeholder="Income max ₦" inputMode="numeric" style={{ padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 4, fontSize: "0.74rem", width: 110 }} />
-            <button onClick={loadRows} style={{ padding: "6px 14px", background: "var(--green)", color: "#fff", border: "none", borderRadius: 4, fontSize: "0.74rem", fontWeight: 700, cursor: "pointer" }}>Apply</button>
-            {(fState || fTier || fMin || fMax) && (
-              <button onClick={() => { setFState(""); setFTier(""); setFMin(""); setFMax(""); }} style={{ padding: "6px 10px", background: "none", border: "1px solid var(--border)", borderRadius: 4, fontSize: "0.74rem", color: "var(--ink-4)", cursor: "pointer" }}>Clear</button>
+            <button onClick={() => { setOffset(0); loadRows(); }} style={{ padding: "6px 14px", background: "var(--green)", color: "#fff", border: "none", borderRadius: 4, fontSize: "0.74rem", fontWeight: 700, cursor: "pointer" }}>Apply</button>
+            {fLga && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "var(--green-tint)", border: "1px solid var(--green-line)", borderRadius: 12, fontSize: "0.72rem", color: "var(--green)", fontWeight: 600 }}>
+                LGA: {fLga}
+                <button onClick={() => { setFLga(""); setOffset(0); }} style={{ background: "none", border: "none", color: "var(--green)", cursor: "pointer", fontSize: "0.8rem", padding: 0, lineHeight: 1 }}>×</button>
+              </span>
+            )}
+            {(fState || fLga || fTier || fMin || fMax) && (
+              <button onClick={() => { setFState(""); setFLga(""); setFTier(""); setFMin(""); setFMax(""); setOffset(0); }} style={{ padding: "6px 10px", background: "none", border: "1px solid var(--border)", borderRadius: 4, fontSize: "0.74rem", color: "var(--ink-4)", cursor: "pointer" }}>Clear</button>
             )}
           </div>
 
@@ -257,7 +354,7 @@ export default function PenaInsightsPage() {
                 {rows.map((r) => {
                   const t = r.tier as PenaTier | null;
                   return (
-                    <tr key={r.id}>
+                    <tr key={r.id} onClick={() => setDetail(r)} style={{ cursor: "pointer" }}>
                       <td style={{ whiteSpace: "nowrap" }}>{new Date(r.created_at).toLocaleDateString()}</td>
                       <td style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>{r.email ?? "—"}</td>
                       <td>{r.state_name ?? "—"}</td>
@@ -280,8 +377,88 @@ export default function PenaInsightsPage() {
               </tbody>
             </table>
           </div>
+          {/* Pagination */}
+          {total > PAGE_SIZE && (
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.75rem", padding: "0.75rem 0 0.25rem" }}>
+              <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+                style={{ padding: "5px 14px", border: "1px solid var(--border)", borderRadius: 4, background: "#fff", fontSize: "0.74rem", color: offset === 0 ? "var(--ink-5)" : "var(--ink-2)", cursor: offset === 0 ? "default" : "pointer" }}>
+                ← Prev
+              </button>
+              <span style={{ fontSize: "0.72rem", color: "var(--ink-4)", fontFamily: "var(--font-mono)" }}>
+                Page {Math.floor(offset / PAGE_SIZE) + 1} / {Math.max(1, Math.ceil(total / PAGE_SIZE))}
+              </span>
+              <button disabled={offset + PAGE_SIZE >= total} onClick={() => setOffset(offset + PAGE_SIZE)}
+                style={{ padding: "5px 14px", border: "1px solid var(--border)", borderRadius: 4, background: "#fff", fontSize: "0.74rem", color: offset + PAGE_SIZE >= total ? "var(--ink-5)" : "var(--ink-2)", cursor: offset + PAGE_SIZE >= total ? "default" : "pointer" }}>
+                Next →
+              </button>
+            </div>
+          )}
           <div className="chart-source">Internal view — includes personal data. Handle under NDPA 2023; the public page carries aggregates only.</div>
         </div>
+
+        {/* Response detail modal */}
+        {detail && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }} onClick={() => setDetail(null)}>
+            <div style={{ background: "#fff", borderRadius: "var(--r-lg)", width: "100%", maxWidth: 560, maxHeight: "88vh", overflow: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ padding: "1.1rem 1.5rem", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)" }}>Response #{detail.id}</div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--ink-4)" }}>{new Date(detail.created_at).toLocaleString()}</div>
+                </div>
+                <button onClick={() => setDetail(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-4)", fontSize: "1.2rem" }}>×</button>
+              </div>
+
+              <div style={{ padding: "1.25rem 1.5rem" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
+                  <tbody>
+                    {ins.questions.map((q) => {
+                      const v = detail.answers?.[q.slug];
+                      if (v === undefined || v === null || v === "") return null;
+                      return (
+                        <tr key={q.slug} style={{ borderBottom: "1px solid var(--border)" }}>
+                          <td style={{ padding: "0.5rem 0.75rem 0.5rem 0", color: "var(--ink-4)", verticalAlign: "top", width: "42%" }}>{q.label}</td>
+                          <td style={{ padding: "0.5rem 0", color: "var(--ink)", fontWeight: 600, wordBreak: "break-word" }}>
+                            {Array.isArray(v) ? v.join(", ") : String(v)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                      <td style={{ padding: "0.5rem 0.75rem 0.5rem 0", color: "var(--ink-4)" }}>Geography</td>
+                      <td style={{ padding: "0.5rem 0", color: "var(--ink)", fontWeight: 600 }}>
+                        {[detail.lga_name, detail.state_name].filter(Boolean).join(", ") || "—"}
+                        {detail.lat != null && <span style={{ color: "var(--ink-4)", fontWeight: 400, fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}> · {detail.lat.toFixed(4)}, {detail.lng?.toFixed(4)}</span>}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "0.5rem 0.75rem 0.5rem 0", color: "var(--ink-4)" }}>Tier</td>
+                      <td style={{ padding: "0.5rem 0" }}>
+                        {detail.tier ? (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 700, color: "var(--ink)" }}>
+                            <span style={{ width: 10, height: 10, borderRadius: "50%", background: TIERS[detail.tier as PenaTier].color, border: "1px solid rgba(0,0,0,0.08)" }} />
+                            {detail.tier} · {TIERS[detail.tier as PenaTier].label}
+                          </span>
+                        ) : <span style={{ color: "var(--ink-5)" }}>Unclassified</span>}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {getRole() === "admin" && (
+                  <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                    <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", maxWidth: 300, lineHeight: 1.5 }}>
+                      NDPA 2023: respondents may request removal of their data at any time. Deleting also refreshes the public aggregates.
+                    </div>
+                    <button onClick={() => deleteResponse(detail)}
+                      style={{ padding: "0.5rem 1.1rem", background: "#fff", border: "1px solid var(--red)", color: "var(--red)", borderRadius: 6, fontSize: "0.76rem", fontWeight: 700, cursor: "pointer" }}>
+                      Delete Response
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
