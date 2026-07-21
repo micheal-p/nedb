@@ -44,6 +44,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       .from("pena_responses")
       .select("state_name, lga_name, income, light_hours, energy_expense, tier")
       .eq("form_id", form.id)
+      .eq("verify_status", "verified")   // open data counts confirmed responses only
       .range(from, from + 999);
     if (error) return err(error.message, 500);
     rows.push(...(data ?? []));

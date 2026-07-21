@@ -115,6 +115,10 @@ export const DEFAULT_CONSENT =
 // responses than this is suppressed from open-data output.
 export const K_ANON_MIN = 5;
 
+// Magic-link verification: a pending response older than this is treated as
+// expired (computed at read time — no cron).
+export const VERIFY_TTL_HOURS = 48;
+
 export function penaSlugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 }

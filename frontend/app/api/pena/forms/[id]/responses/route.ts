@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   let q = db()
     .from("pena_responses")
-    .select("id, answers, state_name, lga_id, lga_name, address_text, lat, lng, email, income, light_hours, energy_expense, tier, created_at", { count: "exact" })
+    .select("id, answers, state_name, lga_id, lga_name, address_text, lat, lng, email, income, light_hours, energy_expense, tier, verify_status, created_at", { count: "exact" })
     .eq("form_id", id)
     .order("created_at", { ascending: false });
 
@@ -26,6 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (sp.get("lga"))        q = q.eq("lga_name", sp.get("lga"));
   if (sp.get("lga_id"))     q = q.eq("lga_id", sp.get("lga_id"));
   if (sp.get("tier"))       q = q.eq("tier", sp.get("tier"));
+  if (sp.get("verify"))     q = q.eq("verify_status", sp.get("verify"));
   if (sp.get("income_min")) q = q.gte("income", Number(sp.get("income_min")));
   if (sp.get("income_max")) q = q.lte("income", Number(sp.get("income_max")));
 
@@ -48,12 +49,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       const s = v === null || v === undefined ? "" : String(v);
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const head = [...keys, "state", "lga", "lat", "lng", "tier", "submitted_at"];
+    const head = [...keys, "state", "lga", "lat", "lng", "tier", "verify_status", "submitted_at"];
     const lines = [head.join(",")];
     for (const r of data ?? []) {
       lines.push([
         ...keys.map((k) => esc((r.answers ?? {})[k])),
-        esc(r.state_name), esc(r.lga_name), esc(r.lat), esc(r.lng), esc(r.tier), esc(r.created_at),
+        esc(r.state_name), esc(r.lga_name), esc(r.lat), esc(r.lng), esc(r.tier), esc(r.verify_status), esc(r.created_at),
       ].join(","));
     }
     return new NextResponse(lines.join("\n"), {

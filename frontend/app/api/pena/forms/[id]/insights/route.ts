@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok, err, requireAuth } from "@/lib/api-helpers";
 import { normLga } from "@/lib/geo";
-import { TIER_ORDER } from "@/lib/pena";
+import { TIER_ORDER, VERIFY_TTL_HOURS } from "@/lib/pena";
 
 // GET /api/pena/forms/:id/insights — full staff-side analytics for one
 // assessment: headline stats, tier distribution, per-state and per-LGA
@@ -13,6 +13,7 @@ type Row = {
   state_name: string | null; lga_name: string | null; lat: number | null; lng: number | null;
   income: number | null; light_hours: number | null; energy_expense: number | null;
   tier: string | null; answers: Record<string, unknown>; created_at: string;
+  verify_status: string;
 };
 
 // Income histogram buckets (₦/month)
@@ -49,17 +50,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const srcSlug = (allQs ?? []).find((q) => q.analytics_key === "energy_source")?.slug ?? null;
 
   // Page through everything — assessments are field-survey sized, not big data
-  const rows: Row[] = [];
+  const allRows: Row[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db()
       .from("pena_responses")
-      .select("state_name, lga_name, lat, lng, income, light_hours, energy_expense, tier, answers, created_at")
+      .select("state_name, lga_name, lat, lng, income, light_hours, energy_expense, tier, answers, created_at, verify_status")
       .eq("form_id", form.id)
       .range(from, from + 999);
     if (error) return err(error.message, 500);
-    rows.push(...(data ?? []));
+    allRows.push(...(data ?? []));
     if (!data || data.length < 1000) break;
   }
+
+  // Only verified responses count toward every statistic. Pending rows are
+  // reported separately; pending older than the TTL is shown as expired.
+  const isFresh = (r: Row) => (Date.now() - new Date(r.created_at).getTime()) / 3_600_000 <= VERIFY_TTL_HOURS;
+  const rows = allRows.filter((r) => r.verify_status === "verified");
+  const pendingCount = allRows.filter((r) => r.verify_status === "pending" && isFresh(r)).length;
+  const expiredCount = allRows.filter((r) => r.verify_status === "pending" && !isFresh(r)).length;
 
   const nums = (f: (r: Row) => number | null) => rows.map(f).filter((v): v is number => v != null && isFinite(v));
   const incomes  = nums((r) => r.income);
@@ -125,6 +133,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     timeline,
     income_histogram,
     total: rows.length,
+    pending: pendingCount,
+    expired: expiredCount,
     stats: {
       avg_income: avg(incomes),          median_income: median(incomes),
       avg_light_hours: avg(lights),      avg_energy_expense: avg(expenses),

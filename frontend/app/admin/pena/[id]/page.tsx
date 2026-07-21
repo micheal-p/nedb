@@ -15,6 +15,7 @@ type Question = {
 type FormDetail = {
   id: number; slug: string; share_token: string; title: string; description: string | null;
   consent_text: string; status: "draft" | "open" | "closed"; is_public_stats: boolean;
+  require_verification: boolean;
   tier_config: TierConfig | null;
   questions: Question[]; response_count: number;
 };
@@ -160,6 +161,18 @@ export default function PenaBuilderPage() {
             {form.is_public_stats && form.status !== "draft" && (
               <Link href={`/assessments/${form.slug}`} style={{ fontSize: "0.72rem", color: "var(--green)", textDecoration: "none", fontWeight: 600 }}>View public page →</Link>
             )}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Email Verify</span>
+            <button onClick={() => patch({ require_verification: !form.require_verification }, form.require_verification ? "Magic-link verification off" : "Magic-link verification on")}
+              style={{ padding: "5px 12px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid var(--border)", borderRadius: 4, background: form.require_verification ? "var(--green-tint)" : "#fff", color: form.require_verification ? "var(--green)" : "var(--ink-4)", cursor: "pointer" }}>
+              {form.require_verification ? "Magic link required" : "Off — responses count immediately"}
+            </button>
+            <span style={{ fontSize: "0.68rem", color: "var(--ink-5)", maxWidth: 420, lineHeight: 1.4 }}>
+              When on, respondents confirm by tapping a link emailed to them; only confirmed responses count.
+              Needs the Resend domain verified to deliver to the public. Google-signed responses skip the link.
+            </span>
           </div>
         </div>
 

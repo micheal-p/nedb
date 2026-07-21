@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { resolveMx, resolve4 } from "node:dns/promises";
+import { sendSystemEmail } from "@/lib/mailer";
 import { db } from "@/lib/supabase-server";
 import { ok, err, requireAuth } from "@/lib/api-helpers";
 import { checkRateLimitDurable } from "@/lib/rate-limit";
@@ -31,10 +32,17 @@ type Question = {
 async function loadForm(token: string) {
   const { data } = await db()
     .from("pena_forms")
-    .select("id, title, description, consent_text, status, tier_config")
+    .select("id, title, description, consent_text, status, tier_config, require_verification")
     .eq("share_token", token)
     .single();
   return data;
+}
+
+// Public origin for links in emails — honour the proxy headers on Vercel
+function siteOrigin(req: NextRequest): string {
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "nedb.vercel.app";
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}`;
 }
 
 async function loadQuestions(formId: number) {
@@ -247,8 +255,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     } catch { /* enhancement only */ }
   }
 
+  // Magic-link verification: pending unless Google already proved the inbox.
+  // No email answer → nothing to verify against, so it counts directly.
+  const needsLink = !!form.require_verification && !!email && !googleEmail;
+  const verifyToken = needsLink ? randomBytes(24).toString("hex") : null;
+
   const { error } = await db().from("pena_responses").insert({
     form_id: form.id,
+    verify_status: needsLink ? "pending" : "verified",
+    verify_token: verifyToken,
+    verified_at: needsLink ? null : new Date().toISOString(),
     answers,
     state_code: lga?.state_code ?? null,
     state_name: stateName,
@@ -270,5 +286,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     if (error.code === "23505") return err("You have already filled this assessment with this email address.", 409);
     return err("Failed to submit. Please try again.");
   }
+
+  if (needsLink && verifyToken) {
+    const link = `${siteOrigin(req)}/v/${verifyToken}`;
+    await sendSystemEmail({
+      to: email!,
+      subject: `Confirm your response — ${form.title}`,
+      heading: "Confirm your assessment response",
+      bodyHtml: `
+        <p style="font-size:14px;color:#5C5650;line-height:1.6;margin:0 0 20px">
+          You (or someone using this email address) just submitted a response to
+          <strong>${form.title}</strong> on the Nigeria Energy Data Bank. Tap the button
+          below to confirm it was you — this link works once and expires in 48 hours.
+        </p>
+        <p style="margin:0 0 24px">
+          <a href="${link}" style="display:inline-block;background:#0E7A3C;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px">Confirm my response</a>
+        </p>
+        <p style="font-size:12px;color:#8E867B;line-height:1.6;margin:0">
+          If you did not fill this assessment, ignore this email — the unconfirmed
+          response will not be counted and will expire automatically.
+        </p>`,
+    });
+    return ok({
+      success: true,
+      pending: true,
+      message: "Response recorded — now check your email and tap the confirmation link to verify it. Unverified responses expire after 48 hours.",
+    });
+  }
+
   return ok({ success: true, message: "Response recorded. Thank you for contributing to Nigeria's energy planning." });
 }

@@ -19,6 +19,8 @@ type Insights = {
   timeline: { date: string; count: number }[];
   income_histogram: { label: string; count: number }[];
   total: number;
+  pending: number;
+  expired: number;
   stats: {
     avg_income: number | null; median_income: number | null; avg_light_hours: number | null;
     avg_energy_expense: number | null; avg_burden_pct: number | null; geocoded: number;
@@ -37,7 +39,7 @@ type ResponseRow = {
   address_text: string | null; lat: number | null; lng: number | null;
   answers: Record<string, unknown>;
   income: number | null; light_hours: number | null; energy_expense: number | null;
-  tier: string | null; created_at: string;
+  tier: string | null; verify_status: string; created_at: string;
 };
 
 const PAGE_SIZE = 50;
@@ -142,7 +144,8 @@ export default function PenaInsightsPage() {
 
         {/* Stat tiles */}
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
-          <StatTile label="Responses" value={ins.total.toLocaleString()} sub={`${ins.stats.geocoded} geocoded`} />
+          <StatTile label="Verified Responses" value={ins.total.toLocaleString()}
+            sub={`${ins.stats.geocoded} geocoded${ins.pending ? ` · ${ins.pending} pending` : ""}${ins.expired ? ` · ${ins.expired} expired` : ""}`} />
           <StatTile label="Avg Income" value={naira(ins.stats.avg_income)} sub={`median ${naira(ins.stats.median_income)}`} />
           <StatTile label="Avg Light Hours" value={fixed(ins.stats.avg_light_hours)} sub="hours per day" />
           <StatTile label="Avg Energy Spend" value={naira(ins.stats.avg_energy_expense)} sub="per month" />
@@ -356,7 +359,12 @@ export default function PenaInsightsPage() {
                   return (
                     <tr key={r.id} onClick={() => setDetail(r)} style={{ cursor: "pointer" }}>
                       <td style={{ whiteSpace: "nowrap" }}>{new Date(r.created_at).toLocaleDateString()}</td>
-                      <td style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>{r.email ?? "—"}</td>
+                      <td style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {r.email ?? "—"}
+                        {r.verify_status === "pending" && (
+                          <span style={{ marginLeft: 6, fontSize: "0.6rem", fontWeight: 700, background: "var(--red-tint)", color: "var(--red)", padding: "1px 5px", borderRadius: 3, verticalAlign: "middle" }}>UNVERIFIED</span>
+                        )}
+                      </td>
                       <td>{r.state_name ?? "—"}</td>
                       <td>{r.lga_name ?? "—"}</td>
                       <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{naira(r.income)}</td>
