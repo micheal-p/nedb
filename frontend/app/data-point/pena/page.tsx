@@ -56,17 +56,21 @@ export default function PenaListPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {forms.map((f) => (
               <Link key={f.id} href={`/data-point/pena/${f.id}`} style={{ textDecoration: "none" }}>
-                <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", cursor: "pointer", transition: "border-color 0.15s" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}>
+                <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.2rem 1.4rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", cursor: "pointer", transition: "border-color 0.15s, box-shadow 0.15s", boxShadow: "0 1px 3px rgba(16,24,16,0.05)" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--green)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(16,24,16,0.09)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(16,24,16,0.05)"; }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.15rem" }}>{f.title}</div>
-                    {f.description && <div style={{ fontSize: "0.75rem", color: "var(--ink-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.description}</div>}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.25rem", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--ink)" }}>{f.title}</span>
+                      <span style={{ fontSize: "0.6rem", fontWeight: 700, padding: "1px 7px", borderRadius: 3, textTransform: "uppercase", letterSpacing: "0.06em", background: f.status === "open" ? "var(--green-tint)" : "var(--surface)", color: f.status === "open" ? "var(--green)" : "var(--ink-4)", border: "1px solid var(--border)" }}>{f.status}</span>
+                    </div>
+                    {f.description && <div style={{ fontSize: "0.76rem", color: "var(--ink-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.5 }}>{f.description}</div>}
                   </div>
                   <div style={{ textAlign: "center", flexShrink: 0 }}>
-                    <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--green)", fontFamily: "var(--font-mono)" }}>{f.response_count.toLocaleString()}</div>
-                    <div style={{ fontSize: "0.62rem", color: "var(--ink-5)", textTransform: "uppercase" }}>Responses</div>
+                    <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--green)", fontFamily: "var(--font-mono)" }}>{f.response_count.toLocaleString()}</div>
+                    <div style={{ fontSize: "0.62rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Responses</div>
                   </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-5)" strokeWidth="2" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
                 </div>
               </Link>
             ))}

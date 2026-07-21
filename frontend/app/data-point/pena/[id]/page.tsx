@@ -47,12 +47,40 @@ const PAGE_SIZE = 50;
 const naira = (v: number | null) => (v == null ? "—" : `₦${Math.round(v).toLocaleString()}`);
 const fixed = (v: number | null, d = 1) => (v == null ? "—" : v.toFixed(d));
 
-function StatTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
+const ctl: React.CSSProperties = { padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: "0.76rem", background: "#fff", color: "var(--ink-2)" };
+
+function Kicker({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1rem 1.25rem", flex: "1 1 150px", minWidth: 150 }}>
-      <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: "1.35rem", fontWeight: 700, color: "var(--ink)", fontFamily: "var(--font-mono)", lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: "0.66rem", color: "var(--ink-5)", marginTop: 5 }}>{sub}</div>}
+    <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.11em", textTransform: "uppercase", color: "var(--green)", margin: "0 0 0.625rem", display: "flex", alignItems: "center", gap: 8 }}>
+      {children}
+      <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
+    </div>
+  );
+}
+
+function TierPill({ t }: { t: PenaTier }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: `${TIERS[t].color}1C`, border: `1px solid ${TIERS[t].color}40`, borderRadius: 999, padding: "2px 10px 2px 6px" }}>
+      <span style={{ width: 9, height: 9, borderRadius: "50%", background: TIERS[t].color, border: "1px solid rgba(0,0,0,0.08)" }} />
+      <span style={{ fontWeight: 700, fontSize: "0.72rem", color: "var(--ink)" }}>{t}</span>
+      <span style={{ fontSize: "0.7rem", color: "var(--ink-3)" }}>{TIERS[t].label}</span>
+    </span>
+  );
+}
+
+function StatTile({ label, value, sub, hint, accent = false }: { label: string; value: string; sub?: string; hint?: string; accent?: boolean }) {
+  return (
+    <div title={hint} style={{ background: "#fff", border: "1px solid var(--border)", borderTop: accent ? "3px solid var(--green)" : "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.1rem 1.3rem", flex: "1 1 165px", minWidth: 165, cursor: hint ? "help" : "default", boxShadow: "0 1px 3px rgba(16,24,16,0.05)" }}>
+      <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+        {label}
+        {hint && (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--ink-5)" strokeWidth="2" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+        )}
+      </div>
+      <div style={{ fontSize: "1.5rem", fontWeight: 700, color: accent ? "var(--green)" : "var(--ink)", fontFamily: "var(--font-mono)", lineHeight: 1, letterSpacing: "-0.01em" }}>{value}</div>
+      {sub && <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 6, lineHeight: 1.45 }}>{sub}</div>}
     </div>
   );
 }
@@ -134,7 +162,12 @@ export default function PenaInsightsPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
           <div>
             <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.25rem" }}>Data Point · PENA Insights</div>
-            <h1 style={{ fontSize: "1.5rem", fontFamily: "var(--font-serif)", fontWeight: 400, color: "var(--ink)", margin: 0 }}>{ins.form.title}</h1>
+            <h1 style={{ fontSize: "1.6rem", fontFamily: "var(--font-serif)", fontWeight: 400, color: "var(--ink)", margin: 0 }}>{ins.form.title}</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: "0.5rem", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "0.62rem", fontWeight: 700, padding: "2px 8px", borderRadius: 3, background: ins.form.status === "open" ? "var(--green-tint)" : "var(--surface)", color: ins.form.status === "open" ? "var(--green)" : "var(--ink-4)", border: "1px solid var(--border)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{ins.form.status}</span>
+              {ins.form.is_public_stats && <span style={{ fontSize: "0.62rem", fontWeight: 700, padding: "2px 8px", borderRadius: 3, background: "var(--surface)", color: "var(--ink-4)", border: "1px solid var(--border)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Open Data</span>}
+              <span style={{ fontSize: "0.7rem", color: "var(--ink-5)", fontFamily: "var(--font-mono)" }}>{ins.form.slug}</span>
+            </div>
           </div>
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
             <Link href="/data-point/dashboard" style={{ fontSize: "0.78rem", color: "var(--ink-4)", textDecoration: "none" }}>← Dashboard</Link>
@@ -143,17 +176,28 @@ export default function PenaInsightsPage() {
         </div>
 
         {/* Stat tiles */}
-        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
-          <StatTile label="Verified Responses" value={ins.total.toLocaleString()}
-            sub={`${ins.stats.geocoded} geocoded${ins.pending ? ` · ${ins.pending} pending` : ""}${ins.expired ? ` · ${ins.expired} expired` : ""}`} />
-          <StatTile label="Avg Income" value={naira(ins.stats.avg_income)} sub={`median ${naira(ins.stats.median_income)}`} />
-          <StatTile label="Avg Light Hours" value={fixed(ins.stats.avg_light_hours)} sub="hours per day" />
-          <StatTile label="Avg Energy Spend" value={naira(ins.stats.avg_energy_expense)} sub="per month" />
-          <StatTile label="Energy Burden" value={ins.stats.avg_burden_pct == null ? "—" : `${ins.stats.avg_burden_pct.toFixed(1)}%`} sub="of income spent on energy" />
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
+          <StatTile label="Verified Responses" value={ins.total.toLocaleString()} accent
+            sub={`${ins.stats.geocoded} pinned on the map${ins.pending ? ` · ${ins.pending} awaiting email confirm` : ""}${ins.expired ? ` · ${ins.expired} expired unconfirmed` : ""}`}
+            hint="How many responses are counted in every chart, map and average on this page. 'Pinned' responses have an exact map location from their address." />
+          <StatTile label="Avg Income" value={naira(ins.stats.avg_income)} sub={`typical (median): ${naira(ins.stats.median_income)}`}
+            hint="Average of what respondents reported earning per month. The median is the middle respondent — half earn less, half earn more — and resists distortion by a few very high earners." />
+          <StatTile label="Avg Light Hours" value={fixed(ins.stats.avg_light_hours)} sub="of electricity supply per day (out of 24)"
+            hint="Average hours of electricity supply respondents say they get in a day. 24 = constant supply; under 8 signals serious energy poverty." />
+          <StatTile label="Avg Energy Spend" value={naira(ins.stats.avg_energy_expense)} sub="on all energy per month"
+            hint="Average total monthly spend on energy — electricity bills, generator fuel, solar payments, everything combined." />
+          <StatTile label="Energy Burden" value={ins.stats.avg_burden_pct == null ? "—" : `${ins.stats.avg_burden_pct.toFixed(1)}%`} sub="of monthly income goes to energy"
+            hint="Energy spend ÷ income. The higher this share, the less affordable energy is: under 5% is comfortable, while above 10% is internationally regarded as energy poverty. This ratio drives the A–E tier." />
         </div>
+        <p style={{ fontSize: "0.7rem", color: "var(--ink-5)", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
+          All figures are averages across verified responses. <strong style={{ color: "var(--ink-3)" }}>Energy burden</strong> = monthly
+          energy spend ÷ monthly income — e.g. ₦60,000 spent from ₦500,000 earned = 12%, meaning roughly ₦1 of every ₦8 earned goes to energy.
+          Hover any tile's ⓘ for how it is calculated.
+        </p>
 
         {/* Tier distribution + energy sources */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem", marginBottom: "1.25rem" }}>
+        <Kicker>Distribution</Kicker>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
           <div className="chart-panel">
             <div className="chart-panel-head">
               <div>
@@ -202,7 +246,7 @@ export default function PenaInsightsPage() {
         </div>
 
         {/* Submissions over time + income distribution */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem", marginBottom: "1.25rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
           <div className="chart-panel">
             <div className="chart-panel-head">
               <div>
@@ -258,13 +302,15 @@ export default function PenaInsightsPage() {
         </div>
 
         {/* Maps */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", marginBottom: "1.25rem" }}>
+        <Kicker>Geography</Kicker>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", marginBottom: "1.5rem" }}>
           <LgaMap lgaData={ins.lga_income_map} stateAware title="Average Monthly Income by LGA — click an LGA to filter the table" unit="₦/month" source="PENA field assessment / NEDB" onSelect={onLgaClick} />
           <PenaPointsMap points={ins.points} title="Assessed Locations" source="PENA field assessment / NEDB" />
         </div>
 
         {/* Per-state table */}
-        <div className="chart-panel" style={{ marginBottom: "1.25rem" }}>
+        <Kicker>State Summary</Kicker>
+        <div className="chart-panel" style={{ marginBottom: "1.5rem" }}>
           <div className="chart-panel-head">
             <div>
               <div className="chart-panel-title">State Summary</div>
@@ -300,6 +346,7 @@ export default function PenaInsightsPage() {
         </div>
 
         {/* Responses table + filters */}
+        <Kicker>Individual Responses</Kicker>
         <div className="chart-panel">
           <div className="chart-panel-head">
             <div>
@@ -313,18 +360,18 @@ export default function PenaInsightsPage() {
           </div>
 
           {/* Filter row */}
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", padding: "0.625rem 0", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
-            <select value={fState} onChange={(e) => setFState(e.target.value)} style={{ padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 4, fontSize: "0.74rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", padding: "0.75rem 0", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
+            <select value={fState} onChange={(e) => setFState(e.target.value)} style={ctl}>
               <option value="">All states</option>
               {ins.by_state.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
             </select>
-            <select value={fTier} onChange={(e) => setFTier(e.target.value)} style={{ padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 4, fontSize: "0.74rem" }}>
+            <select value={fTier} onChange={(e) => setFTier(e.target.value)} style={ctl}>
               <option value="">All tiers</option>
               {TIER_ORDER.map((t) => <option key={t} value={t}>Tier {t} — {TIERS[t].label}</option>)}
             </select>
-            <input value={fMin} onChange={(e) => setFMin(e.target.value)} placeholder="Income min ₦" inputMode="numeric" style={{ padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 4, fontSize: "0.74rem", width: 110 }} />
-            <input value={fMax} onChange={(e) => setFMax(e.target.value)} placeholder="Income max ₦" inputMode="numeric" style={{ padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 4, fontSize: "0.74rem", width: 110 }} />
-            <button onClick={() => { setOffset(0); loadRows(); }} style={{ padding: "6px 14px", background: "var(--green)", color: "#fff", border: "none", borderRadius: 4, fontSize: "0.74rem", fontWeight: 700, cursor: "pointer" }}>Apply</button>
+            <input value={fMin} onChange={(e) => setFMin(e.target.value)} placeholder="Income min ₦" inputMode="numeric" style={{ ...ctl, width: 110 }} />
+            <input value={fMax} onChange={(e) => setFMax(e.target.value)} placeholder="Income max ₦" inputMode="numeric" style={{ ...ctl, width: 110 }} />
+            <button onClick={() => { setOffset(0); loadRows(); }} style={{ padding: "7px 16px", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.76rem", fontWeight: 700, cursor: "pointer" }}>Apply</button>
             {fLga && (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "var(--green-tint)", border: "1px solid var(--green-line)", borderRadius: 12, fontSize: "0.72rem", color: "var(--green)", fontWeight: 600 }}>
                 LGA: {fLga}
@@ -370,15 +417,7 @@ export default function PenaInsightsPage() {
                       <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{naira(r.income)}</td>
                       <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{fixed(r.light_hours)}</td>
                       <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{naira(r.energy_expense)}</td>
-                      <td>
-                        {t ? (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                            <span style={{ width: 9, height: 9, borderRadius: "50%", background: TIERS[t].color, border: "1px solid rgba(0,0,0,0.08)" }} />
-                            <span style={{ fontWeight: 700 }}>{t}</span>
-                            <span style={{ color: "var(--ink-4)" }}>{TIERS[t].label}</span>
-                          </span>
-                        ) : <span style={{ color: "var(--ink-5)" }}>—</span>}
-                      </td>
+                      <td>{t ? <TierPill t={t} /> : <span style={{ color: "var(--ink-5)" }}>—</span>}</td>
                     </tr>
                   );
                 })}
@@ -441,12 +480,7 @@ export default function PenaInsightsPage() {
                     <tr>
                       <td style={{ padding: "0.5rem 0.75rem 0.5rem 0", color: "var(--ink-4)" }}>Tier</td>
                       <td style={{ padding: "0.5rem 0" }}>
-                        {detail.tier ? (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 700, color: "var(--ink)" }}>
-                            <span style={{ width: 10, height: 10, borderRadius: "50%", background: TIERS[detail.tier as PenaTier].color, border: "1px solid rgba(0,0,0,0.08)" }} />
-                            {detail.tier} · {TIERS[detail.tier as PenaTier].label}
-                          </span>
-                        ) : <span style={{ color: "var(--ink-5)" }}>Unclassified</span>}
+                        {detail.tier ? <TierPill t={detail.tier as PenaTier} /> : <span style={{ color: "var(--ink-5)" }}>Unclassified</span>}
                       </td>
                     </tr>
                   </tbody>

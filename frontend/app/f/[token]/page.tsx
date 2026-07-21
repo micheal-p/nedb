@@ -147,7 +147,11 @@ export default function PenaPublicForm() {
     if (v.trim().length < 3) { setGeoHits([]); setGeoOpenFor(null); return; }
     geoTimer.current = setTimeout(async () => {
       try {
-        const extra = chosenState ? `, ${chosenState}` : "";
+        // Bias the search with the picked LGA + state — "Aguda" alone matches
+        // both Aguda (Surulere) and Aguda (Ifako-Ijaiye); the LGA settles it.
+        const lgaQ = def?.questions?.find((x) => x.qtype === "lga_ref");
+        const lgaName = lgaQ ? ((answers[lgaQ.slug] as string) ?? "") : "";
+        const extra = [lgaName, chosenState].filter(Boolean).map((s) => `, ${s}`).join("");
         const res = await fetch(`/api/geo/search?q=${encodeURIComponent(v + extra)}`);
         const hits: GeoHit[] = res.ok ? await res.json() : [];
         setGeoHits(hits);
