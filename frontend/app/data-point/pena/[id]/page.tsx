@@ -180,19 +180,18 @@ export default function PenaInsightsPage() {
           <StatTile label="Verified Responses" value={ins.total.toLocaleString()} accent
             sub={`${ins.stats.geocoded} pinned on the map${ins.pending ? ` · ${ins.pending} awaiting email confirm` : ""}${ins.expired ? ` · ${ins.expired} expired unconfirmed` : ""}`}
             hint="How many responses are counted in every chart, map and average on this page. 'Pinned' responses have an exact map location from their address." />
-          <StatTile label="Avg Income" value={naira(ins.stats.avg_income)} sub={`typical (median): ${naira(ins.stats.median_income)}`}
-            hint="Average of what respondents reported earning per month. The median is the middle respondent — half earn less, half earn more — and resists distortion by a few very high earners." />
-          <StatTile label="Avg Light Hours" value={fixed(ins.stats.avg_light_hours)} sub="of electricity supply per day (out of 24)"
-            hint="Average hours of electricity supply respondents say they get in a day. 24 = constant supply; under 8 signals serious energy poverty." />
-          <StatTile label="Avg Energy Spend" value={naira(ins.stats.avg_energy_expense)} sub="on all energy per month"
-            hint="Average total monthly spend on energy — electricity bills, generator fuel, solar payments, everything combined." />
-          <StatTile label="Energy Burden" value={ins.stats.avg_burden_pct == null ? "—" : `${ins.stats.avg_burden_pct.toFixed(1)}%`} sub="of monthly income goes to energy"
-            hint="Energy spend ÷ income. The higher this share, the less affordable energy is: under 5% is comfortable, while above 10% is internationally regarded as energy poverty. This ratio drives the A–E tier." />
+          <StatTile label="Avg Income" value={naira(ins.stats.avg_income)} sub={`middle respondent earns ${naira(ins.stats.median_income)}`}
+            hint="Average of the monthly incomes respondents reported. The 'middle respondent' figure is the median — half earn less, half earn more — which a few very high earners cannot distort." />
+          <StatTile label="Avg Light Hours" value={fixed(ins.stats.avg_light_hours)} sub="hours of power supply a day"
+            hint="Average hours of electricity supply respondents get per day, out of 24. Constant supply = 24; under 8 hours signals serious energy poverty." />
+          <StatTile label="Avg Energy Spend" value={naira(ins.stats.avg_energy_expense)} sub="total monthly cost of energy"
+            hint="Average of everything respondents pay for energy each month — electricity bills, generator fuel and solar payments combined." />
+          <StatTile label="Energy Burden" value={ins.stats.avg_burden_pct == null ? "—" : `${ins.stats.avg_burden_pct.toFixed(1)}%`} sub="of income spent on energy"
+            hint="Energy spend divided by income. Under 5% is comfortable; above 10% is internationally regarded as energy poverty. This ratio, with daily light hours, decides the A–E tier." />
         </div>
-        <p style={{ fontSize: "0.7rem", color: "var(--ink-5)", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
-          All figures are averages across verified responses. <strong style={{ color: "var(--ink-3)" }}>Energy burden</strong> = monthly
-          energy spend ÷ monthly income — e.g. ₦60,000 spent from ₦500,000 earned = 12%, meaning roughly ₦1 of every ₦8 earned goes to energy.
-          Hover any tile's ⓘ for how it is calculated.
+        <p style={{ fontSize: "0.72rem", color: "var(--ink-5)", margin: "0 0 1.25rem", lineHeight: 1.6 }}>
+          <strong style={{ color: "var(--ink-3)" }}>How to read energy burden:</strong> it is the share of income that goes to energy.
+          Here, ₦60,000 of a ₦500,000 income is 12% — about one naira in every eight. Hover any ⓘ above for the full method.
         </p>
 
         {/* Tier distribution + energy sources */}
@@ -219,7 +218,7 @@ export default function PenaInsightsPage() {
                 </div>
               ))}
             </div>
-            <div className="chart-source">Tier = light hours/day + share of income spent on energy · computed at submission</div>
+            <div className="chart-source">Each response is placed in a tier from its daily supply hours and its energy burden, at the moment it is submitted</div>
           </div>
 
           <div className="chart-panel">

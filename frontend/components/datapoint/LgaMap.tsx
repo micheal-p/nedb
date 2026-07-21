@@ -65,6 +65,7 @@ function lerp(a: string, b: string, t: number): string {
 export default function LgaMap({ lgaData, title, unit, stateAware = false, colorLow = "#C8E6C9", colorHigh = "#1B5E20", source, bare = false, onSelect, emptyTitle, emptyHint }: LgaMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<unknown>(null);
+  const layersRef = useRef<Map<string, unknown>>(new Map());  // data key → polygon layer, for legend click-to-zoom
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;   // stable ref so the map never re-inits on parent re-renders
 
@@ -77,11 +78,18 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
 
   function colorFor(v: number | undefined): string {
     if (v === undefined || !hasData) return "#EFEDE8";
-    const t = (v - minV) / (maxV - minV || 1);
+    if (minV === maxV) return colorHigh;   // single value → strong color, not the invisible light end
+    const t = (v - minV) / (maxV - minV);
     return lerp(colorLow, colorHigh, t);
   }
   function getColor(norm: string): string {
     return colorFor(lgaData[norm]);
+  }
+
+  function zoomTo(dataKey: string) {
+    const layer = layersRef.current.get(dataKey) as { getBounds?: () => unknown } | undefined;
+    const map = leafletRef.current as { fitBounds?: (b: unknown, opts?: object) => void } | null;
+    if (layer?.getBounds && map?.fitBounds) map.fitBounds(layer.getBounds(), { maxZoom: 11, padding: [24, 24] });
   }
 
   function downloadCSV() {
@@ -151,35 +159,43 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
         } catch { /* fall back to name-only matching */ }
       }
 
-      const valueOf = (feature: Feat): { val: number | undefined; stateNote: string } => {
+      const valueOf = (feature: Feat): { val: number | undefined; stateNote: string; key: string | null } => {
         const norm = normLga(feature.properties?.shapeName ?? "");
-        if (!stateAware) return { val: lgaData[norm], stateNote: "" };
+        if (!stateAware) return { val: lgaData[norm], stateNote: "", key: lgaData[norm] !== undefined ? norm : null };
         const entries = byLgaPart.get(norm) ?? [];
         const isDup = (nameCounts.get(norm) ?? 0) > 1;
         const st = featState.get(feature);
         if (isDup) {
           const match = st ? entries.find(([s]) => s === st) : undefined;
-          return { val: match?.[1], stateNote: st ? ` (${st})` : "" };
+          return { val: match?.[1], stateNote: st ? ` (${st})` : "", key: match && st ? `${norm}|${st}` : null };
         }
-        return { val: entries[0]?.[1], stateNote: "" };
+        return { val: entries[0]?.[1], stateNote: "", key: entries[0] ? `${norm}|${entries[0][0]}` : null };
       };
 
+      layersRef.current = new Map();
       L.geoJSON(geoj, {
         style: (feature) => {
           const { val } = valueOf(feature as unknown as Feat);
-          return { fillColor: colorFor(val), fillOpacity: 1, color: "#fff", weight: 0.5 };
+          // Data polygons get a dark outline so even the smallest LGAs
+          // (Surulere Lagos is a few pixels at national zoom) stay visible
+          return val !== undefined
+            ? { fillColor: colorFor(val), fillOpacity: 1, color: "#0E7A3C", weight: 1.4 }
+            : { fillColor: colorFor(val), fillOpacity: 1, color: "#fff", weight: 0.5 };
         },
         onEachFeature: (feature, layer) => {
           const raw = feature.properties?.shapeName ?? "";
           const norm = normLga(raw);
-          const { val, stateNote } = valueOf(feature as unknown as Feat);
+          const { val, stateNote, key } = valueOf(feature as unknown as Feat);
+          if (key) layersRef.current.set(key, layer);
+          const baseColor = val !== undefined ? "#0E7A3C" : "#fff";
+          const baseWeight = val !== undefined ? 1.4 : 0.5;
           const cap = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
           const label = val !== undefined
             ? `<strong>${raw}${cap(stateNote)}</strong><br/>${val.toLocaleString()} ${unit}`
             : `<strong>${raw}${cap(stateNote)}</strong><br/>No data`;
           layer.bindTooltip(label, { sticky: true, className: "nedb-map-tooltip" });
-          (layer as L.Path).on("mouseover", function (this: L.Path) { this.setStyle({ weight: 1.5, color: "#0E7A3C" }); });
-          (layer as L.Path).on("mouseout", function (this: L.Path) { this.setStyle({ weight: 0.5, color: "#fff" }); });
+          (layer as L.Path).on("mouseover", function (this: L.Path) { this.setStyle({ weight: 2, color: "#0E7A3C" }); });
+          (layer as L.Path).on("mouseout", function (this: L.Path) { this.setStyle({ weight: baseWeight, color: baseColor }); });
           (layer as L.Path).on("click", () => { onSelectRef.current?.(norm, raw); });
         },
       }).addTo(map);
@@ -220,16 +236,28 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
             <>
               <div>
                 <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Scale</div>
-                <div style={{ height: 8, borderRadius: 4, background: `linear-gradient(to right, ${colorLow}, ${colorHigh})`, marginBottom: 4 }} />
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.65rem", color: "var(--ink-5)" }}>
-                  <span>{minV.toLocaleString()}</span>
-                  <span>{maxV.toLocaleString()}</span>
-                </div>
+                {minV === maxV ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 24, height: 8, borderRadius: 4, background: colorHigh }} />
+                    <span style={{ fontSize: "0.65rem", color: "var(--ink-5)" }}>{maxV.toLocaleString()} {unit} — one value so far</span>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ height: 8, borderRadius: 4, background: `linear-gradient(to right, ${colorLow}, ${colorHigh})`, marginBottom: 4 }} />
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.65rem", color: "var(--ink-5)" }}>
+                      <span>{minV.toLocaleString()}</span>
+                      <span>{maxV.toLocaleString()}</span>
+                    </div>
+                  </>
+                )}
               </div>
               <div>
                 <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Top 5 LGAs</div>
                 {top5.map(([lga, val], i) => (
-                  <div key={lga} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                  <div key={lga} onClick={() => zoomTo(lga)} title="Click to zoom to this LGA"
+                    style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, cursor: "pointer", borderRadius: 4, padding: "2px 4px", margin: "0 -4px 6px" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--green-tint)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>
                     <div style={{ width: 16, height: 16, borderRadius: 3, background: getColor(lga), flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: "0.68rem", fontWeight: 600, color: "var(--ink)", textTransform: "capitalize", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{keyLabel(lga)}</div>
@@ -239,7 +267,7 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
                   </div>
                 ))}
               </div>
-              <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", lineHeight: 1.5 }}>Use + / − to zoom. Hover an LGA for its value. Grey = no data.</div>
+              <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", lineHeight: 1.5 }}>Click a Top-5 name to jump straight to that LGA. Hover any area for its value; grey means no data yet.</div>
             </>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", paddingTop: "1rem" }}>

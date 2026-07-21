@@ -95,7 +95,7 @@ export default function PenaPointsMap({ points, title, source, bare = false }: P
       <div className="chart-panel-head">
         <div>
           <div className="chart-panel-title">{title}</div>
-          <div className="chart-panel-sub">{points.length.toLocaleString()} geocoded responses &nbsp;·&nbsp; colored by tier</div>
+          <div className="chart-panel-sub">{points.length.toLocaleString()} response{points.length === 1 ? "" : "s"} with an exact location &nbsp;·&nbsp; colored by tier</div>
         </div>
       </div>
 
