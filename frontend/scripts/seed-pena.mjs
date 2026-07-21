@@ -103,7 +103,7 @@ for (const f of FORMS) {
       consent_text: CONSENT,
       status: "open",
       is_public_stats: true,
-      require_verification: true,
+      require_verification: false,
       created_by: "admin",
     })
     .select("id, share_token")

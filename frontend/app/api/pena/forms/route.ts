@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       consent_text: body.consent_text?.trim() || DEFAULT_CONSENT,
       status: "draft",
       is_public_stats: body.is_public_stats !== false,
-      require_verification: body.require_verification !== false,  // magic link on by default
+      require_verification: !!body.require_verification,  // direct by default — responses count immediately
       created_by: auth.username,
     })
     .select("*")
