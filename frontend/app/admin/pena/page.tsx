@@ -122,7 +122,9 @@ export default function PenaAdminPage() {
   function copyLink(f: PenaForm, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    navigator.clipboard.writeText(`${window.location.origin}/f/${f.share_token}`).then(() => {
+    // Title + link so a paste reads as an invitation, not a bare URL
+    const text = `${f.title} — Nigeria Energy Data Bank assessment\n${window.location.origin}/f/${f.share_token}`;
+    navigator.clipboard.writeText(text).then(() => {
       setCopied(f.id);
       setTimeout(() => setCopied(null), 1500);
     });

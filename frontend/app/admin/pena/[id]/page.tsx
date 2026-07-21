@@ -146,7 +146,7 @@ export default function PenaBuilderPage() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
             <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Share Link</span>
             <code style={{ fontSize: "0.72rem", fontFamily: "var(--font-mono)", background: "var(--surface)", border: "1px solid var(--border)", padding: "4px 8px", borderRadius: 4, color: "var(--ink-2)", wordBreak: "break-all" }}>{shareUrl}</code>
-            <button onClick={() => { navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+            <button onClick={() => { navigator.clipboard.writeText(`${form.title} — Nigeria Energy Data Bank assessment\n${shareUrl}`); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
               style={{ padding: "5px 12px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-tint)", color: "var(--green)", cursor: "pointer" }}>
               {copied ? "Copied ✓" : "Copy"}
             </button>
