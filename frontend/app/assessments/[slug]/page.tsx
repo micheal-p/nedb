@@ -112,7 +112,7 @@ export default function PublicAssessmentPage() {
 
         {/* LGA choropleth */}
         <div style={{ marginBottom: "1.25rem" }}>
-          <LgaMap lgaData={data.lga_income_map} title="Average Monthly Income by LGA" unit="₦/month" source="PENA field assessment / NEDB (anonymised aggregates)" />
+          <LgaMap lgaData={data.lga_income_map} stateAware title="Average Monthly Income by LGA" unit="₦/month" source="PENA field assessment / NEDB (anonymised aggregates)" />
         </div>
 
         {/* State table */}

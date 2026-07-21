@@ -73,8 +73,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   };
 
   const byLga = group((r) => r.lga_name);
+  // State-aware choropleth keys ("lga|state") — duplicate LGA names across
+  // states stay separate. k-anonymity floor applies per (lga, state) group.
+  const geoPairs = new Map<string, number[]>();
+  for (const r of rows) {
+    if (!r.lga_name || r.income == null) continue;
+    const k = `${normLga(r.lga_name)}|${normLga(r.state_name ?? "")}`;
+    if (!geoPairs.has(k)) geoPairs.set(k, []);
+    geoPairs.get(k)!.push(r.income);
+  }
   const lgaIncomeMap: Record<string, number> = {};
-  for (const g of byLga) if (g.avg_income != null) lgaIncomeMap[normLga(g.name)] = Math.round(g.avg_income);
+  for (const [k, vals] of geoPairs) {
+    if (vals.length >= K_ANON_MIN) lgaIncomeMap[k] = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  }
 
   const payload = {
     assessment: { slug: form.slug, title: form.title, description: form.description, status: form.status, created_at: form.created_at },

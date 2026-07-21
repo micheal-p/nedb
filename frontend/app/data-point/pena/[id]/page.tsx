@@ -259,7 +259,7 @@ export default function PenaInsightsPage() {
 
         {/* Maps */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", marginBottom: "1.25rem" }}>
-          <LgaMap lgaData={ins.lga_income_map} title="Average Monthly Income by LGA — click an LGA to filter the table" unit="₦/month" source="PENA field assessment / NEDB" onSelect={onLgaClick} />
+          <LgaMap lgaData={ins.lga_income_map} stateAware title="Average Monthly Income by LGA — click an LGA to filter the table" unit="₦/month" source="PENA field assessment / NEDB" onSelect={onLgaClick} />
           <PenaPointsMap points={ins.points} title="Assessed Locations" source="PENA field assessment / NEDB" />
         </div>
 

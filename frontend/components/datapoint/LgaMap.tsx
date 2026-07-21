@@ -4,22 +4,50 @@
 // LGA-level choropleth: 774 Local Government Areas from the geoBoundaries ADM2
 // simplified file (GRID3 source, CC BY 4.0) at /nigeria-lgas.json. Follows the
 // NigeriaMap Leaflet pattern, but zoom controls are ENABLED — 774 polygons are
-// unreadable without zooming. Values are keyed by normalized LGA name; a handful
-// of LGA names repeat across states (Obi, Surulere, Bassa…) — those share a
-// colour, a known v1 limitation of the boundary file (it carries no state attr).
+// unreadable without zooming.
+//
+// Five LGA names repeat across states (Surulere, Ifelodun, Irepodun, Bassa,
+// Obi) and the boundary file carries no state attribute. In stateAware mode
+// (keys "lga|state", both normLga'd) the duplicate polygons are disambiguated
+// by geometry: each ambiguous polygon's centroid is point-in-polygon tested
+// against /nigeria-states.json. Plain mode (keys "lga") keeps the legacy
+// name-only matching for existing dashboard callers.
 
 import { useEffect, useRef } from "react";
 import { normLga } from "@/lib/geo";
 
 interface LgaMapProps {
-  lgaData: Record<string, number>;   // normalized-lga-name → value
+  lgaData: Record<string, number>;   // "lga" → value, or "lga|state" when stateAware
   title: string;
   unit: string;
+  stateAware?: boolean;
   colorLow?: string;
   colorHigh?: string;
   source?: string;
   bare?: boolean;
   onSelect?: (normName: string, rawName: string) => void;  // click an LGA polygon
+}
+
+// ── Geometry helpers for duplicate-name disambiguation ──────────────────────
+type Geom = { type: string; coordinates: unknown };
+function outerRings(geom: Geom): number[][][] {
+  if (geom.type === "Polygon") return [(geom.coordinates as number[][][])[0]];
+  if (geom.type === "MultiPolygon") return (geom.coordinates as number[][][][]).map((p) => p[0]);
+  return [];
+}
+function pointInRing([x, y]: number[], ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function ringCentroid(geom: Geom): number[] {
+  const ring = outerRings(geom)[0] ?? [];
+  let sx = 0, sy = 0;
+  for (const [x, y] of ring) { sx += x; sy += y; }
+  return ring.length ? [sx / ring.length, sy / ring.length] : [0, 0];
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -32,7 +60,7 @@ function lerp(a: string, b: string, t: number): string {
   return `rgb(${Math.round(ar + (br - ar) * t)},${Math.round(ag + (bg - ag) * t)},${Math.round(ab + (bb - ab) * t)})`;
 }
 
-export default function LgaMap({ lgaData, title, unit, colorLow = "#C8E6C9", colorHigh = "#1B5E20", source, bare = false, onSelect }: LgaMapProps) {
+export default function LgaMap({ lgaData, title, unit, stateAware = false, colorLow = "#C8E6C9", colorHigh = "#1B5E20", source, bare = false, onSelect }: LgaMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<unknown>(null);
   const onSelectRef = useRef(onSelect);
@@ -42,17 +70,20 @@ export default function LgaMap({ lgaData, title, unit, colorLow = "#C8E6C9", col
   const hasData = values.length > 0;
   const minV = hasData ? Math.min(...values) : 0;
   const maxV = hasData ? Math.max(...values) : 1;
+  const keyLabel = (k: string) => (stateAware ? k.replace("|", " (") + ")" : k);
   const top5 = Object.entries(lgaData).sort(([, a], [, b]) => b - a).slice(0, 5);
 
-  function getColor(norm: string): string {
-    const v = lgaData[norm];
+  function colorFor(v: number | undefined): string {
     if (v === undefined || !hasData) return "#EFEDE8";
     const t = (v - minV) / (maxV - minV || 1);
     return lerp(colorLow, colorHigh, t);
   }
+  function getColor(norm: string): string {
+    return colorFor(lgaData[norm]);
+  }
 
   function downloadCSV() {
-    const rows = Object.entries(lgaData).map(([k, v]) => `${k},${v}`).join("\n");
+    const rows = Object.entries(lgaData).map(([k, v]) => `${keyLabel(k)},${v}`).join("\n");
     const blob = new Blob([`LGA,${unit}\n${rows}`], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -87,18 +118,63 @@ export default function LgaMap({ lgaData, title, unit, colorLow = "#C8E6C9", col
       const geoj = await res.json();
       if (destroyed) return;
 
+      // stateAware: resolve which state each duplicate-named polygon sits in
+      // (centroid point-in-polygon against the state boundaries), then match
+      // values keyed "lga|state". Unique names match on the lga part alone.
+      type Feat = { properties?: { shapeName?: string }; geometry: Geom };
+      const nameCounts = new Map<string, number>();
+      for (const f of (geoj.features as Feat[])) {
+        const n = normLga(f.properties?.shapeName ?? "");
+        nameCounts.set(n, (nameCounts.get(n) ?? 0) + 1);
+      }
+      const featState = new Map<Feat, string>();          // dup feature → norm state name
+      const byLgaPart = new Map<string, [string, number][]>(); // lga part → [statePart, value]
+      if (stateAware) {
+        for (const [k, v] of Object.entries(lgaData)) {
+          const [lgaPart, statePart = ""] = k.split("|");
+          if (!byLgaPart.has(lgaPart)) byLgaPart.set(lgaPart, []);
+          byLgaPart.get(lgaPart)!.push([statePart, v]);
+        }
+        try {
+          const statesGeo = await fetch("/nigeria-states.json").then((r) => r.json());
+          if (destroyed) return;
+          const stateFeats: { properties?: { shapeName?: string }; geometry: Geom }[] = statesGeo.features;
+          for (const f of (geoj.features as Feat[])) {
+            const n = normLga(f.properties?.shapeName ?? "");
+            if ((nameCounts.get(n) ?? 0) < 2) continue;
+            const c = ringCentroid(f.geometry);
+            const hit = stateFeats.find((s) => outerRings(s.geometry).some((ring) => pointInRing(c, ring)));
+            if (hit) featState.set(f, normLga(hit.properties?.shapeName ?? ""));
+          }
+        } catch { /* fall back to name-only matching */ }
+      }
+
+      const valueOf = (feature: Feat): { val: number | undefined; stateNote: string } => {
+        const norm = normLga(feature.properties?.shapeName ?? "");
+        if (!stateAware) return { val: lgaData[norm], stateNote: "" };
+        const entries = byLgaPart.get(norm) ?? [];
+        const isDup = (nameCounts.get(norm) ?? 0) > 1;
+        const st = featState.get(feature);
+        if (isDup) {
+          const match = st ? entries.find(([s]) => s === st) : undefined;
+          return { val: match?.[1], stateNote: st ? ` (${st})` : "" };
+        }
+        return { val: entries[0]?.[1], stateNote: "" };
+      };
+
       L.geoJSON(geoj, {
         style: (feature) => {
-          const norm = normLga(feature?.properties?.shapeName ?? "");
-          return { fillColor: getColor(norm), fillOpacity: 1, color: "#fff", weight: 0.5 };
+          const { val } = valueOf(feature as unknown as Feat);
+          return { fillColor: colorFor(val), fillOpacity: 1, color: "#fff", weight: 0.5 };
         },
         onEachFeature: (feature, layer) => {
           const raw = feature.properties?.shapeName ?? "";
           const norm = normLga(raw);
-          const val = lgaData[norm];
+          const { val, stateNote } = valueOf(feature as unknown as Feat);
+          const cap = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
           const label = val !== undefined
-            ? `<strong>${raw}</strong><br/>${val.toLocaleString()} ${unit}`
-            : `<strong>${raw}</strong><br/>No data`;
+            ? `<strong>${raw}${cap(stateNote)}</strong><br/>${val.toLocaleString()} ${unit}`
+            : `<strong>${raw}${cap(stateNote)}</strong><br/>No data`;
           layer.bindTooltip(label, { sticky: true, className: "nedb-map-tooltip" });
           (layer as L.Path).on("mouseover", function (this: L.Path) { this.setStyle({ weight: 1.5, color: "#0E7A3C" }); });
           (layer as L.Path).on("mouseout", function (this: L.Path) { this.setStyle({ weight: 0.5, color: "#fff" }); });
@@ -118,7 +194,7 @@ export default function LgaMap({ lgaData, title, unit, colorLow = "#C8E6C9", col
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(lgaData), colorLow, colorHigh, unit]);
+  }, [JSON.stringify(lgaData), colorLow, colorHigh, unit, stateAware]);
 
   const inner = (
     <>
@@ -154,7 +230,7 @@ export default function LgaMap({ lgaData, title, unit, colorLow = "#C8E6C9", col
                   <div key={lga} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                     <div style={{ width: 16, height: 16, borderRadius: 3, background: getColor(lga), flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: "0.68rem", fontWeight: 600, color: "var(--ink)", textTransform: "capitalize", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lga}</div>
+                      <div style={{ fontSize: "0.68rem", fontWeight: 600, color: "var(--ink)", textTransform: "capitalize", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{keyLabel(lga)}</div>
                       <div style={{ fontSize: "0.62rem", color: "var(--ink-4)", fontFamily: "var(--font-mono)" }}>{val.toLocaleString()} {unit}</div>
                     </div>
                     <div style={{ fontSize: "0.62rem", color: "var(--ink-5)" }}>#{i + 1}</div>

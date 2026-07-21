@@ -101,9 +101,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const byState = groupBy((r) => r.state_name);
   const byLga   = groupBy((r) => r.lga_name);
 
-  // Choropleth feed: normalized LGA name → average income
+  // Choropleth feed, state-aware: "lga|state" → average income. Duplicate LGA
+  // names across states (Surulere in Lagos AND Oyo…) stay separate.
+  const geoPairs = new Map<string, number[]>();
+  for (const r of rows) {
+    if (!r.lga_name || r.income == null) continue;
+    const k = `${normLga(r.lga_name)}|${normLga(r.state_name ?? "")}`;
+    if (!geoPairs.has(k)) geoPairs.set(k, []);
+    geoPairs.get(k)!.push(r.income);
+  }
   const lgaIncomeMap: Record<string, number> = {};
-  for (const g of byLga) if (g.avg_income != null) lgaIncomeMap[normLga(g.name)] = Math.round(g.avg_income);
+  for (const [k, vals] of geoPairs) lgaIncomeMap[k] = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
 
   const sources: Record<string, number> = {};
   if (srcSlug) {
