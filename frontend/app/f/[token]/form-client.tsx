@@ -271,9 +271,16 @@ export default function PenaPublicForm() {
   </>));
   if (!def) return shell(card(<span style={{ color: "var(--ink-5)", fontSize: "0.85rem" }}>{t.loading}</span>));
   if (already && !done) return shell(card(<>
-    <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--green-tint)", border: "2px solid var(--green)", color: "var(--green)", fontSize: "1.4rem", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>✓</div>
+    {/* Deliberately NOT a green tick — this screen means the response was
+        refused as a duplicate, and must never be mistaken for success */}
+    <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(217,164,4,0.12)", border: "2px solid #B8860B", color: "#B8860B", fontSize: "1.4rem", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>!</div>
     <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>{def.title}</div>
-    <div style={{ fontSize: "0.82rem", color: "var(--ink-4)" }}>{t.already}</div>
+    <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--ink-2)", marginBottom: 6 }}>{t.already}</div>
+    <div style={{ fontSize: "0.78rem", color: "var(--ink-4)", lineHeight: 1.6 }}>
+      This new response was <strong>not recorded</strong> — this device or internet connection has already
+      submitted. If you are on a shared network and haven&apos;t personally filled it, try again on your own
+      mobile data.
+    </div>
   </>));
   if (def.status !== "open") return shell(card(<>
     <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>{def.title}</div>
