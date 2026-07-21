@@ -549,6 +549,10 @@ export default function Dashboard() {
               <span className="sb-label">Scenario Studio</span>
               <span style={{ fontSize: "0.6rem", background: "#1B2A4A", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>NECAL</span>
             </Link>
+            <Link href="/data-point/pena" className="sb-link">
+              <span className="sb-label">Energy Assessments</span>
+              <span style={{ fontSize: "0.6rem", background: "var(--green)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>PENA</span>
+            </Link>
             <Link href="/" className="sb-link"><span className="sb-label">Public Data Bank</span></Link>
             <button className="sb-link" onClick={logout} style={{ color: "rgba(192,57,43,0.8)" }}><span className="sb-label">Sign Out</span></button>
           </div>

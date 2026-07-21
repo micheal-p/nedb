@@ -538,6 +538,7 @@ export default function AdminPage() {
           <div className="admin-header-actions-desktop" style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <Link href="/admin/databank" className="btn btn-ghost btn-sm">Storage Bank</Link>
             <Link href="/admin/custom-tables" className="btn btn-ghost btn-sm">Custom Tables</Link>
+            <Link href="/admin/pena" className="btn btn-ghost btn-sm">PENA</Link>
             <Link href="/admin/apex" className="btn btn-ghost btn-sm">Apex AI</Link>
             <Link href="/admin/freshness" className="btn btn-ghost btn-sm">Freshness</Link>
             <Link href="/admin/subscribers" className="btn btn-ghost btn-sm">Report &amp; Subscribers</Link>
@@ -562,6 +563,7 @@ export default function AdminPage() {
           <div className="admin-header-dropdown">
             <Link href="/admin/databank" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Storage Bank</Link>
             <Link href="/admin/custom-tables" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Custom Tables</Link>
+            <Link href="/admin/pena" className="admin-header-item" onClick={() => setHeaderOpen(false)}>PENA</Link>
             <Link href="/admin/apex" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Apex AI</Link>
             <Link href="/admin/freshness" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Freshness</Link>
             <Link href="/admin/subscribers" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Report &amp; Subscribers</Link>
