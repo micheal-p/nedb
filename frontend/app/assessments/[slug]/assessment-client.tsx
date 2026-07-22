@@ -11,9 +11,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import LgaMap from "@/components/datapoint/LgaMap";
-import { TIERS, TIER_ORDER, type PenaTier } from "@/lib/pena";
+import { TIERS, TIER_ORDER, K_ANON_MIN, type PenaTier } from "@/lib/pena";
 
-type Group = { name: string; count: number; avg_income: number | null; avg_light_hours: number | null; avg_energy_expense: number | null; tiers: number[] };
+type Group = { name: string; state?: string | null; count: number; avg_income: number | null; avg_light_hours: number | null; avg_energy_expense: number | null; tiers: number[] };
 
 type PubData = {
   assessment: { slug: string; title: string; description: string | null; status: string; created_at: string };
@@ -75,7 +75,7 @@ export default function PublicAssessmentPage() {
   if (!data) return <div style={{ minHeight: "100vh", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-5)", fontSize: "0.85rem" }}>Loading…</div>;
 
   const collecting = !!data.collecting;
-  const needed = data.needed ?? 5;
+  const needed = data.needed ?? K_ANON_MIN;   // the privacy floor, single source
   const maxTier = Math.max(1, ...(data.tier_distribution ?? []).map((t) => t.count));
 
   return (
@@ -147,7 +147,7 @@ export default function PublicAssessmentPage() {
               <Tile label="Avg Monthly Energy Spend" value={naira(data.stats?.avg_energy_expense)} sub="bills + fuel + solar, combined" />
             </div>
             <p style={{ fontSize: "0.7rem", color: "var(--ink-5)", margin: "0 0 1.5rem", lineHeight: 1.5 }}>
-              Averages across all verified responses. Area breakdowns below hide any state or LGA with fewer than 5 responses (NDPA 2023 privacy floor).
+              Averages across all verified responses. Area breakdowns below hide any state or LGA with fewer than {needed} responses (NDPA 2023 privacy floor).
             </p>
 
             {/* Tier distribution */}
@@ -186,7 +186,7 @@ export default function PublicAssessmentPage() {
                 unit="₦/month"
                 source="PENA field assessment / NEDB (anonymised aggregates)"
                 emptyTitle="No area has reached the privacy floor yet"
-                emptyHint="An LGA colours in once it has 5 or more verified responses — averages for smaller groups are withheld to protect respondents."
+                emptyHint={`An LGA colours in once it has ${needed} or more verified responses — averages for smaller groups are withheld to protect respondents.`}
               />
             </div>
 
@@ -196,7 +196,7 @@ export default function PublicAssessmentPage() {
               <div className="chart-panel-head">
                 <div>
                   <div className="chart-panel-title">Averages by State</div>
-                  <div className="chart-panel-sub">With tier counts A→E · states under 5 responses are withheld until they reach the floor</div>
+                  <div className="chart-panel-sub">With tier counts A→E · states under {needed} responses are withheld until they reach the floor</div>
                 </div>
               </div>
               <div style={{ overflowX: "auto" }}>
@@ -214,7 +214,7 @@ export default function PublicAssessmentPage() {
                   <tbody>
                     {(data.by_state ?? []).length === 0 && (
                       <tr><td colSpan={10} style={{ textAlign: "center", color: "var(--ink-5)", padding: "1.5rem", lineHeight: 1.6 }}>
-                        No state has reached 5 responses yet — rows appear automatically as areas cross the privacy floor.
+                        No state has reached {needed} responses yet — rows appear automatically as areas cross the privacy floor.
                       </td></tr>
                     )}
                     {(data.by_state ?? []).map((s) => (

@@ -6,7 +6,8 @@ import { db } from "@/lib/supabase-server";
 import { ok, err, requireAuth } from "@/lib/api-helpers";
 import { checkRateLimitDurable } from "@/lib/rate-limit";
 import { cacheGet, cacheSet } from "@/lib/redis";
-import { computeTier, type TierConfig } from "@/lib/pena";
+import { searchPlacesNG } from "@/lib/geocode";
+import { computeTier, VERIFY_TTL_HOURS, type TierConfig } from "@/lib/pena";
 
 // Public respondent endpoints, keyed by the unguessable share token.
 // GET  /api/pena/r/:token            — form definition (open forms only)
@@ -148,24 +149,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   if (!form) return err("Assessment not found", 404);
   if (form.status !== "open") return err("This assessment is not accepting responses.", 403);
 
-  // One per IP per form — holds across sign-in/sign-out on the same connection
+  // One per IP per form — holds across sign-in/sign-out on the same connection.
+  // Expired pending rows don't count: their owners were told to fill again.
+  const expiryCutoff = new Date(Date.now() - VERIFY_TTL_HOURS * 3_600_000).toISOString();
   if (ip !== "anon") {
     const { count } = await db()
       .from("pena_responses")
       .select("id", { count: "exact", head: true })
       .eq("form_id", form.id)
-      .eq("ip_hash", ipHash);
+      .eq("ip_hash", ipHash)
+      .or(`verify_status.eq.verified,created_at.gte.${expiryCutoff}`);
     if ((count ?? 0) >= MAX_PER_IP)
       return err("You have already filled this assessment from this connection.", 409);
   }
 
   const questions = await loadQuestions(form.id);
 
-  // Google identity first: a valid id_token carries a Google-verified email
+  // Google identity first: a valid id_token carries a Google-verified email.
+  // A stale/unverifiable token (id_tokens expire in ~1h — normal for
+  // offline-queued submissions) falls back to the typed-email path instead of
+  // rejecting: the answers carry the same address, it just loses the
+  // "google-verified" mark.
   let googleEmail: string | null = null;
   if (typeof body.google_token === "string" && body.google_token) {
     googleEmail = await verifyGoogleToken(body.google_token);
-    if (!googleEmail) return err("Google sign-in could not be verified — please try again.");
   }
 
   // Validate + collect answers keyed by question slug
@@ -246,15 +253,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   let lat = num(body.lat), lng = num(body.lng);
   let geocodeSource: string | null = lat != null && lng != null ? "respondent" : null;
   if (lat == null && addressText) {
-    try {
-      const q = `${addressText}, ${lga?.name ?? ""}, ${stateName ?? ""}, Nigeria`;
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=ng&limit=1&q=${encodeURIComponent(q)}`,
-        { headers: { "User-Agent": "NEDB/1.0 (Nigeria Energy Data Bank; energy assessment geocoding)" }, signal: AbortSignal.timeout(3000) }
-      );
-      const hits = res.ok ? await res.json() : [];
-      if (hits[0]) { lat = num(hits[0].lat); lng = num(hits[0].lon); geocodeSource = "server"; }
-    } catch { /* enhancement only */ }
+    const hits = await searchPlacesNG(`${addressText}, ${lga?.name ?? ""}, ${stateName ?? ""}, Nigeria`, 1);
+    if (hits[0]) { lat = hits[0].lat; lng = hits[0].lng; geocodeSource = "server"; }
+  }
+
+  // An expired pending row must not hold the respondent's email hostage —
+  // they were told the unconfirmed response would not count and to try again.
+  if (email) {
+    await db()
+      .from("pena_responses")
+      .delete()
+      .eq("form_id", form.id)
+      .eq("verify_status", "pending")
+      .eq("email", email)
+      .lt("created_at", expiryCutoff);
   }
 
   // Magic-link verification: pending unless Google already proved the inbox.

@@ -10,6 +10,7 @@ export async function GET() {
     .select("slug, share_token, title, description, status, created_at, pena_responses(count)")
     .eq("is_public_stats", true)
     .neq("status", "draft")
+    .eq("pena_responses.verify_status", "verified")   // count matches the detail page
     .order("created_at", { ascending: false });
 
   if (error) return err(error.message, 500);

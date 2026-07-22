@@ -32,9 +32,7 @@ const GEO_OPTS = [
   { value: "lga",      label: "LGA-level" },
 ];
 
-function slugify(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-}
+import { penaSlugify as slugify } from "@/lib/pena";
 
 function NewSeriesModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [step, setStep] = useState<"meta" | "columns">("meta");

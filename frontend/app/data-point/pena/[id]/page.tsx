@@ -28,7 +28,7 @@ type Insights = {
   tier_distribution: { tier: PenaTier; count: number }[];
   unclassified: number;
   by_state: { name: string; count: number; avg_income: number | null; avg_light_hours: number | null; avg_energy_expense: number | null; tiers: number[] }[];
-  by_lga: { name: string; count: number; avg_income: number | null; avg_light_hours: number | null; avg_energy_expense: number | null; tiers: number[] }[];
+  by_lga: { name: string; state: string | null; count: number; avg_income: number | null; avg_light_hours: number | null; avg_energy_expense: number | null; tiers: number[] }[];
   lga_income_map: Record<string, number>;
   energy_sources: { name: string; count: number }[];
   points: PenaPoint[];
@@ -117,14 +117,18 @@ export default function PenaInsightsPage() {
       .catch(() => {});
   }, [id, filterQS, offset]);
 
-  // Clicking an LGA polygon filters the response table to that LGA
-  const onLgaClick = useCallback((norm: string) => {
-    setIns((cur) => {
-      const g = cur?.by_lga.find((x) => normLga(x.name) === norm);
-      if (g) { setFLga(g.name); setOffset(0); }
-      return cur;
-    });
-  }, []);
+  // Clicking an LGA polygon filters the response table to that LGA — state
+  // included, so the two Sureleres (Lagos/Oyo) never mix in the results.
+  const onLgaClick = useCallback((norm: string, _raw: string, stateNorm?: string) => {
+    if (!ins) return;
+    const g = ins.by_lga.find((x) =>
+      normLga(x.name) === norm && (!stateNorm || normLga(x.state ?? "") === stateNorm));
+    if (g) {
+      setFLga(g.name);
+      if (g.state) setFState(g.state);
+      setOffset(0);
+    }
+  }, [ins]);
 
   async function deleteResponse(r: ResponseRow) {
     if (!confirm(`Delete response #${r.id} (${r.email ?? "no email"}) permanently? This honours an NDPA removal request and cannot be undone.`)) return;

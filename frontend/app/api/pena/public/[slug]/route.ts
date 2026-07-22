@@ -88,7 +88,26 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       .sort((a, b) => b.count - a.count);
   };
 
-  const byLga = group((r) => r.lga_name);
+  // (lga, state) pair grouping — duplicate LGA names across states stay separate
+  const lgaPairs = new Map<string, { name: string; state: string | null; rs: Row[] }>();
+  for (const r of rows) {
+    if (!r.lga_name) continue;
+    const k = JSON.stringify([r.lga_name, r.state_name ?? ""]);
+    if (!lgaPairs.has(k)) lgaPairs.set(k, { name: r.lga_name, state: r.state_name, rs: [] });
+    lgaPairs.get(k)!.rs.push(r);
+  }
+  const byLga = [...lgaPairs.values()]
+    .filter(({ rs }) => rs.length >= K_ANON_MIN)
+    .map(({ name, state, rs }) => ({
+      name,
+      state,
+      count: rs.length,
+      avg_income: avg(rs.map((r) => r.income)),
+      avg_light_hours: avg(rs.map((r) => r.light_hours)),
+      avg_energy_expense: avg(rs.map((r) => r.energy_expense)),
+      tiers: TIER_ORDER.map((t) => rs.filter((r) => r.tier === t).length),
+    }))
+    .sort((a, b) => b.count - a.count);
   // State-aware choropleth keys ("lga|state") — duplicate LGA names across
   // states stay separate. k-anonymity floor applies per (lga, state) group.
   const geoPairs = new Map<string, number[]>();

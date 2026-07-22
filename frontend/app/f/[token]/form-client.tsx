@@ -183,9 +183,19 @@ export default function PenaPublicForm() {
     if (!raw) return;
     try {
       const r = await postPayload(JSON.parse(raw));
-      if (r.ok) markDone(r.body.message ?? "Response recorded.");
-      else if (r.status === 409) { markDone(""); setAlready(true); }
-      else { try { localStorage.removeItem(queueKey); } catch { /* ignore */ } setOfflineQueued(false); setError(r.body.error ?? "Submission failed."); }
+      if (r.ok) { markDone(r.body.message ?? "Response recorded."); return; }
+      if (r.status === 409) { markDone(""); setAlready(true); return; }
+      // The queued payload is the respondent's ONLY copy — discard it solely
+      // on a definitive rejection (400 = the payload itself is invalid).
+      // Rate limits (429), closed-for-now (403) and server errors (5xx) are
+      // retriable: keep the queue and surface the reason.
+      if (r.status === 400) {
+        try { localStorage.removeItem(queueKey); } catch { /* ignore */ }
+        setOfflineQueued(false);
+        setError(r.body.error ?? "Submission failed.");
+      } else {
+        setError(r.body.error ?? "Could not submit yet — your saved response is kept and will retry.");
+      }
     } catch { /* still offline — keep the queue */ }
   }, [queueKey, postPayload, markDone]);
 
@@ -214,8 +224,17 @@ export default function PenaPublicForm() {
     }
     if (!consent) { setError(t.consentRequired); return; }
 
+    // Include the Google email in answers too: if the queued id_token expires
+    // before an offline retry, the server falls back to the typed-email path
+    // and still finds the address (email addresses don't expire).
+    const finalAnswers = { ...answers };
+    if (googleEmail) {
+      const emailQ = def.questions.find((q) => q.qtype === "email");
+      if (emailQ && !finalAnswers[emailQ.slug]) finalAnswers[emailQ.slug] = googleEmail;
+    }
+
     const payload = {
-      answers,
+      answers: finalAnswers,
       lga_id: lgaId,
       lat: geo?.lat ?? null,
       lng: geo?.lng ?? null,

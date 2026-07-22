@@ -25,7 +25,7 @@ interface LgaMapProps {
   colorHigh?: string;
   source?: string;
   bare?: boolean;
-  onSelect?: (normName: string, rawName: string) => void;  // click an LGA polygon
+  onSelect?: (normName: string, rawName: string, stateNorm?: string) => void;  // click an LGA polygon
   emptyTitle?: string;   // sidebar copy when no values are present
   emptyHint?: string;
 }
@@ -45,11 +45,33 @@ function pointInRing([x, y]: number[], ring: number[][]): boolean {
   }
   return inside;
 }
-function ringCentroid(geom: Geom): number[] {
-  const ring = outerRings(geom)[0] ?? [];
+// A point guaranteed to lie INSIDE the polygon. The naive vertex-average can
+// fall outside concave/riverine shapes (and then point-in-state tests assign
+// the wrong state); when it does, fall back to the midpoint of the widest
+// interior span on the ring's vertical middle — a classic label-point trick.
+function interiorPoint(geom: Geom): number[] {
+  const rings = outerRings(geom);
+  const ring = rings.reduce((a, b) => (b.length > a.length ? b : a), rings[0] ?? []);
+  if (!ring.length) return [0, 0];
   let sx = 0, sy = 0;
   for (const [x, y] of ring) { sx += x; sy += y; }
-  return ring.length ? [sx / ring.length, sy / ring.length] : [0, 0];
+  const centroid = [sx / ring.length, sy / ring.length];
+  if (pointInRing(centroid, ring)) return centroid;
+
+  const ys = ring.map((p) => p[1]);
+  const y = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const xs: number[] = [];
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if (yi > y !== yj > y) xs.push(xi + ((y - yi) * (xj - xi)) / (yj - yi));
+  }
+  xs.sort((a, b) => a - b);
+  let best: number[] | null = null, bestW = -1;
+  for (let i = 0; i + 1 < xs.length; i += 2) {
+    const w = xs[i + 1] - xs[i];
+    if (w > bestW) { bestW = w; best = [(xs[i] + xs[i + 1]) / 2, y]; }
+  }
+  return best ?? centroid;
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -152,11 +174,11 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
           for (const f of (geoj.features as Feat[])) {
             const n = normLga(f.properties?.shapeName ?? "");
             if ((nameCounts.get(n) ?? 0) < 2) continue;
-            const c = ringCentroid(f.geometry);
+            const c = interiorPoint(f.geometry);
             const hit = stateFeats.find((s) => outerRings(s.geometry).some((ring) => pointInRing(c, ring)));
             if (hit) featState.set(f, normLga(hit.properties?.shapeName ?? ""));
           }
-        } catch { /* fall back to name-only matching */ }
+        } catch { /* featState stays empty — valueOf falls back below */ }
       }
 
       const valueOf = (feature: Feat): { val: number | undefined; stateNote: string; key: string | null } => {
@@ -167,7 +189,13 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
         const st = featState.get(feature);
         if (isDup) {
           const match = st ? entries.find(([s]) => s === st) : undefined;
-          return { val: match?.[1], stateNote: st ? ` (${st})` : "", key: match && st ? `${norm}|${st}` : null };
+          if (match && st) return { val: match[1], stateNote: ` (${st})`, key: `${norm}|${st}` };
+          // Fallback (states file unavailable or geometry unresolved): if the
+          // DATA only has one state's entry for this name there is no
+          // ambiguity to resolve — better a name-level match than grey.
+          if (!st && entries.length === 1)
+            return { val: entries[0][1], stateNote: ` (${entries[0][0]})`, key: `${norm}|${entries[0][0]}` };
+          return { val: undefined, stateNote: st ? ` (${st})` : "", key: null };
         }
         return { val: entries[0]?.[1], stateNote: "", key: entries[0] ? `${norm}|${entries[0][0]}` : null };
       };
@@ -176,9 +204,11 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
       L.geoJSON(geoj, {
         style: (feature) => {
           const { val } = valueOf(feature as unknown as Feat);
-          // Data polygons get a dark outline so even the smallest LGAs
-          // (Surulere Lagos is a few pixels at national zoom) stay visible
-          return val !== undefined
+          // In stateAware (sparse survey) mode, data polygons get a dark
+          // outline so even the smallest LGAs stay visible at national zoom.
+          // Plain mode keeps the legacy hairline mesh — dense databank maps
+          // would drown in outlines otherwise.
+          return stateAware && val !== undefined
             ? { fillColor: colorFor(val), fillOpacity: 1, color: "#0E7A3C", weight: 1.4 }
             : { fillColor: colorFor(val), fillOpacity: 1, color: "#fff", weight: 0.5 };
         },
@@ -187,8 +217,11 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
           const norm = normLga(raw);
           const { val, stateNote, key } = valueOf(feature as unknown as Feat);
           if (key) layersRef.current.set(key, layer);
-          const baseColor = val !== undefined ? "#0E7A3C" : "#fff";
-          const baseWeight = val !== undefined ? 1.4 : 0.5;
+          const stNorm = stateAware
+            ? featState.get(feature as unknown as Feat) ?? (key?.includes("|") ? key.split("|")[1] : undefined)
+            : undefined;
+          const baseColor = stateAware && val !== undefined ? "#0E7A3C" : "#fff";
+          const baseWeight = stateAware && val !== undefined ? 1.4 : 0.5;
           const cap = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
           const label = val !== undefined
             ? `<strong>${raw}${cap(stateNote)}</strong><br/>${val.toLocaleString()} ${unit}`
@@ -196,7 +229,7 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
           layer.bindTooltip(label, { sticky: true, className: "nedb-map-tooltip" });
           (layer as L.Path).on("mouseover", function (this: L.Path) { this.setStyle({ weight: 2, color: "#0E7A3C" }); });
           (layer as L.Path).on("mouseout", function (this: L.Path) { this.setStyle({ weight: baseWeight, color: baseColor }); });
-          (layer as L.Path).on("click", () => { onSelectRef.current?.(norm, raw); });
+          (layer as L.Path).on("click", () => { onSelectRef.current?.(norm, raw, stNorm); });
         },
       }).addTo(map);
 

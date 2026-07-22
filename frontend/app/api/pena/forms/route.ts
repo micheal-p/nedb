@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await db()
     .from("pena_forms")
     .select("id, slug, share_token, title, description, status, is_public_stats, created_by, created_at, pena_questions(count), pena_responses(count)")
+    .eq("pena_responses.verify_status", "verified")   // counts agree with insights
     .order("created_at", { ascending: false });
 
   if (error) return err(error.message, 500);

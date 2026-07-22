@@ -83,8 +83,11 @@ export default function Navbar({ active }: NavbarProps) {
           <Link href="/data-point" className={`nav-link-main${active === "datapoint" ? " active" : ""}`}>Data Point</Link>
 
           {/* Explore ▾ — Knowledge Graph, PENA, Intelligence Portal, API */}
+          {/* Hover-open is mouse-only: on touch, a tap fires synthetic
+              mouseenter THEN click, which would open-then-toggle-closed */}
           <div ref={exploreRef} style={{ position: "relative" }}
-            onMouseEnter={() => setExploreOpen(true)} onMouseLeave={() => setExploreOpen(false)}>
+            onPointerEnter={(e) => e.pointerType === "mouse" && setExploreOpen(true)}
+            onPointerLeave={(e) => e.pointerType === "mouse" && setExploreOpen(false)}>
             <button
               className={`nav-link-main${active === "graph" || active === "assessments" ? " active" : ""}`}
               onClick={() => setExploreOpen((o) => !o)}

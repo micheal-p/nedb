@@ -99,7 +99,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   };
 
   const byState = groupBy((r) => r.state_name);
-  const byLga   = groupBy((r) => r.lga_name);
+
+  // LGA groups are keyed by (lga, state) — five LGA names repeat across
+  // states, and a name-only grouping would merge e.g. both Sureleres into
+  // one row that disagrees with the state-aware choropleth.
+  const lgaPairs = new Map<string, { name: string; state: string | null; rs: Row[] }>();
+  for (const r of rows) {
+    if (!r.lga_name) continue;
+    const k = JSON.stringify([r.lga_name, r.state_name ?? ""]);
+    if (!lgaPairs.has(k)) lgaPairs.set(k, { name: r.lga_name, state: r.state_name, rs: [] });
+    lgaPairs.get(k)!.rs.push(r);
+  }
+  const byLga = [...lgaPairs.values()].map(({ name, state, rs }) => ({
+    name,
+    state,
+    count: rs.length,
+    avg_income: avg(rs.map((r) => r.income).filter((v): v is number => v != null)),
+    avg_light_hours: avg(rs.map((r) => r.light_hours).filter((v): v is number => v != null)),
+    avg_energy_expense: avg(rs.map((r) => r.energy_expense).filter((v): v is number => v != null)),
+    tiers: TIER_ORDER.map((t) => rs.filter((r) => r.tier === t).length),
+  })).sort((a, b) => b.count - a.count);
 
   // Choropleth feed, state-aware: "lga|state" → average income. Duplicate LGA
   // names across states (Surulere in Lagos AND Oyo…) stay separate.

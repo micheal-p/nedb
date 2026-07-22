@@ -10,6 +10,7 @@ type Question = {
   label: string; slug: string; qtype: string; unit: string | null;
   is_required: boolean; is_pii: boolean; analytics_key: string | null;
   config: { options?: string[]; min?: number; max?: number } | null;
+  _new?: boolean;   // client-only: slug auto-generates from the label ONLY while new
 };
 
 type FormDetail = {
@@ -79,7 +80,10 @@ export default function PenaBuilderPage() {
     setQuestions((qs) => qs.map((q, j) => {
       if (j !== i) return q;
       const u = { ...q, [field]: val };
-      if (field === "label" && typeof val === "string") u.slug = penaSlugify(val);
+      // Only NEW questions derive their slug from the label. Existing
+      // questions keep their slug forever — historical answers are stored
+      // under it, and regenerating it on a rename would orphan them all.
+      if (field === "label" && typeof val === "string" && q._new) u.slug = penaSlugify(val);
       return u;
     }));
   }
@@ -241,7 +245,7 @@ export default function PenaBuilderPage() {
                     </select>
                   </div>
                 </div>
-                {q.qtype === "select" && (
+                {(q.qtype === "select" || q.qtype === "multiselect") && (
                   <div style={{ marginTop: "0.5rem" }}>
                     <label style={labelStyle}>Options (comma-separated)</label>
                     <input
@@ -262,11 +266,18 @@ export default function PenaBuilderPage() {
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
-            <button onClick={() => setQuestions((qs) => [...qs, { label: "", slug: "", qtype: "text", unit: null, is_required: true, is_pii: false, analytics_key: null, config: null }])}
+            <button onClick={() => setQuestions((qs) => [...qs, { label: "", slug: "", qtype: "text", unit: null, is_required: true, is_pii: false, analytics_key: null, config: null, _new: true }])}
               style={{ padding: "0.5rem 1rem", background: "transparent", border: "1px dashed var(--border)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 600, color: "var(--ink-4)", cursor: "pointer" }}>
               + Add Question
             </button>
-            <button onClick={() => patch({ questions }, "Questions saved")} disabled={saving}
+            <button onClick={() => {
+                const noOpts = questions.find((q) => (q.qtype === "select" || q.qtype === "multiselect") && !(q.config?.options?.length));
+                if (noOpts) { setError(`"${noOpts.label || "Untitled question"}" needs at least one option before saving.`); setTimeout(() => setError(""), 4000); return; }
+                const slugs = questions.map((q) => q.slug || penaSlugify(q.label));
+                const dup = slugs.find((s, i) => slugs.indexOf(s) !== i);
+                if (dup) { setError(`Two questions share the internal name "${dup}" — make their labels more distinct.`); setTimeout(() => setError(""), 4000); return; }
+                patch({ questions }, "Questions saved");
+              }} disabled={saving}
               style={{ padding: "0.6rem 1.5rem", background: saving ? "var(--ink-5)" : "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.82rem", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer" }}>
               {saving ? "Saving…" : "Save Questions"}
             </button>
