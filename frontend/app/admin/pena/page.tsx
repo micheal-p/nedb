@@ -151,8 +151,11 @@ export default function PenaAdminPage() {
             <h1 style={{ fontSize: "1.5rem", fontFamily: "var(--font-serif)", fontWeight: 400, color: "var(--ink)", margin: 0 }}>Profiling &amp; Energy Needs Assessments</h1>
             <p style={{ fontSize: "0.8rem", color: "var(--ink-4)", marginTop: "0.25rem" }}>Create an assessment, share the link, and analyse responses on the Data Point side. One response per email address.</p>
           </div>
-          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
             <Link href="/admin" style={{ fontSize: "0.78rem", color: "var(--ink-4)", textDecoration: "none" }}>← Admin</Link>
+            <Link href="/admin/pena/benchmarks" style={{ padding: "0.6rem 1.1rem", background: "#fff", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, textDecoration: "none" }}>
+              NBS Benchmarks
+            </Link>
             <button onClick={() => setShowNew(true)} style={{ padding: "0.6rem 1.25rem", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
               + New Assessment
             </button>

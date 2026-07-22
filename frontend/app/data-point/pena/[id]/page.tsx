@@ -7,11 +7,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import LgaMap from "@/components/datapoint/LgaMap";
+import PenaDrillMap from "@/components/pena/PenaDrillMap";
 import PenaPointsMap, { type PenaPoint } from "@/components/pena/PenaPointsMap";
 import { isLoggedIn, getRole } from "@/lib/auth";
 import { TIERS, TIER_ORDER, type PenaTier } from "@/lib/pena";
-import { normLga } from "@/lib/geo";
+import { buildBenchmarkIndex, coveragePer100k, DEFAULT_NBS_ROWS, type BenchmarkIndex, type NbsRow } from "@/lib/nbs-benchmarks";
 
 type Insights = {
   form: { id: number; title: string; slug: string; status: string; is_public_stats: boolean };
@@ -98,7 +98,17 @@ export default function PenaInsightsPage() {
   const [fMax, setFMax] = useState("");
   const [offset, setOffset] = useState(0);
   const [detail, setDetail] = useState<ResponseRow | null>(null);
+  const [mapState, setMapState] = useState<string | null>(null);   // drill-down level
+  const [bench, setBench] = useState<BenchmarkIndex>(() => buildBenchmarkIndex(DEFAULT_NBS_ROWS));
   const [failed, setFailed] = useState(false);
+
+  // Admin-editable NBS figures; defaults apply until the API answers
+  useEffect(() => {
+    fetch("/api/pena/benchmarks")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { rows: NbsRow[] } | null) => { if (j?.rows?.length) setBench(buildBenchmarkIndex(j.rows)); })
+      .catch(() => {});
+  }, []);
 
   const filterQS = useCallback(() => {
     const p = new URLSearchParams();
@@ -117,18 +127,20 @@ export default function PenaInsightsPage() {
       .catch(() => {});
   }, [id, filterQS, offset]);
 
-  // Clicking an LGA polygon filters the response table to that LGA — state
-  // included, so the two Sureleres (Lagos/Oyo) never mix in the results.
-  const onLgaClick = useCallback((norm: string, _raw: string, stateNorm?: string) => {
-    if (!ins) return;
-    const g = ins.by_lga.find((x) =>
-      normLga(x.name) === norm && (!stateNorm || normLga(x.state ?? "") === stateNorm));
-    if (g) {
-      setFLga(g.name);
-      if (g.state) setFState(g.state);
-      setOffset(0);
-    }
-  }, [ins]);
+  // Drill map wiring: opening a state also filters the table to it; clicking
+  // an LGA filters to that exact (LGA, state) pair — the two Sureleres
+  // (Lagos/Oyo) can never mix.
+  const onSelectState = useCallback((s: string | null) => {
+    setMapState(s);
+    setFState(s ?? "");
+    if (!s) setFLga("");
+    setOffset(0);
+  }, []);
+  const onSelectLga = useCallback((lga: string, state: string) => {
+    setFLga(lga);
+    setFState(state);
+    setOffset(0);
+  }, []);
 
   async function deleteResponse(r: ResponseRow) {
     if (!confirm(`Delete response #${r.id} (${r.email ?? "no email"}) permanently? This honours an NDPA removal request and cannot be undone.`)) return;
@@ -200,7 +212,7 @@ export default function PenaInsightsPage() {
 
         {/* Tier distribution + energy sources */}
         <Kicker>Distribution</Kicker>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem", marginBottom: "1.5rem", alignItems: "start" }}>
           <div className="chart-panel">
             <div className="chart-panel-head">
               <div>
@@ -249,7 +261,7 @@ export default function PenaInsightsPage() {
         </div>
 
         {/* Submissions over time + income distribution */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem", marginBottom: "1.5rem", alignItems: "start" }}>
           <div className="chart-panel">
             <div className="chart-panel-head">
               <div>
@@ -260,12 +272,12 @@ export default function PenaInsightsPage() {
             {ins.timeline.length === 0 ? (
               <div style={{ padding: "1rem 0", fontSize: "0.75rem", color: "var(--ink-5)" }}>No submissions yet.</div>
             ) : (
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 130, padding: "0.75rem 0 0.25rem" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 130, padding: "0.75rem 0 0.25rem", justifyContent: ins.timeline.length < 10 ? "center" : "flex-start" }}>
                 {ins.timeline.map((d) => {
                   const maxC = Math.max(...ins.timeline.map((x) => x.count));
                   return (
                     <div key={d.date} title={`${d.date} — ${d.count} response${d.count === 1 ? "" : "s"}`}
-                      style={{ flex: 1, minWidth: 4, height: `${(d.count / maxC) * 100}%`, background: "var(--green)", borderRadius: "3px 3px 0 0" }} />
+                      style={{ flex: "1 1 0", minWidth: 4, maxWidth: 44, height: `${(d.count / maxC) * 100}%`, background: "var(--green)", borderRadius: "3px 3px 0 0" }} />
                   );
                 })}
               </div>
@@ -307,8 +319,16 @@ export default function PenaInsightsPage() {
         {/* Maps */}
         <Kicker>Geography</Kicker>
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", marginBottom: "1.5rem" }}>
-          <LgaMap lgaData={ins.lga_income_map} stateAware title="Average Monthly Income by LGA — click an LGA to filter the table" unit="₦/month" source="PENA field assessment / NEDB" onSelect={onLgaClick}
-            emptyTitle="No LGA averages yet" emptyHint="An LGA colours in once at least one verified response reports both an income and a Local Government Area." />
+          <PenaDrillMap
+            byState={ins.by_state}
+            byLga={ins.by_lga}
+            totalResponses={ins.total}
+            bench={bench}
+            selectedState={mapState}
+            onSelectState={onSelectState}
+            onSelectLga={onSelectLga}
+            source="PENA field assessment / NEDB"
+          />
           <PenaPointsMap points={ins.points} title="Assessed Locations" source="PENA field assessment / NEDB" />
         </div>
 
@@ -318,7 +338,7 @@ export default function PenaInsightsPage() {
           <div className="chart-panel-head">
             <div>
               <div className="chart-panel-title">State Summary</div>
-              <div className="chart-panel-sub">Averages per state, with tier counts A→E</div>
+              <div className="chart-panel-sub">Averages per state with tier counts A→E · coverage = responses per 100,000 residents (NBS 2022 population projection) · click a row to open the state on the map</div>
             </div>
           </div>
           <div style={{ overflowX: "auto" }}>
@@ -327,6 +347,9 @@ export default function PenaInsightsPage() {
                 <tr>
                   <th style={{ textAlign: "left" }}>State</th>
                   <th style={{ textAlign: "right" }}>Responses</th>
+                  <th style={{ textAlign: "right" }}>Population</th>
+                  <th style={{ textAlign: "right" }}>Coverage /100k</th>
+                  <th style={{ textAlign: "right" }}>NBS Poverty</th>
                   <th style={{ textAlign: "right" }}>Avg Income</th>
                   <th style={{ textAlign: "right" }}>Avg Light Hrs</th>
                   <th style={{ textAlign: "right" }}>Avg Energy Spend</th>
@@ -334,16 +357,23 @@ export default function PenaInsightsPage() {
                 </tr>
               </thead>
               <tbody>
-                {ins.by_state.map((s) => (
-                  <tr key={s.name}>
-                    <td style={{ fontWeight: 600 }}>{s.name}</td>
-                    <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{s.count}</td>
-                    <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{naira(s.avg_income)}</td>
-                    <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{fixed(s.avg_light_hours)}</td>
-                    <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{naira(s.avg_energy_expense)}</td>
-                    {s.tiers.map((n, i) => <td key={i} style={{ textAlign: "right", fontFamily: "var(--font-mono)", color: n ? "var(--ink-2)" : "var(--ink-5)" }}>{n}</td>)}
-                  </tr>
-                ))}
+                {ins.by_state.map((s) => {
+                  const sb = bench.state(s.name);
+                  const cov = sb?.population ? coveragePer100k(s.count, sb.population) : null;
+                  return (
+                    <tr key={s.name} onClick={() => onSelectState(s.name)} style={{ cursor: "pointer" }} title="Open this state on the map">
+                      <td style={{ fontWeight: 600 }}>{s.name}</td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{s.count}</td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{sb?.population ? `${(sb.population / 1_000_000).toFixed(1)}m` : "—"}</td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)", color: "var(--green)" }}>{cov == null ? "—" : cov < 0.01 ? "<0.01" : cov.toFixed(2)}</td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{sb?.poverty_rate != null ? `${sb.poverty_rate}%` : "—"}</td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{naira(s.avg_income)}</td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{fixed(s.avg_light_hours)}</td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{naira(s.avg_energy_expense)}</td>
+                      {s.tiers.map((n, i) => <td key={i} style={{ textAlign: "right", fontFamily: "var(--font-mono)", color: n ? "var(--ink-2)" : "var(--ink-5)" }}>{n}</td>)}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

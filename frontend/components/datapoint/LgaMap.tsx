@@ -15,6 +15,7 @@
 
 import { useEffect, useRef } from "react";
 import { normLga } from "@/lib/geo";
+import { outerRings, pointInRing, interiorPoint, lerpColor as lerp, type Geom } from "@/lib/geo-poly";
 
 interface LgaMapProps {
   lgaData: Record<string, number>;   // "lga" → value, or "lga|state" when stateAware
@@ -30,59 +31,9 @@ interface LgaMapProps {
   emptyHint?: string;
 }
 
-// ── Geometry helpers for duplicate-name disambiguation ──────────────────────
-type Geom = { type: string; coordinates: unknown };
-function outerRings(geom: Geom): number[][][] {
-  if (geom.type === "Polygon") return [(geom.coordinates as number[][][])[0]];
-  if (geom.type === "MultiPolygon") return (geom.coordinates as number[][][][]).map((p) => p[0]);
-  return [];
-}
-function pointInRing([x, y]: number[], ring: number[][]): boolean {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i], [xj, yj] = ring[j];
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
-  }
-  return inside;
-}
-// A point guaranteed to lie INSIDE the polygon. The naive vertex-average can
-// fall outside concave/riverine shapes (and then point-in-state tests assign
-// the wrong state); when it does, fall back to the midpoint of the widest
-// interior span on the ring's vertical middle — a classic label-point trick.
-function interiorPoint(geom: Geom): number[] {
-  const rings = outerRings(geom);
-  const ring = rings.reduce((a, b) => (b.length > a.length ? b : a), rings[0] ?? []);
-  if (!ring.length) return [0, 0];
-  let sx = 0, sy = 0;
-  for (const [x, y] of ring) { sx += x; sy += y; }
-  const centroid = [sx / ring.length, sy / ring.length];
-  if (pointInRing(centroid, ring)) return centroid;
+// Geometry helpers (outerRings, pointInRing, interiorPoint) live in
+// lib/geo-poly.ts — shared with PenaDrillMap.
 
-  const ys = ring.map((p) => p[1]);
-  const y = (Math.min(...ys) + Math.max(...ys)) / 2;
-  const xs: number[] = [];
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i], [xj, yj] = ring[j];
-    if (yi > y !== yj > y) xs.push(xi + ((y - yi) * (xj - xi)) / (yj - yi));
-  }
-  xs.sort((a, b) => a - b);
-  let best: number[] | null = null, bestW = -1;
-  for (let i = 0; i + 1 < xs.length; i += 2) {
-    const w = xs[i + 1] - xs[i];
-    if (w > bestW) { bestW = w; best = [(xs[i] + xs[i + 1]) / 2, y]; }
-  }
-  return best ?? centroid;
-}
-
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace("#", "");
-  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
-}
-function lerp(a: string, b: string, t: number): string {
-  const [ar, ag, ab] = hexToRgb(a);
-  const [br, bg, bb] = hexToRgb(b);
-  return `rgb(${Math.round(ar + (br - ar) * t)},${Math.round(ag + (bg - ag) * t)},${Math.round(ab + (bb - ab) * t)})`;
-}
 
 export default function LgaMap({ lgaData, title, unit, stateAware = false, colorLow = "#C8E6C9", colorHigh = "#1B5E20", source, bare = false, onSelect, emptyTitle, emptyHint }: LgaMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
