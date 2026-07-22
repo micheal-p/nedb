@@ -9,6 +9,7 @@ import CoatOfArms from "@/components/layout/CoatOfArms";
 
 const SectorChart = dynamic(() => import("@/components/datapoint/SectorChart"), { ssr: false });
 const NigeriaMap  = dynamic(() => import("@/components/datapoint/NigeriaMap"),  { ssr: false });
+const PenaPanel   = dynamic(() => import("@/components/datapoint/panels/PenaPanel"), { ssr: false });
 const ApexAI      = dynamic(() => import("@/components/datapoint/ApexAI"),      { ssr: false });
 
 // ── Real data types ────────────────────────────────────────────
@@ -610,6 +611,7 @@ export default function Dashboard() {
           {view === "overview" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
+              <PenaPanel />
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.25rem" }}>
                 {s("crude_oil_production").length ? <SectorChart title="Crude Oil Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC" data={s("crude_oil_production")} series={[{ key: "value", label: "Production", color: profile.color }]} unit="M Barrels" filename="crude-oil-production" /> : <EmptyChart seriesName="Crude Oil Production" />}
                 <div className="panel">

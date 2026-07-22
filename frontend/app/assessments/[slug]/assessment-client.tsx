@@ -161,10 +161,10 @@ export default function PublicAssessmentPage() {
               </div>
               <div style={{ padding: "0.75rem 0", display: "flex", flexDirection: "column", gap: 10 }}>
                 {(data.tier_distribution ?? []).map(({ tier, count }) => (
-                  <div key={tier} style={{ display: "grid", gridTemplateColumns: "170px 1fr 44px", alignItems: "center", gap: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <div key={tier} style={{ display: "grid", gridTemplateColumns: "minmax(110px, 170px) minmax(0, 1fr) 40px", alignItems: "center", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
                       <span style={{ width: 11, height: 11, borderRadius: 3, background: TIERS[tier].color, flexShrink: 0, border: "1px solid rgba(0,0,0,0.08)" }} />
-                      <span style={{ fontSize: "0.72rem", color: "var(--ink-2)", whiteSpace: "nowrap" }}><strong>{tier}</strong> · {TIERS[tier].label}</span>
+                      <span style={{ fontSize: "0.72rem", color: "var(--ink-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}><strong>{tier}</strong> · {TIERS[tier].label}</span>
                     </div>
                     <div style={{ height: 14, background: "var(--surface)", borderRadius: 4, overflow: "hidden" }}>
                       <div style={{ width: `${(count / maxTier) * 100}%`, height: "100%", background: TIERS[tier].color, borderRadius: 4, minWidth: count ? 3 : 0 }} />

@@ -213,7 +213,7 @@ export default function PenaInsightsPage() {
         {/* Tier distribution + energy sources */}
         <Kicker>Distribution</Kicker>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem", marginBottom: "1.5rem", alignItems: "start" }}>
-          <div className="chart-panel">
+          <div className="chart-panel" style={{ minWidth: 0 }}>
             <div className="chart-panel-head">
               <div>
                 <div className="chart-panel-title">Environmental–Economic Tiers</div>
@@ -222,10 +222,10 @@ export default function PenaInsightsPage() {
             </div>
             <div style={{ padding: "0.75rem 0", display: "flex", flexDirection: "column", gap: 10 }}>
               {ins.tier_distribution.map(({ tier, count }) => (
-                <div key={tier} style={{ display: "grid", gridTemplateColumns: "150px 1fr 44px", alignItems: "center", gap: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <div key={tier} style={{ display: "grid", gridTemplateColumns: "minmax(110px, 150px) minmax(0, 1fr) 40px", alignItems: "center", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
                     <span style={{ width: 11, height: 11, borderRadius: 3, background: TIERS[tier].color, flexShrink: 0, border: "1px solid rgba(0,0,0,0.08)" }} />
-                    <span style={{ fontSize: "0.72rem", color: "var(--ink-2)", whiteSpace: "nowrap" }}><strong>{tier}</strong> · {TIERS[tier].label}</span>
+                    <span style={{ fontSize: "0.72rem", color: "var(--ink-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}><strong>{tier}</strong> · {TIERS[tier].label}</span>
                   </div>
                   <div style={{ height: 14, background: "var(--surface)", borderRadius: 4, overflow: "hidden" }}>
                     <div style={{ width: `${(count / maxTier) * 100}%`, height: "100%", background: TIERS[tier].color, borderRadius: 4, minWidth: count ? 3 : 0 }} />
@@ -237,7 +237,7 @@ export default function PenaInsightsPage() {
             <div className="chart-source">Each response is placed in a tier from its daily supply hours and its energy burden, at the moment it is submitted</div>
           </div>
 
-          <div className="chart-panel">
+          <div className="chart-panel" style={{ minWidth: 0 }}>
             <div className="chart-panel-head">
               <div>
                 <div className="chart-panel-title">Primary Energy Source</div>
@@ -247,7 +247,7 @@ export default function PenaInsightsPage() {
             <div style={{ padding: "0.75rem 0", display: "flex", flexDirection: "column", gap: 10 }}>
               {ins.energy_sources.length === 0 && <div style={{ fontSize: "0.75rem", color: "var(--ink-5)" }}>No energy-source question on this form.</div>}
               {ins.energy_sources.map((s) => (
-                <div key={s.name} style={{ display: "grid", gridTemplateColumns: "150px 1fr 44px", alignItems: "center", gap: 10 }}>
+                <div key={s.name} style={{ display: "grid", gridTemplateColumns: "minmax(110px, 150px) minmax(0, 1fr) 40px", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: "0.72rem", color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
                   <div style={{ height: 14, background: "var(--surface)", borderRadius: 4, overflow: "hidden" }}>
                     <div style={{ width: `${(s.count / maxSrc) * 100}%`, height: "100%", background: "var(--green)", borderRadius: 4, minWidth: 3 }} />
@@ -262,7 +262,7 @@ export default function PenaInsightsPage() {
 
         {/* Submissions over time + income distribution */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem", marginBottom: "1.5rem", alignItems: "start" }}>
-          <div className="chart-panel">
+          <div className="chart-panel" style={{ minWidth: 0 }}>
             <div className="chart-panel-head">
               <div>
                 <div className="chart-panel-title">Submissions Over Time</div>
@@ -291,7 +291,7 @@ export default function PenaInsightsPage() {
             <div className="chart-source">Hover a bar for the daily count</div>
           </div>
 
-          <div className="chart-panel">
+          <div className="chart-panel" style={{ minWidth: 0 }}>
             <div className="chart-panel-head">
               <div>
                 <div className="chart-panel-title">Income Distribution</div>
@@ -381,7 +381,7 @@ export default function PenaInsightsPage() {
 
         {/* Responses table + filters */}
         <Kicker>Individual Responses</Kicker>
-        <div className="chart-panel">
+        <div className="chart-panel" style={{ minWidth: 0 }}>
           <div className="chart-panel-head">
             <div>
               <div className="chart-panel-title">Responses</div>

@@ -101,7 +101,7 @@ export default function PenaPointsMap({ points, title, source, bare = false }: P
 
       <div className="chart-panel-body">
         <div ref={mapRef} className="nigeria-map-canvas" style={{ minHeight: 440 }} />
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.875rem", marginTop: "0.75rem" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.875rem", marginTop: "0.75rem", minWidth: 0 }}>
           {counts.map(({ t, n }) => (
             <div key={t} style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ width: 12, height: 12, borderRadius: "50%", background: TIERS[t].color, border: "2px solid #fff", boxShadow: "0 0 0 1px var(--border)", flexShrink: 0 }} />

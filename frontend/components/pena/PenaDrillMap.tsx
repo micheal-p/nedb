@@ -209,7 +209,7 @@ export default function PenaDrillMap({ byState, byLga, totalResponses, bench, se
 
       <div className="chart-panel-body nigeria-map-body">
         <div ref={mapRef} className="nigeria-map-canvas" style={{ minHeight: 440 }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem", minWidth: 0 }}>
           {selectedState ? (
             <>
               <div>
