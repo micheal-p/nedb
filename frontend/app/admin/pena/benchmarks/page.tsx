@@ -142,8 +142,8 @@ export default function NbsBenchmarksPage() {
                 </table>
               </div>
               <div className="chart-source">
-                Defaults: NPC/NBS 2006 census projected to the NBS 2022 national estimate · NLSS 2018/19 poverty headcount ·
-                Borno's NLSS rate was not published. LGA-level population rows can be added later via the same table.
+                Defaults: UN World Population Prospects 2024 (mid-2026 estimate, 242.4m) distributed by NPC 2006 census shares ·
+                NLSS 2018/19 poverty headcount · Borno's NLSS rate was not published. LGA-level population rows can be added later via the same table.
               </div>
             </div>
           </>
