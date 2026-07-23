@@ -7,6 +7,7 @@
 // the admin console shell (app/admin/layout.tsx).
 
 import Link from "next/link";
+import DashboardTabBuilder from "@/components/admin/DashboardTabBuilder";
 
 type Profile = { key: string; label: string; role: string; view: string };
 
@@ -58,9 +59,11 @@ export default function DashboardBuilderPage() {
           </p>
         </div>
 
-        <div style={{ background: "#fff", border: "1px solid var(--green-line)", borderLeft: "3px solid var(--green)", borderRadius: "var(--r-md)", padding: "0.875rem 1.1rem", marginBottom: "1.5rem", fontSize: "0.76rem", color: "var(--ink-3)", lineHeight: 1.6 }}>
-          <strong style={{ color: "var(--ink-2)" }}>Coming next — the no-code composer:</strong> add or reorder tabs, and build brand-new tabs by
-          picking data series, chart types, KPIs and maps — assigned to a whole profile or a single account. This directory is the entry point.
+        <DashboardTabBuilder />
+
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, margin: "0.5rem 0 0.75rem" }}>
+          <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>Built-in Profiles</h2>
+          <span style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>The {Object.keys(PROFILES).length} standard dashboards custom tabs attach to</span>
         </div>
 
         {GROUPS.map((g) => (

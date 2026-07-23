@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { clearTokens, isLoggedIn, getFullName, getRole, getDashboardProfile } from "@/lib/auth";
+import { clearTokens, isLoggedIn, getFullName, getRole, getDashboardProfile, getTokenFresh } from "@/lib/auth";
+import type { BuilderTab } from "@/lib/dashboard-builder";
 import dynamic from "next/dynamic";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 
@@ -11,6 +12,7 @@ const SectorChart = dynamic(() => import("@/components/datapoint/SectorChart"), 
 const NigeriaMap  = dynamic(() => import("@/components/datapoint/NigeriaMap"),  { ssr: false });
 const PenaPanel   = dynamic(() => import("@/components/datapoint/panels/PenaPanel"), { ssr: false });
 const ApexAI      = dynamic(() => import("@/components/datapoint/ApexAI"),      { ssr: false });
+const DashboardWidget = dynamic(() => import("@/components/datapoint/DashboardWidget"), { ssr: false });
 
 // ── Real data types ────────────────────────────────────────────
 type SeriesRow = { period: string; value: number; unit?: string };
@@ -157,7 +159,7 @@ const PROFILE_MAP: Record<string, ProfileDef> = {
     label: "NERC — Electricity Regulatory Commission", roleTitle: "NERC Electricity Market Regulatory Dashboard",
     color: "#1D4ED8", accent: "rgba(29,78,216,0.05)",
     persona: "Regulatory intelligence for NERC. DisCo compliance, market settlement, tariff performance and grid reliability monitoring.",
-    defaultView: "downstream", navOrder: ["downstream","power","midstream","overview","upstream","renewable","bioenergy","faac","revenue"],
+    defaultView: "power", navOrder: ["power","downstream","midstream","overview","upstream","renewable","bioenergy","faac","revenue"],
     kpis: [
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
       { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
@@ -451,6 +453,7 @@ export default function Dashboard() {
   const [profile, setProfile]       = useState<ProfileDef>(PROFILE_MAP.executive);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState(2026);
+  const [customTabs, setCustomTabs] = useState<BuilderTab[]>([]);
   const [dashData, setDashData]     = useState<DashData>({});
   const [stateMap, setStateMap]     = useState<Record<string, Record<string, number>>>({});
   const [availYears, setAvailYears] = useState<number[]>([2026]);
@@ -463,6 +466,13 @@ export default function Dashboard() {
     const profKey = getDashboardProfile() || "executive";
     const prof    = PROFILE_MAP[profKey] ?? PROFILE_MAP.executive;
     setStaffName(name); setStaffRole(role); setProfile(prof); setView(prof.defaultView);
+    (async () => {
+      try {
+        const token = await getTokenFresh();
+        const r = await fetch(`/api/dashboard/tabs?profile=${profKey}`, { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+        if (r.ok) { const j = await r.json(); setCustomTabs(j.tabs ?? []); }
+      } catch { /* custom tabs are additive; ignore */ }
+    })();
     const tick = () => setClock(new Date().toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
     tick();
     const id = setInterval(tick, 1000);
@@ -499,8 +509,13 @@ export default function Dashboard() {
   function logout() { clearTokens(); router.replace("/data-point/login"); }
   function navigate(id: string) { setView(id); setSidebarOpen(false); }
 
-  const orderedNav = profile.navOrder.map((id) => ({ id, ...NAV_ITEMS[id] }));
+  const orderedNav = [
+    ...profile.navOrder.map((id) => ({ id, ...NAV_ITEMS[id] })),
+    ...customTabs.map((tb) => ({ id: `custom:${tb.id}`, label: tb.label, section: "Custom Tabs" })),
+  ];
   const sections   = [...new Set(orderedNav.map((n) => n.section))];
+  const activeCustom = view.startsWith("custom:") ? customTabs.find((tb) => `custom:${tb.id}` === view) : undefined;
+  const viewLabel = activeCustom ? activeCustom.label : (NAV_ITEMS[view]?.label ?? view);
 
   return (
     <div className="dash-wrap">
@@ -569,7 +584,7 @@ export default function Dashboard() {
             </svg>
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--ink)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{NAV_ITEMS[view]?.label ?? "Overview"}</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--ink)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{viewLabel}</span>
             <span style={{ marginLeft: 12, fontSize: "0.72rem", color: "var(--ink-4)", display: "inline" }} className="topbar-subtitle">NEDB &nbsp;·&nbsp; ECN</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -768,6 +783,18 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* ── CUSTOM TABS (admin-composed via Dashboard Builder) ── */}
+          {activeCustom && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "1.25rem", alignItems: "start" }}>
+                {activeCustom.widgets.map((w, i) => (
+                  <DashboardWidget key={i} widget={{ kind: w.kind, title: w.title, config: w.config }} dashData={dashData} stateMap={stateMap} year={selectedYear} />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── ENERGY BRIEF (Presidency / Reporting profiles) ── */}
           {view === "brief" && (
             <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis.map((d) => computeKPI(d, dashData))} alerts={computeAnomalies(dashData)} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availYears={availYears} dataLoading={dataLoading} dashData={dashData} />
@@ -779,7 +806,7 @@ export default function Dashboard() {
       <ApexAI
         currentView={view}
         profileLabel={profile.label}
-        screenContext={`Data Point dashboard — ${profile.label}. Section: ${NAV_ITEMS[view]?.label ?? view}. Year: ${selectedYear}. Visible KPIs: ${profile.kpis.map((d) => { const m = computeKPI(d, dashData); return `${m.label}: ${m.value}${m.unit && m.value !== "—" ? " " + m.unit : ""}${m.change ? ` (${m.up ? "+" : "-"}${m.change} vs prev, ${m.period})` : ""}`; }).join("; ")}`}
+        screenContext={`Data Point dashboard — ${profile.label}. Section: ${viewLabel}. Year: ${selectedYear}. Visible KPIs: ${profile.kpis.map((d) => { const m = computeKPI(d, dashData); return `${m.label}: ${m.value}${m.unit && m.value !== "—" ? " " + m.unit : ""}${m.change ? ` (${m.up ? "+" : "-"}${m.change} vs prev, ${m.period})` : ""}`; }).join("; ")}`}
       />
     </div>
   );
