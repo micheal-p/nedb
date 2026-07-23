@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, type StaffUser } from "@/lib/api";
 import { getToken, getRole, getFullName } from "@/lib/auth";
-import CoatOfArms from "@/components/layout/CoatOfArms";
 import InfoTip from "@/components/ui/InfoTip";
 
 interface Company {
@@ -98,7 +97,6 @@ export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"users" | "registry" | "requests" | "entry" | "iot" | "approvals" | "audit" | "anomalies" | "data-requests">("users");
   const [copied, setCopied] = useState<string | null>(null);
-  const [headerOpen, setHeaderOpen] = useState(false);
 
   function copyToClipboard(text: string, label: string) {
     navigator.clipboard.writeText(text).then(() => { setCopied(label); setTimeout(() => setCopied(null), 2000); });
@@ -524,55 +522,7 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface)" }}>
-      {/* Header */}
-      <div style={{ background: "var(--ink)", borderBottom: "3px solid var(--green)" }}>
-        <div style={{ maxWidth: "var(--max-w)", margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 1.25rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <CoatOfArms size={32} />
-            <div>
-              <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#fff" }}>Administrator</div>
-              <div style={{ fontSize: "0.58rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Energy Commission</div>
-            </div>
-          </div>
-          {/* Desktop actions */}
-          <div className="admin-header-actions-desktop" style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <Link href="/admin/databank" className="btn btn-ghost btn-sm">Storage Bank</Link>
-            <Link href="/admin/custom-tables" className="btn btn-ghost btn-sm">Custom Tables</Link>
-            <Link href="/admin/pena" className="btn btn-ghost btn-sm">PENA</Link>
-            <Link href="/admin/apex" className="btn btn-ghost btn-sm">Apex AI</Link>
-            <Link href="/admin/freshness" className="btn btn-ghost btn-sm">Freshness</Link>
-            <Link href="/admin/subscribers" className="btn btn-ghost btn-sm">Report &amp; Subscribers</Link>
-            <Link href="/upload" className="btn btn-ghost btn-sm">Upload Data</Link>
-            <Link href="/data-point/dashboard" className="btn btn-ghost btn-sm">Dashboard</Link>
-            <button onClick={() => { import("@/lib/auth").then(m => { m.clearTokens(); window.location.href = "/"; }); }} className="btn btn-ghost btn-sm" style={{ color: "#fca5a5" }}>Log Out</button>
-          </div>
-          {/* Mobile hamburger */}
-          <button
-            className="admin-header-hamburger"
-            onClick={() => setHeaderOpen(o => !o)}
-            aria-label="Menu"
-            style={{ display: "none", flexDirection: "column", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 8 }}
-          >
-            <span style={{ display: "block", width: 20, height: 2, background: "#fff", transition: "0.2s", transform: headerOpen ? "rotate(45deg) translate(0,6px)" : "none" }} />
-            <span style={{ display: "block", width: 20, height: 2, background: "#fff", transition: "0.2s", opacity: headerOpen ? 0 : 1 }} />
-            <span style={{ display: "block", width: 20, height: 2, background: "#fff", transition: "0.2s", transform: headerOpen ? "rotate(-45deg) translate(0,-6px)" : "none" }} />
-          </button>
-        </div>
-        {/* Mobile dropdown */}
-        {headerOpen && (
-          <div className="admin-header-dropdown">
-            <Link href="/admin/databank" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Storage Bank</Link>
-            <Link href="/admin/custom-tables" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Custom Tables</Link>
-            <Link href="/admin/pena" className="admin-header-item" onClick={() => setHeaderOpen(false)}>PENA</Link>
-            <Link href="/admin/apex" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Apex AI</Link>
-            <Link href="/admin/freshness" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Freshness</Link>
-            <Link href="/admin/subscribers" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Report &amp; Subscribers</Link>
-            <Link href="/upload" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Upload Data</Link>
-            <Link href="/data-point/dashboard" className="admin-header-item" onClick={() => setHeaderOpen(false)}>Dashboard</Link>
-            <button onClick={() => { import("@/lib/auth").then(m => { m.clearTokens(); window.location.href = "/"; }); setHeaderOpen(false); }} className="admin-header-item admin-header-item--logout">Log Out</button>
-          </div>
-        )}
-      </div>
+      {/* Console shell (admin/layout.tsx) provides the nav rail + top bar */}
 
       <div style={{ maxWidth: "var(--max-w)", margin: "0 auto", padding: "2rem 2rem" }}>
 
