@@ -3,12 +3,14 @@
 // ── PenaPanel.tsx ───────────────────────────────────────────────────────────
 // PENA on the main Data Point dashboard: pick an assessment, see its headline
 // numbers, tier mix and top states at a glance, then jump to full insights.
-// Uses the dashboard's .panel classes so it sits naturally among the other
-// dashboard cards.
+// Auth-aware: refreshes the access token before fetching (the cookie lives
+// 15 minutes) and distinguishes "session expired" from "no assessments" —
+// an expired session must never render the false empty state.
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { TIERS, TIER_ORDER, type PenaTier } from "@/lib/pena";
+import { getTokenFresh } from "@/lib/auth";
+import { TIERS, type PenaTier } from "@/lib/pena";
 import { buildBenchmarkIndex, coveragePer100k, DEFAULT_NBS_ROWS, type NbsRow } from "@/lib/nbs-benchmarks";
 
 type FormRow = { id: number; title: string; status: string; response_count: number };
@@ -21,24 +23,39 @@ type Insights = {
 
 const naira = (v: number | null | undefined) => (v == null ? "—" : `₦${Math.round(v).toLocaleString()}`);
 
+async function authedFetch(url: string): Promise<Response> {
+  const token = await getTokenFresh();
+  return fetch(url, {
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+}
+
 export default function PenaPanel() {
   const [forms, setForms] = useState<FormRow[]>([]);
   const [formId, setFormId] = useState<number | null>(null);
   const [ins, setIns] = useState<Insights | null>(null);
   const [national, setNational] = useState<number | null>(buildBenchmarkIndex(DEFAULT_NBS_ROWS).national);
   const [loading, setLoading] = useState(true);
+  const [authExpired, setAuthExpired] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    fetch("/api/pena/forms", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows: FormRow[]) => {
+    (async () => {
+      try {
+        const r = await authedFetch("/api/pena/forms");
+        if (r.status === 401 || r.status === 403) { setAuthExpired(true); setLoading(false); return; }
+        if (!r.ok) { setLoadError(true); setLoading(false); return; }
+        const rows: FormRow[] = await r.json();
         setForms(rows);
-        // default to the assessment with the most responses
         const best = [...rows].sort((a, b) => b.response_count - a.response_count)[0];
         if (best) setFormId(best.id);
         else setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      } catch {
+        setLoadError(true);
+        setLoading(false);
+      }
+    })();
     fetch("/api/pena/benchmarks")
       .then((r) => (r.ok ? r.json() : null))
       .then((j: { rows: NbsRow[] } | null) => { if (j?.rows?.length) setNational(buildBenchmarkIndex(j.rows).national); })
@@ -48,11 +65,18 @@ export default function PenaPanel() {
   useEffect(() => {
     if (formId == null) return;
     setLoading(true);
-    fetch(`/api/pena/forms/${formId}/insights`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setIns)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    (async () => {
+      try {
+        const r = await authedFetch(`/api/pena/forms/${formId}/insights`);
+        if (r.status === 401 || r.status === 403) { setAuthExpired(true); return; }
+        setIns(r.ok ? await r.json() : null);
+        if (!r.ok) setLoadError(true);
+      } catch {
+        setLoadError(true);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [formId]);
 
   const tierTotal = Math.max(1, (ins?.tier_distribution ?? []).reduce((a, t) => a + t.count, 0));
@@ -79,15 +103,21 @@ export default function PenaPanel() {
       </div>
 
       <div className="panel-body" style={{ padding: "1rem 1.25rem" }}>
-        {loading ? (
+        {authExpired ? (
+          <div style={{ fontSize: "0.78rem", color: "var(--ink-3)", padding: "0.75rem 0", lineHeight: 1.6 }}>
+            Your session has expired — <a href="" onClick={(e) => { e.preventDefault(); window.location.reload(); }} style={{ color: "var(--green)", fontWeight: 700 }}>reload the page</a> to sign back in and see PENA data.
+          </div>
+        ) : loading ? (
           <div style={{ fontSize: "0.78rem", color: "var(--ink-5)", padding: "0.75rem 0" }}>Loading…</div>
+        ) : loadError && !ins ? (
+          <div style={{ fontSize: "0.78rem", color: "var(--ink-5)", padding: "0.75rem 0" }}>PENA data could not be loaded right now — it will retry on your next visit.</div>
         ) : forms.length === 0 ? (
           <div style={{ fontSize: "0.78rem", color: "var(--ink-4)", padding: "0.75rem 0", lineHeight: 1.6 }}>
             No assessments yet — create one from <Link href="/admin/pena" style={{ color: "var(--green)" }}>the admin dashboard</Link> and
             share its link to start collecting field data.
           </div>
         ) : !ins ? (
-          <div style={{ fontSize: "0.78rem", color: "var(--ink-5)", padding: "0.75rem 0" }}>Could not load insights.</div>
+          <div style={{ fontSize: "0.78rem", color: "var(--ink-5)", padding: "0.75rem 0" }}>Could not load insights for this assessment.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
             {/* Headline mini-stats */}
@@ -97,7 +127,7 @@ export default function PenaPanel() {
                 { label: "Avg income", value: naira(ins.stats.avg_income) },
                 { label: "Light hrs/day", value: ins.stats.avg_light_hours == null ? "—" : ins.stats.avg_light_hours.toFixed(1) },
                 { label: "Energy burden", value: ins.stats.avg_burden_pct == null ? "—" : `${ins.stats.avg_burden_pct.toFixed(1)}%` },
-                { label: "Coverage /100k", value: cov == null ? "—" : cov < 0.01 && ins.total > 0 ? "<0.01" : cov.toFixed(2) },
+                { label: "Coverage /100k", value: cov == null ? "—" : cov > 0 && cov < 0.01 ? "<0.01" : cov.toFixed(2) },
               ].map((s) => (
                 <div key={s.label} style={{ minWidth: 0 }}>
                   <div style={{ fontSize: "0.95rem", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.value}</div>
@@ -131,11 +161,11 @@ export default function PenaPanel() {
             {topStates.length > 0 && (
               <div style={{ fontSize: "0.72rem", color: "var(--ink-3)", lineHeight: 1.6, minWidth: 0 }}>
                 <strong style={{ color: "var(--ink-2)" }}>Top states:</strong>{" "}
-                {topStates.map((s, i) => `${s.name} (${s.count} · ${naira(s.avg_income)})`).join(" · ")}
+                {topStates.map((s) => `${s.name} (${s.count} · ${naira(s.avg_income)})`).join(" · ")}
               </div>
             )}
 
-            {TIER_ORDER.length > 0 && ins.total === 0 && (
+            {ins.total === 0 && (
               <div style={{ fontSize: "0.74rem", color: "var(--ink-5)" }}>No verified responses yet — share the assessment link to start collecting.</div>
             )}
           </div>

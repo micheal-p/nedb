@@ -98,6 +98,7 @@ export default function PenaInsightsPage() {
   const [fMax, setFMax] = useState("");
   const [offset, setOffset] = useState(0);
   const [detail, setDetail] = useState<ResponseRow | null>(null);
+  const [redacted, setRedacted] = useState(false);
   const [mapState, setMapState] = useState<string | null>(null);   // drill-down level
   const [bench, setBench] = useState<BenchmarkIndex>(() => buildBenchmarkIndex(DEFAULT_NBS_ROWS));
   const [failed, setFailed] = useState(false);
@@ -123,7 +124,7 @@ export default function PenaInsightsPage() {
   const loadRows = useCallback(() => {
     fetch(`/api/pena/forms/${id}/responses?limit=${PAGE_SIZE}&offset=${offset}&${filterQS()}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : { total: 0, rows: [] }))
-      .then((j) => { setRows(j.rows ?? []); setTotal(j.total ?? 0); })
+      .then((j) => { setRows(j.rows ?? []); setTotal(j.total ?? 0); setRedacted(!!j.redacted); })
       .catch(() => {});
   }, [id, filterQS, offset]);
 
@@ -132,10 +133,13 @@ export default function PenaInsightsPage() {
   // (Lagos/Oyo) can never mix.
   const onSelectState = useCallback((s: string | null) => {
     setMapState(s);
-    setFState(s ?? "");
-    if (!s) setFLga("");
+    // Only apply a table filter for states the data actually knows — a raw
+    // boundary-file name (no-data state) would set a hidden never-matching filter.
+    const known = s != null && (ins?.by_state.some((x) => x.name === s) ?? false);
+    setFState(known ? (s as string) : "");
+    setFLga("");   // ALWAYS drop the previous LGA — switching states must never carry it over
     setOffset(0);
-  }, []);
+  }, [ins]);
   const onSelectLga = useCallback((lga: string, state: string) => {
     setFLga(lga);
     setFState(state);
@@ -338,7 +342,7 @@ export default function PenaInsightsPage() {
           <div className="chart-panel-head">
             <div>
               <div className="chart-panel-title">State Summary</div>
-              <div className="chart-panel-sub">Averages per state with tier counts A→E · coverage = responses per 100,000 residents (NBS 2022 population projection) · click a row to open the state on the map</div>
+              <div className="chart-panel-sub">Averages per state with tier counts A→E · coverage = responses per 100,000 residents (population benchmark — sources editable at NBS Benchmarks) · click a row to open the state on the map</div>
             </div>
           </div>
           <div style={{ overflowX: "auto" }}>
@@ -385,17 +389,19 @@ export default function PenaInsightsPage() {
           <div className="chart-panel-head">
             <div>
               <div className="chart-panel-title">Responses</div>
-              <div className="chart-panel-sub">{total.toLocaleString()} matching · showing {total === 0 ? 0 : offset + 1}–{offset + rows.length} · click a row for full answers</div>
+              <div className="chart-panel-sub">{total.toLocaleString()} matching · showing {total === 0 ? 0 : offset + 1}–{offset + rows.length} · click a row for full answers{redacted ? " · personal fields hidden for your role" : ""}</div>
             </div>
-            <a href={`/api/pena/forms/${id}/responses?format=csv&${filterQS()}`}
-              style={{ padding: "4px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-tint)", color: "var(--green)", textDecoration: "none" }}>
-              Export CSV
-            </a>
+            {getRole() === "admin" && (
+              <a href={`/api/pena/forms/${id}/responses?format=csv&${filterQS()}`}
+                style={{ padding: "4px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-tint)", color: "var(--green)", textDecoration: "none" }}>
+                Export CSV
+              </a>
+            )}
           </div>
 
           {/* Filter row */}
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", padding: "0.75rem 0", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
-            <select value={fState} onChange={(e) => setFState(e.target.value)} style={ctl}>
+            <select value={fState} onChange={(e) => { setFState(e.target.value); setFLga(""); setOffset(0); }} style={ctl}>
               <option value="">All states</option>
               {ins.by_state.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
             </select>
@@ -474,7 +480,7 @@ export default function PenaInsightsPage() {
               </button>
             </div>
           )}
-          <div className="chart-source">Internal view — includes personal data. Handle under NDPA 2023; the public page carries aggregates only.</div>
+          <div className="chart-source">{redacted ? "Personal fields (names, emails, addresses, exact locations) are hidden for your role — administrators see the full record." : "Internal view — includes personal data. Handle under NDPA 2023; the public page carries aggregates only."}</div>
         </div>
 
         {/* Response detail modal */}

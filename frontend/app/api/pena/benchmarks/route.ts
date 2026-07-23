@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok, err, requireAdmin } from "@/lib/api-helpers";
-import { DEFAULT_NBS_ROWS } from "@/lib/nbs-benchmarks";
+import { DEFAULT_NBS_ROWS, normStateKey } from "@/lib/nbs-benchmarks";
+import { normLga } from "@/lib/geo";
 
 // GET /api/pena/benchmarks — NBS reference rows (public: they are published
 // national statistics). Falls back to the built-in defaults until the
@@ -24,8 +25,19 @@ export async function PUT(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!Array.isArray(body?.rows)) return err("rows array required");
 
+  // Rows are keyed by display text in the DB but matched normalized on read —
+  // fold any respelled state name (e.g. "FCT Abuja") onto the existing row's
+  // spelling so an upsert can never create an aliased duplicate.
+  const { data: existing } = await db().from("nbs_benchmarks").select("state_name, lga_name");
+  const canonicalName = new Map<string, string>();
+  for (const e of existing ?? []) {
+    canonicalName.set(`${normStateKey(e.state_name)}|${normLga(e.lga_name ?? "")}`, e.state_name);
+  }
+
   const rows = body.rows.map((r: Record<string, unknown>) => ({
-    state_name: String(r.state_name ?? "").trim(),
+    state_name:
+      canonicalName.get(`${normStateKey(String(r.state_name ?? "").trim())}|${normLga(String(r.lga_name ?? "").trim())}`) ??
+      String(r.state_name ?? "").trim(),
     lga_name: String(r.lga_name ?? "").trim(),
     population: r.population == null || r.population === "" ? null : Math.round(Number(r.population)),
     poverty_rate: r.poverty_rate == null || r.poverty_rate === "" ? null : Number(r.poverty_rate),

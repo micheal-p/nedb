@@ -3,15 +3,15 @@
 // ── PenaDrillMap.tsx ────────────────────────────────────────────────────────
 // Two-level PENA choropleth with NBS benchmarks:
 //   Level 1 — Nigeria's 36 states + FCT colored by average survey income;
-//             tooltips carry population (NBS 2022 proj.), coverage per 100k
-//             and the NLSS poverty rate. Click a state to drill in.
+//             tooltips carry the admin-editable population benchmark,
+//             coverage per 100k and the NBS poverty rate. Click to drill in.
 //   Level 2 — the clicked state's LGAs (resolved by geometry: an LGA belongs
 //             to the state whose polygon contains its interior point),
 //             colored by average income; click an LGA to filter the table.
 // GeoJSON files are fetched once per session (module-level cache).
 
-import { useEffect, useRef } from "react";
-import { normLga } from "@/lib/geo";
+import { useEffect, useRef, useState } from "react";
+import { normLga, canonLga } from "@/lib/geo";
 import { outerRings, pointInRing, interiorPoint, geomBounds, lerpColor, type Geom } from "@/lib/geo-poly";
 import { coveragePer100k, NBS_POP_SOURCE, NBS_POVERTY_SOURCE, type BenchmarkIndex } from "@/lib/nbs-benchmarks";
 
@@ -30,11 +30,19 @@ interface PenaDrillMapProps {
   source?: string;
 }
 
-// Fetch each boundary file once per session, not once per render
+// Fetch each boundary file once per session, not once per render.
+// On failure the cache slot resets so the next attempt retries instead of
+// replaying a cached rejection forever.
 let statesGeoP: Promise<{ features: Feat[] }> | null = null;
 let lgasGeoP: Promise<{ features: Feat[] }> | null = null;
-const getStatesGeo = () => (statesGeoP ??= fetch("/nigeria-states.json").then((r) => r.json()));
-const getLgasGeo = () => (lgasGeoP ??= fetch("/nigeria-lgas.json").then((r) => r.json()));
+const getStatesGeo = () =>
+  (statesGeoP ??= fetch("/nigeria-states.json")
+    .then((r) => { if (!r.ok) throw new Error(`states ${r.status}`); return r.json(); })
+    .catch((e) => { statesGeoP = null; throw e; }));
+const getLgasGeo = () =>
+  (lgasGeoP ??= fetch("/nigeria-lgas.json")
+    .then((r) => { if (!r.ok) throw new Error(`lgas ${r.status}`); return r.json(); })
+    .catch((e) => { lgasGeoP = null; throw e; }));
 
 // Match a boundary-file state name to a data state name (handles FCT's many
 // spellings: "Abuja Federal Capital Territory" vs "Federal Capital Territory").
@@ -52,6 +60,8 @@ const compact = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}m
 export default function PenaDrillMap({ byState, byLga, totalResponses, bench, selectedState, onSelectState, onSelectLga, source }: PenaDrillMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<unknown>(null);
+  const [mapError, setMapError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const cbRef = useRef({ onSelectState, onSelectLga });
   cbRef.current = { onSelectState, onSelectLga };
 
@@ -103,7 +113,7 @@ export default function PenaDrillMap({ byState, byLga, totalResponses, bench, se
             const lines = [
               `<strong>${raw}</strong>`,
               agg ? `${naira(agg.avg_income)}/month avg · ${agg.count} response${agg.count === 1 ? "" : "s"}` : "No responses yet",
-              sb?.population ? `Population ${compact(sb.population)} (NBS)${cov != null ? ` · coverage ${cov.toFixed(2)}/100k` : ""}` : "",
+              sb?.population ? `Population ${compact(sb.population)}${cov != null ? ` · coverage ${cov.toFixed(2)}/100k` : ""}` : "",
               sb?.poverty_rate != null ? `NBS poverty rate ${sb.poverty_rate}%` : "",
               `<em>Click to open its LGAs</em>`,
             ].filter(Boolean);
@@ -127,14 +137,27 @@ export default function PenaDrillMap({ byState, byLga, totalResponses, bench, se
         const lgasGeo = await getLgasGeo();
         if (destroyed) return;
 
+        // Membership: geometry (interior point inside the state) OR — for
+        // boundary/lake-edge shapes whose interior point misses every ring
+        // (e.g. Abadam on Lake Chad) — a unique canonical-name match against
+        // this state's response data. Duplicate-named polygons stay
+        // geometry-only so the other state's twin is never pulled in.
+        const nameCounts = new Map<string, number>();
+        for (const f of (lgasGeo.features as Feat[])) {
+          const n = canonLga(f.properties?.shapeName ?? "");
+          nameCounts.set(n, (nameCounts.get(n) ?? 0) + 1);
+        }
+        const wanted = new Set(selLgas.map((l) => canonLga(l.name)));
         const inState = stateFeat
           ? (lgasGeo.features as Feat[]).filter((f) => {
+              const nm = canonLga(f.properties?.shapeName ?? "");
+              if (wanted.has(nm) && (nameCounts.get(nm) ?? 0) === 1) return true;
               const p = interiorPoint(f.geometry);
               return outerRings(stateFeat.geometry).some((ring) => pointInRing(p, ring));
             })
           : [];
 
-        const lgaAggOf = (name: string) => selLgas.find((l) => normLga(l.name) === normLga(name));
+        const lgaAggOf = (name: string) => selLgas.find((l) => canonLga(l.name) === canonLga(name));
         const vals = selLgas.map((l) => l.avg_income).filter((v): v is number => v != null);
         const minV = vals.length ? Math.min(...vals) : 0;
         const maxV = vals.length ? Math.max(...vals) : 1;
@@ -154,7 +177,7 @@ export default function PenaDrillMap({ byState, byLga, totalResponses, bench, se
             const lines = [
               `<strong>${raw}</strong> (${selectedState})`,
               agg ? `${naira(agg.avg_income)}/month avg · ${agg.count} response${agg.count === 1 ? "" : "s"}` : "No responses yet",
-              pop ? `Population ${compact(pop)} (NBS)${cov != null ? ` · coverage ${cov.toFixed(2)}/100k` : ""}` : "",
+              pop ? `Population ${compact(pop)}${cov != null ? ` · coverage ${cov.toFixed(2)}/100k` : ""}` : "",
             ].filter(Boolean);
             layer.bindTooltip(lines.join("<br/>"), { sticky: true, className: "nedb-map-tooltip" });
             (layer as L.Path).on("mouseover", function (this: L.Path) { this.setStyle({ weight: 2, color: "#0E7A3C" }); });
@@ -168,7 +191,8 @@ export default function PenaDrillMap({ byState, byLga, totalResponses, bench, se
       }
     }
 
-    init();
+    setMapError(false);
+    init().catch(() => { if (!destroyed) setMapError(true); });
     return () => {
       destroyed = true;
       if ((leafletRef.current as { remove?: () => void })?.remove) {
@@ -177,7 +201,7 @@ export default function PenaDrillMap({ byState, byLga, totalResponses, bench, se
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedState, JSON.stringify(byState), JSON.stringify(byLga), bench]);
+  }, [selectedState, JSON.stringify(byState), JSON.stringify(byLga), bench, attempt]);
 
   const natCov = coveragePer100k(totalResponses, bench.national);
   const topStates = [...byState].sort((a, b) => (b.avg_income ?? -1) - (a.avg_income ?? -1)).slice(0, 5);
@@ -196,7 +220,7 @@ export default function PenaDrillMap({ byState, byLga, totalResponses, bench, se
           <div className="chart-panel-sub">
             {selectedState
               ? `${selLgas.reduce((a, l) => a + l.count, 0)} responses across ${selLgas.length} LGA${selLgas.length === 1 ? "" : "s"} · click an LGA to filter the table`
-              : `Nigeria — 36 states + FCT · benchmarked against NBS population & poverty figures`}
+              : `Nigeria — 36 states + FCT · benchmarked against official population & poverty figures (sources below)`}
           </div>
         </div>
         {selectedState && (
@@ -208,12 +232,23 @@ export default function PenaDrillMap({ byState, byLga, totalResponses, bench, se
       </div>
 
       <div className="chart-panel-body nigeria-map-body">
-        <div ref={mapRef} className="nigeria-map-canvas" style={{ minHeight: 440 }} />
+        <div style={{ position: "relative", minWidth: 0 }}>
+          <div ref={mapRef} className="nigeria-map-canvas" style={{ minHeight: 440 }} />
+          {mapError && (
+            <div style={{ position: "absolute", inset: 0, background: "rgba(248,247,244,0.92)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem", zIndex: 10, borderRadius: 6 }}>
+              <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--ink-3)" }}>The map data failed to load.</div>
+              <button onClick={() => setAttempt((a) => a + 1)}
+                style={{ padding: "0.5rem 1.25rem", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
+                Try Again
+              </button>
+            </div>
+          )}
+        </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem", minWidth: 0 }}>
           {selectedState ? (
             <>
               <div>
-                <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{selectedState} vs NBS</div>
+                <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{selectedState} vs Benchmarks</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div>
                     <div style={{ fontSize: "0.95rem", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--ink)" }}>{selAgg?.count ?? 0}</div>
@@ -221,7 +256,7 @@ export default function PenaDrillMap({ byState, byLga, totalResponses, bench, se
                   </div>
                   <div>
                     <div style={{ fontSize: "0.95rem", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--ink)" }}>{selBench?.population ? compact(selBench.population) : "—"}</div>
-                    <div style={{ fontSize: "0.65rem", color: "var(--ink-5)" }}>population (NBS)</div>
+                    <div style={{ fontSize: "0.65rem", color: "var(--ink-5)" }}>population (benchmark)</div>
                   </div>
                   <div>
                     <div style={{ fontSize: "0.95rem", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--green)" }}>

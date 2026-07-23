@@ -63,7 +63,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       for (const k of Object.keys(r.answers ?? {})) if (!keys.includes(k)) keys.push(k);
     }
     const esc = (v: unknown) => {
-      const s = v === null || v === undefined ? "" : Array.isArray(v) ? v.join("; ") : String(v);
+      let s = v === null || v === undefined ? "" : Array.isArray(v) ? v.join("; ") : String(v);
+      // Neutralize spreadsheet formula injection: respondent text starting
+      // with = + @ tab/CR (or a non-numeric leading -) executes in Excel.
+      if (/^[=+@\t\r]/.test(s) || (s.startsWith("-") && !/^-\d+(\.\d+)?$/.test(s))) s = "'" + s;
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const head = [...keys, "state", "lga", "lat", "lng", "tier", "verify_status", "submitted_at"];
@@ -91,8 +94,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!isAdmin) {
     // Redact PII for non-admin staff: direct columns + answers whose
     // question is flagged is_pii.
-    const { data: piiQs } = await db()
+    const { data: piiQs, error: piiErr } = await db()
       .from("pena_questions").select("slug").eq("form_id", id).eq("is_pii", true);
+    // Redaction must fail CLOSED: if we cannot learn which answers are PII,
+    // return an error rather than rows with PII intact.
+    if (piiErr) return err("Could not verify redaction rules — please retry.", 500);
     const piiSlugs = new Set((piiQs ?? []).map((q) => q.slug));
     rows = rows.map((r) => ({
       ...r,

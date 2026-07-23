@@ -14,7 +14,7 @@
 // name-only matching for existing dashboard callers.
 
 import { useEffect, useRef } from "react";
-import { normLga } from "@/lib/geo";
+import { canonLga } from "@/lib/geo";
 import { outerRings, pointInRing, interiorPoint, lerpColor as lerp, type Geom } from "@/lib/geo-poly";
 
 interface LgaMapProps {
@@ -107,7 +107,7 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
       type Feat = { properties?: { shapeName?: string }; geometry: Geom };
       const nameCounts = new Map<string, number>();
       for (const f of (geoj.features as Feat[])) {
-        const n = normLga(f.properties?.shapeName ?? "");
+        const n = canonLga(f.properties?.shapeName ?? "");
         nameCounts.set(n, (nameCounts.get(n) ?? 0) + 1);
       }
       const featState = new Map<Feat, string>();          // dup feature → norm state name
@@ -123,17 +123,17 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
           if (destroyed) return;
           const stateFeats: { properties?: { shapeName?: string }; geometry: Geom }[] = statesGeo.features;
           for (const f of (geoj.features as Feat[])) {
-            const n = normLga(f.properties?.shapeName ?? "");
+            const n = canonLga(f.properties?.shapeName ?? "");
             if ((nameCounts.get(n) ?? 0) < 2) continue;
             const c = interiorPoint(f.geometry);
             const hit = stateFeats.find((s) => outerRings(s.geometry).some((ring) => pointInRing(c, ring)));
-            if (hit) featState.set(f, normLga(hit.properties?.shapeName ?? ""));
+            if (hit) featState.set(f, canonLga(hit.properties?.shapeName ?? ""));
           }
         } catch { /* featState stays empty — valueOf falls back below */ }
       }
 
       const valueOf = (feature: Feat): { val: number | undefined; stateNote: string; key: string | null } => {
-        const norm = normLga(feature.properties?.shapeName ?? "");
+        const norm = canonLga(feature.properties?.shapeName ?? "");
         if (!stateAware) return { val: lgaData[norm], stateNote: "", key: lgaData[norm] !== undefined ? norm : null };
         const entries = byLgaPart.get(norm) ?? [];
         const isDup = (nameCounts.get(norm) ?? 0) > 1;
@@ -165,7 +165,7 @@ export default function LgaMap({ lgaData, title, unit, stateAware = false, color
         },
         onEachFeature: (feature, layer) => {
           const raw = feature.properties?.shapeName ?? "";
-          const norm = normLga(raw);
+          const norm = canonLga(raw);
           const { val, stateNote, key } = valueOf(feature as unknown as Feat);
           if (key) layersRef.current.set(key, layer);
           const stNorm = stateAware

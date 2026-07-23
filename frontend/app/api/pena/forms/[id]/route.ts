@@ -110,11 +110,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const cfg = (form.tier_config ?? DEFAULT_TIER_CONFIG) as Partial<TierConfig>;
     const byNewTier = new Map<string | null, number[]>();
     for (let from = 0; ; from += 1000) {
-      const { data: rs } = await db()
+      const { data: rs, error: re } = await db()
         .from("pena_responses")
         .select("id, income, light_hours, energy_expense, tier")
         .eq("form_id", form.id)
+        .order("id")
         .range(from, from + 999);
+      if (re) return err(`Tier recompute failed while reading responses (${re.message}) — thresholds were saved; re-save them to finish the recompute.`, 500);
       for (const r of rs ?? []) {
         const t = computeTier(r.income, r.light_hours, r.energy_expense, cfg);
         if (t !== r.tier) {

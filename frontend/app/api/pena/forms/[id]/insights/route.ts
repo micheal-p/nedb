@@ -37,6 +37,7 @@ const median = (xs: number[]) => {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req);
   if (!auth) return err("Unauthorized", 401);
+  const isAdmin = (auth as { role?: string }).role === "admin";
   const { id } = await params;
 
   const { data: form } = await db().from("pena_forms").select("id, title, slug, status, is_public_stats").eq("id", id).single();
@@ -56,6 +57,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .from("pena_responses")
       .select("state_name, lga_name, lat, lng, income, light_hours, energy_expense, tier, answers, created_at, verify_status")
       .eq("form_id", form.id)
+      .order("id")
       .range(from, from + 999);
     if (error) return err(error.message, 500);
     allRows.push(...(data ?? []));
@@ -173,8 +175,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     by_lga: byLga,
     lga_income_map: lgaIncomeMap,
     energy_sources: Object.entries(sources).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+    // Non-admin staff get neighbourhood-level precision (~1 km) and no income
+    // on the points — mirrors the PII redaction on the responses route.
     points: rows
       .filter((r) => r.lat != null && r.lng != null)
-      .map((r) => ({ lat: r.lat, lng: r.lng, tier: r.tier, income: r.income, lga: r.lga_name })),
+      .map((r) => ({
+        lat: isAdmin ? r.lat : Math.round((r.lat as number) * 100) / 100,
+        lng: isAdmin ? r.lng : Math.round((r.lng as number) * 100) / 100,
+        tier: r.tier,
+        income: isAdmin ? r.income : null,
+        lga: r.lga_name,
+      })),
   });
 }
