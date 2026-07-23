@@ -12,7 +12,7 @@ import {
   type BuilderTab, type BuilderWidget, type WidgetKind, type ChartType,
 } from "@/lib/dashboard-builder";
 
-type StaffLite = { username: string; full_name: string };
+type StaffLite = { username: string; full_name: string; agency?: string | null };
 const CHART_TYPES: ChartType[] = ["line", "bar", "area", "column"];
 const KINDS: { v: WidgetKind; label: string }[] = [
   { v: "chart", label: "Chart" }, { v: "kpi", label: "KPI tiles" }, { v: "map", label: "Nigeria map" },
@@ -34,6 +34,9 @@ export default function DashboardTabBuilder() {
   const [editing, setEditing] = useState<BuilderTab | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [acctSearch, setAcctSearch] = useState("");   // account picker: name/username
+  const [acctAgency, setAcctAgency] = useState("");    // account picker: agency filter
+  const [tabSearch, setTabSearch] = useState("");      // filter the custom-tabs list
 
   const load = useCallback(() => {
     authed("/api/dashboard/tabs?all=1").then((r) => (r.ok ? r.json() : { tabs: [] })).then((j) => setTabs(j.tabs ?? [])).catch(() => {});
@@ -76,9 +79,28 @@ export default function DashboardTabBuilder() {
     load();
   }
 
-  const targetLabel = (t: BuilderTab) => t.scope === "account"
-    ? `Account · ${t.owner_username}`
-    : `Profile · ${DASHBOARD_PROFILES.find((p) => p.key === t.profile_key)?.label ?? t.profile_key}`;
+  const staffOf = (username?: string | null) => staff.find((u) => u.username === username);
+  const agencies = [...new Set(staff.map((u) => u.agency).filter(Boolean))].sort() as string[];
+  const targetLabel = (t: BuilderTab) => {
+    if (t.scope === "account") {
+      const u = staffOf(t.owner_username);
+      return `Account · ${u ? u.full_name : t.owner_username}${u?.agency ? ` (${u.agency})` : ""}`;
+    }
+    return `Profile · ${DASHBOARD_PROFILES.find((p) => p.key === t.profile_key)?.label ?? t.profile_key}`;
+  };
+
+  const filteredStaff = staff.filter((u) => {
+    if (acctAgency && (u.agency ?? "") !== acctAgency) return false;
+    if (!acctSearch.trim()) return true;
+    const q = acctSearch.toLowerCase();
+    return u.full_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || (u.agency ?? "").toLowerCase().includes(q);
+  });
+
+  const visibleTabs = tabs.filter((t) => {
+    if (!tabSearch.trim()) return true;
+    const q = tabSearch.toLowerCase();
+    return t.label.toLowerCase().includes(q) || targetLabel(t).toLowerCase().includes(q);
+  });
 
   return (
     <div style={{ marginBottom: "1.75rem" }}>
@@ -96,7 +118,10 @@ export default function DashboardTabBuilder() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {tabs.map((t) => (
+          <input value={tabSearch} onChange={(e) => setTabSearch(e.target.value)} placeholder="Search tabs by name, person, agency or profile…"
+            style={{ ...inp, marginBottom: "0.25rem" }} />
+          {visibleTabs.length === 0 && <div style={{ fontSize: "0.75rem", color: "var(--ink-5)", padding: "0.5rem" }}>No custom tabs match “{tabSearch}”.</div>}
+          {visibleTabs.map((t) => (
             <div key={t.id} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "0.875rem 1.1rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>{t.label}</div>
@@ -132,19 +157,51 @@ export default function DashboardTabBuilder() {
                       <option value="profile">Profile</option>
                       <option value="account">Account</option>
                     </select>
-                    {editing.scope === "profile" ? (
+                    {editing.scope === "profile" && (
                       <select value={editing.profile_key ?? ""} onChange={(e) => updateTab("profile_key", e.target.value)} style={{ ...sel, flex: 1 }}>
                         {DASHBOARD_PROFILES.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
-                      </select>
-                    ) : (
-                      <select value={editing.owner_username ?? ""} onChange={(e) => updateTab("owner_username", e.target.value)} style={{ ...sel, flex: 1 }}>
-                        <option value="">Choose account…</option>
-                        {staff.map((u) => <option key={u.username} value={u.username}>{u.full_name} ({u.username})</option>)}
                       </select>
                     )}
                   </div>
                 </div>
               </div>
+
+              {/* Searchable account picker — filter by agency or name */}
+              {editing.scope === "account" && (
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "0.75rem 0.875rem" }}>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                    <input value={acctSearch} onChange={(e) => setAcctSearch(e.target.value)} placeholder="Search staff by name or username…" style={{ ...inp, flex: "1 1 180px" }} />
+                    <select value={acctAgency} onChange={(e) => setAcctAgency(e.target.value)} style={{ ...sel, flex: "0 0 auto" }}>
+                      <option value="">All agencies</option>
+                      {agencies.map((a) => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ maxHeight: 180, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 5, background: "#fff" }}>
+                    {filteredStaff.length === 0 && <div style={{ fontSize: "0.74rem", color: "var(--ink-5)", padding: "0.6rem 0.75rem" }}>No staff match.</div>}
+                    {filteredStaff.map((u) => {
+                      const on = editing.owner_username === u.username;
+                      return (
+                        <button key={u.username} onClick={() => updateTab("owner_username", u.username)}
+                          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "0.5rem 0.75rem", border: "none", borderBottom: "1px solid var(--border)", background: on ? "var(--green-tint)" : "#fff", cursor: "pointer" }}>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ fontSize: "0.8rem", fontWeight: on ? 700 : 500, color: "var(--ink)" }}>{u.full_name}</span>
+                            <span style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginLeft: 6, fontFamily: "var(--font-mono)" }}>{u.username}</span>
+                          </span>
+                          <span style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                            {u.agency && <span style={{ fontSize: "0.62rem", color: "var(--ink-4)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 6px" }}>{u.agency}</span>}
+                            {on && <span style={{ color: "var(--green)", fontWeight: 700 }}>✓</span>}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {editing.owner_username && (
+                    <div style={{ fontSize: "0.72rem", color: "var(--ink-3)", marginTop: 6 }}>
+                      Assigning to <strong>{staffOf(editing.owner_username)?.full_name ?? editing.owner_username}</strong>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1px solid var(--border)", paddingBottom: 4 }}>Widgets</div>
 
