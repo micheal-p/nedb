@@ -18,6 +18,7 @@ export const ADMIN_NAV: AdminGroup[] = [
     group: "Data & Records",
     items: [
       { href: "/admin", label: "Administration", exact: true, icon: "grid" },
+      { href: "/admin/records", label: "Data & Records", icon: "table" },
       { href: "/admin/databank", label: "Storage Bank", icon: "database" },
       { href: "/admin/custom-tables", label: "Custom Tables", icon: "table" },
       { href: "/upload", label: "Upload Data", icon: "upload" },
