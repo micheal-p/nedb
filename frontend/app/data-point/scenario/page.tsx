@@ -155,7 +155,7 @@ export default function NecalPage() {
           ))}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "1.25rem", alignItems: "start" }} className="necal-layout">
+        <div className="necal-layout split-rail-left" style={{ gap: "1.25rem" }}>
 
           {/* ── Drivers ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>

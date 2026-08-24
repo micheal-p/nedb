@@ -757,7 +757,7 @@ export default function AdminPage() {
               <div className="panel-header"><span className="panel-title">New Record</span></div>
               <div className="panel-body">
                 <form onSubmit={doManualEntry}>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem 1.5rem" }}>
+                  <div className="grid-3" style={{ gap: "1rem 1.5rem" }}>
 
                     {/* Series type → unit auto-fills */}
                     <div className="form-group" style={{ marginBottom: 0, gridColumn: "1 / -1" }}>

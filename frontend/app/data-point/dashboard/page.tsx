@@ -372,7 +372,7 @@ export default function Dashboard() {
           </div>
 
           {/* KPI strip — computed live from dashData */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "1px", background: "var(--border)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden", marginBottom: "1.5rem" }}>
+          <div className="grid-4 grid-hair" style={{ marginBottom: "1.5rem" }}>
             {profile.kpis.map((def) => { const m = computeKPI(def, scopedData, scopedPrevData); return (
               <div key={m.label} className="metric-card" style={{ border: "none", borderRadius: 0 }}>
                 <div className="mc-label">{m.label}</div>
@@ -389,7 +389,7 @@ export default function Dashboard() {
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <PenaPanel />
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.25rem" }}>
+              <div className="split-rail" style={{ gap: "1.25rem" }}>
                 {s("crude_oil_production").length ? <SectorChart title="Crude Oil Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC" data={s("crude_oil_production")} series={[{ key: "value", label: "Production", color: profile.color }]} unit="M Barrels" filename="crude-oil-production" /> : <EmptyChart seriesName="Crude Oil Production" />}
                 <div className="panel">
                   {(() => { const liveAlerts = computeAnomalies(scopedData); const highCount = liveAlerts.filter((a) => a.level === "high").length; return (<>
@@ -421,7 +421,7 @@ export default function Dashboard() {
                   <h2>Fiscal Panels</h2>
                   <span className="sec-hd-meta">Populate as source agencies commit data</span>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1.25rem" }}>
+                <div className="grid-3">
                   {FISCAL_PANELS.map((panel) => (
                     <AwaitingData key={panel.id} title={panel.title} agencies={panel.agencies} series={[panel.caption]} />
                   ))}
@@ -453,7 +453,7 @@ export default function Dashboard() {
           {view === "upstream" && inScope("upstream") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+              <div className="grid-2" style={{ gap: "1.25rem" }}>
                 {s("crude_oil_production").length ? <SectorChart title="Crude Oil Production" subtitle={`Monthly barrels · ${selectedYear}`} source="NUPRC" data={s("crude_oil_production")} series={[{ key: "value", label: "Production", color: "#78350F" }]} unit="M Barrels" filename="crude-oil-production" /> : <EmptyChart seriesName="Crude Oil Production" />}
                 {s("natural_gas_production").length ? <SectorChart title="Natural Gas Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC / NNPCL" data={s("natural_gas_production")} series={[{ key: "value", label: "Gas", color: "#0E7A3C" }]} unit="Bcf" filename="natural-gas-production" /> : <EmptyChart seriesName="Natural Gas Production" />}
               </div>
@@ -496,13 +496,13 @@ export default function Dashboard() {
           {view === "renewable" && inScope("renewable") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+              <div className="grid-2" style={{ gap: "1.25rem" }}>
                 {s("renewable_energy").length ? <SectorChart title="Renewable Energy Capacity" subtitle={`Quarterly installed MW · ${selectedYear}`} source="REA / NERC" data={s("renewable_energy")} series={[{ key: "value", label: "Capacity (MW)", color: "#059669" }]} unit="MW" filename="renewable-capacity" /> : <EmptyChart seriesName="Renewable Energy" />}
                 {s("fuelwood_consumption").length ? <SectorChart title="Fuelwood Consumption" subtitle={`Quarterly volumes · ${selectedYear}`} source="ECN / NBS" data={s("fuelwood_consumption")} series={[{ key: "value", label: "Fuelwood (M m³)", color: "#78350F" }]} unit="M m³" filename="fuelwood-consumption" /> : <EmptyChart seriesName="Fuelwood Consumption" />}
               </div>
               <NigeriaMap stateData={stateMap["renewable_energy"] ?? {}} id="renewable-capacity" title="Renewable Energy Capacity by State" unit="MW" colorLow="#D1FAE5" colorHigh="#065F46" higherIsBetter={true} source="REA / ECN" />
               <div className="panel" style={{ padding: "1.25rem 1.5rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1rem" }}>
+                <div className="grid-3">
                   {([
                     { label: "Renewable Capacity",   series: "renewable_energy",     unit: "MW" },
                     { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
@@ -527,7 +527,7 @@ export default function Dashboard() {
           {view === "revenue" && inScope("revenue") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+              <div className="grid-2" style={{ gap: "1.25rem" }}>
                 {s("faac_oil_revenue").length ? <SectorChart title="Oil Revenue — FAAC Contribution" subtitle={`Quarterly ₦B · ${selectedYear}`} source="RMAFC / CBN" data={s("faac_oil_revenue")} series={[{ key: "value", label: "FAAC Oil Revenue (₦B)", color: "#7C3AED" }]} unit="₦B" filename="faac-oil-revenue" /> : <EmptyChart seriesName="FAAC Oil Revenue" />}
                 {s("upstream_royalties").length ? <SectorChart title="Upstream Royalties Collected" subtitle={`Quarterly ₦B · ${selectedYear}`} source="NUPRC / FIRS" data={s("upstream_royalties")} series={[{ key: "value", label: "Royalties (₦B)", color: "#9F1239" }]} unit="₦B" filename="upstream-royalties" /> : <EmptyChart seriesName="Upstream Royalties" />}
               </div>
@@ -555,7 +555,7 @@ export default function Dashboard() {
           {view === "bioenergy" && inScope("bioenergy") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+              <div className="grid-2" style={{ gap: "1.25rem" }}>
                 {s("fuelwood_consumption").length
                   ? <SectorChart title="Fuelwood Consumption" subtitle={`Household biomass use · ${selectedYear}`} source="ECN / NBS" data={s("fuelwood_consumption")} series={[{ key: "value", label: "Fuelwood (M m³)", color: "#78350F" }]} unit="M m³" filename="fuelwood-consumption" />
                   : <EmptyChart seriesName="Fuelwood Consumption" />}
@@ -563,7 +563,7 @@ export default function Dashboard() {
                   ? <SectorChart title="Charcoal Consumption" subtitle={`Commercial charcoal · ${selectedYear}`} source="ECN / NBS" data={s("charcoal_consumption")} series={[{ key: "value", label: "Charcoal", color: "#57534E" }]} unit="" filename="charcoal-consumption" />
                   : <EmptyChart seriesName="Charcoal Consumption" />}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+              <div className="grid-2" style={{ gap: "1.25rem" }}>
                 {s("coal_consumption").length
                   ? <SectorChart title="Coal Consumption" subtitle={`Domestic coal use · ${selectedYear}`} source="MMSD" data={s("coal_consumption")} series={[{ key: "value", label: "Coal", color: "#292524" }]} unit="" filename="coal-consumption" />
                   : <EmptyChart seriesName="Coal Consumption" />}
@@ -760,7 +760,7 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
         </div>
 
         {/* KPI strip */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "1px solid var(--border)" }}>
+        <div className="grid-4" style={{ borderBottom: "1px solid var(--border)", gap: 0 }}>
           {kpis.map((m) => (
             <div key={m.label} style={{ padding: "1.25rem", borderRight: "1px solid var(--border)" }}>
               <div style={{ fontSize: "0.62rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.4rem" }}>{m.label}</div>

@@ -90,7 +90,7 @@ export default async function AboutPage() {
           {/* Mandate */}
           <section>
             <div className="sec-hd"><h2>Statutory Mandate</h2></div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+            <div className="grid-2" style={{ gap: "1.5rem" }}>
               <div className="panel">
                 <div className="panel-header"><span className="panel-title">Collection Mandate</span></div>
                 <div className="panel-body" style={{ fontSize: "0.82rem", color: "var(--ink-3)", lineHeight: 1.8 }}>
@@ -133,7 +133,7 @@ export default async function AboutPage() {
           {/* Methodology */}
           <section>
             <div className="sec-hd"><h2>Data Methodology & Standards</h2></div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1px", background: "var(--border)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
+            <div className="grid-3 grid-hair">
               {[
                 { title: "Period Formats", body: "NEDB accepts annual (YYYY), quarterly (YYYY-QN), and monthly (YYYY-MM) data. Periods are normalised to ISO 8601 for consistent ordering and gap detection." },
                 { title: "Unit Codelist", body: "All records carry an explicit unit code from the NEDB codelist (Barrels, GWh, MW, Bcf, Litres, MT, Tonnes). Unit validation is enforced at upload." },
@@ -197,7 +197,7 @@ export default async function AboutPage() {
           {/* Contact */}
           <section>
             <div className="sec-hd"><h2>Access, Contact & Governance</h2></div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+            <div className="grid-2" style={{ gap: "1.5rem" }}>
               <div className="panel">
                 <div className="panel-header"><span className="panel-title">Public Access Policy</span></div>
                 <div className="panel-body" style={{ fontSize: "0.82rem", color: "var(--ink-3)", lineHeight: 1.8 }}>

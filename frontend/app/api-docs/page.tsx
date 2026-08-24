@@ -130,7 +130,7 @@ export default async function ApiDocsPage() {
       </div>
 
       <main style={{ background: "var(--surface)", padding: "3rem 0 5rem" }}>
-        <div className="page-wrap" style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: "3rem", alignItems: "start" }}>
+        <div className="page-wrap api-docs-layout" style={{ display: "grid", gridTemplateColumns: "220px minmax(0,1fr)", gap: "3rem", alignItems: "start" }}>
 
           {/* Sidebar nav */}
           <nav style={{ position: "sticky", top: "1.5rem" }}>

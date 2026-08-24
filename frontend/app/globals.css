@@ -11,33 +11,62 @@
   --green:          #0E7A3C;
   --green-deep:     #0A5C2D;
   --green-mid:      #15803D;
-  --green-tint:     #EEF5F0;
-  --green-line:     #B8D2C2;
-  --green-strong:   #DEEBE3;
+  --green-tint:     #EDF5F0;
+  --green-line:     #B4D0BF;
+  --green-strong:   #DBEAE1;
 
-  /* Surfaces — plain white and cold neutral grays */
-  --surface:        #FFFFFF;
+  /* Surfaces — cold neutral ground, white content.
+     A white page carrying white panels reads flat; a light neutral ground
+     separates content without reaching for shadows. */
+  --surface:        #F4F6F7;
   --surface-white:  #FFFFFF;
-  --surface-muted:  #F3F3F3;
-  --surface-rule:   #E9E9E9;
+  --surface-muted:  #EDEFF1;
+  --surface-sunken: #E7EAEC;
+  --surface-rule:   #E3E6E8;
 
-  /* Ink — neutral, no warm undertones */
-  --ink:            #171717;
-  --ink-2:          #262626;
-  --ink-3:          #444444;
-  --ink-4:          #666666;
-  --ink-5:          #8F8F8F;
+  /* Ink — neutral with a trace of blue so text sits cleanly on cold grays */
+  --ink:            #14181B;
+  --ink-2:          #242A2E;
+  --ink-3:          #434B51;
+  --ink-4:          #667179;
+  --ink-5:          #8C959C;
 
   /* Borders */
-  --border:         #D6D6D6;
-  --border-soft:    #E5E5E5;
+  --border:         #D3D8DC;
+  --border-soft:    #E4E8EA;
+  --border-strong:  #B6BEC4;
 
   /* Status — solid, meaning only, never decoration */
-  --red:            #B91C1C;
-  --red-tint:       #FBEFEE;
-  --amber:          #A16207;
-  --amber-tint:     #FAF3E3;
-  --blue:           #1D4ED8;
+  --red:            #B3261E;
+  --red-tint:       #FBEEED;
+  --amber:          #96620A;
+  --amber-tint:     #FBF3E4;
+  --blue:           #1B4FD8;
+  --blue-tint:      #ECF1FE;
+
+  /* Type scale — one ratio, named, so sizes stop being invented per component */
+  --t-2xs:  0.6875rem;   /* 11px — micro labels, table meta */
+  --t-xs:   0.75rem;     /* 12px — captions, helper text */
+  --t-sm:   0.8125rem;   /* 13px — dense tables, secondary UI */
+  --t-base: 0.875rem;    /* 14px — body UI */
+  --t-md:   1rem;        /* 16px — prose, lead-in */
+  --t-lg:   1.125rem;    /* 18px — panel headings */
+  --t-xl:   1.375rem;    /* 22px — page headings */
+  --t-2xl:  1.75rem;     /* 28px — hero headings */
+  --t-3xl:  2.25rem;     /* 36px — display */
+
+  /* Spacing scale */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.5rem;
+  --s6: 2rem;
+  --s7: 3rem;
+  --s8: 4rem;
+
+  /* Comfortable reading measure for prose columns */
+  --measure: 68ch;
 
   /* Typography — one workhorse sans; --font-serif kept only so legacy
      references resolve to the same face */
@@ -64,6 +93,70 @@
   --shadow-3: 0 2px 8px rgba(0,0,0,0.14);
 }
 
+
+/* ── Responsive grid utilities ────────────────────────────────────────────
+   Layouts were written with hardcoded column counts (repeat(4,1fr)), which
+   hold their shape all the way down to a phone and force horizontal scroll.
+   These collapse properly, and every page that needs a grid should use one. */
+.grid-auto  { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s4); }
+.grid-2     { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
+.grid-3     { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s4); }
+.grid-4     { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s4); }
+.grid-hair  { gap: 1px; background: var(--border); border: 1px solid var(--border); }
+.grid-hair > * { background: var(--surface-white); }
+
+/* Split layouts: main content beside a rail */
+.split-rail       { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--s5); align-items: start; }
+.split-rail-left  { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: var(--s5); align-items: start; }
+
+@media (max-width: 1024px) {
+  .api-docs-layout { grid-template-columns: minmax(0, 1fr) !important; gap: 1.5rem !important; }
+  .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .split-rail, .split-rail-left { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 820px) {
+  .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: minmax(0, 1fr); }
+  .grid-auto { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Prose columns stay readable rather than running the full width */
+.prose { max-width: var(--measure); }
+
+/* Any wide block scrolls inside itself instead of pushing the page sideways */
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Page headers */
+.page-head { padding: var(--s6) 0; background: var(--surface-white); border-bottom: 1px solid var(--border); }
+.page-head h1 { font-size: var(--t-xl); font-weight: 700; color: var(--ink); line-height: 1.25; letter-spacing: -0.01em; }
+.page-head .lede { font-size: var(--t-base); color: var(--ink-3); line-height: 1.65; margin-top: var(--s2); max-width: var(--measure); }
+.eyebrow {
+  font-size: var(--t-2xs);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  margin-bottom: var(--s1);
+}
+
+/* Stat cell — the flat government stat block, used across dashboards */
+.stat-cell { background: var(--surface-white); padding: var(--s4) 1.15rem; min-width: 0; }
+.stat-cell .val { font-size: var(--t-xl); font-weight: 700; color: var(--ink); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat-cell .lbl { font-size: var(--t-2xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-5); margin-top: var(--s1); }
+.stat-cell .sub { font-size: var(--t-xs); color: var(--ink-4); margin-top: 2px; }
+
+/* ── Mobile-first refinements for existing components ─────────────────── */
+@media (max-width: 640px) {
+  .panel-header { padding: 0.75rem 0.9rem; }
+  .panel-body   { padding: 0.9rem; }
+  .btn          { width: auto; }
+  /* Touch targets: nothing interactive smaller than 44px on a phone */
+  .btn, .form-input, select.form-input { min-height: 44px; }
+  .btn-sm { min-height: 38px; }
+}
+
 /* ── Reset ────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; }
@@ -84,13 +177,12 @@ input, select, textarea { font-family: inherit; }
 /* ── Government Top Banner ────────────────────────────────────── */
 .gov-banner {
   background: var(--green-deep);
-  color: rgba(255,255,255,0.85);
-  font-size: 0.72rem;
+  color: rgba(255,255,255,0.88);
+  font-size: var(--t-2xs);
   font-weight: 500;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-align: center;
   padding: 6px 1rem;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
 /* ── Primary Navigation ───────────────────────────────────────── */
@@ -156,20 +248,21 @@ input, select, textarea { font-family: inherit; }
 }
 .nav-link-main {
   display: block;
-  padding: 0 1rem;
+  padding: 0 0.9rem;
   height: var(--nav-h);
   line-height: var(--nav-h);
-  font-size: 0.82rem;
+  font-size: var(--t-base);
   font-weight: 500;
-  color: rgba(255,255,255,0.72);
+  color: rgba(255,255,255,0.7);
   white-space: nowrap;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.12s ease, background 0.12s ease;
   border-bottom: 3px solid transparent;
   margin-bottom: -3px;
 }
-.nav-link-main:hover,
+.nav-link-main:hover { color: #fff; background: rgba(255,255,255,0.06); }
 .nav-link-main.active {
   color: #fff;
+  font-weight: 600;
   border-bottom-color: var(--green);
 }
 .nav-actions {
@@ -208,7 +301,7 @@ input, select, textarea { font-family: inherit; }
   transition: color 0.15s, border-color 0.15s;
 }
 .sub-nav-link:hover  { color: var(--ink); }
-.sub-nav-link.active { color: var(--green); border-bottom-color: var(--green); font-weight: 600; }
+.sub-nav-link.active { color: var(--ink); border-bottom-color: var(--green); font-weight: 700; }
 .sub-nav-link .count {
   font-size: 0.65rem;
   font-weight: 600;
@@ -227,23 +320,23 @@ input, select, textarea { font-family: inherit; }
 .inst-hero {
   background: var(--ink);
   color: #fff;
-  padding: 4rem 2rem 3.5rem;
+  padding: 2.75rem 2rem 2.5rem;
   border-bottom: 3px solid var(--green);
 }
 .inst-hero .container { max-width: var(--max-w); margin: 0 auto; }
 .inst-hero .mandate-tag {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  gap: 7px;
+  font-size: var(--t-2xs);
+  font-weight: 700;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--green-mid);
-  border: 1px solid rgba(14,122,60,0.35);
-  padding: 4px 12px;
+  color: #6FCF97;
+  border: 1px solid rgba(111,207,151,0.3);
+  padding: 4px 11px;
   border-radius: var(--r-sm);
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
 }
 .inst-hero .mandate-tag .dot {
   width: 6px; height: 6px;
@@ -251,51 +344,48 @@ input, select, textarea { font-family: inherit; }
   background: var(--green-mid);
 }
 .inst-hero h1 {
-  font-family: var(--font-serif);
-  font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 400;
-  line-height: 1.1;
-  letter-spacing: -0.01em;
-  margin-bottom: 1rem;
+  font-size: clamp(1.6rem, 3.2vw, 2.4rem);
+  font-weight: 700;
+  line-height: 1.14;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.85rem;
   color: #fff;
+  max-width: 18ch;
 }
 .inst-hero h1 em { font-style: italic; color: rgba(255,255,255,0.7); }
 .inst-hero .lead {
-  font-size: 0.95rem;
-  color: rgba(255,255,255,0.6);
-  max-width: 620px;
-  line-height: 1.65;
-  margin-bottom: 2rem;
+  font-size: var(--t-md);
+  color: rgba(255,255,255,0.66);
+  max-width: 62ch;
+  line-height: 1.7;
+  margin-bottom: 1.75rem;
 }
 .inst-hero .stat-row {
-  display: flex;
-  gap: 0;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.12);
   border-radius: var(--r-md);
   overflow: hidden;
-  max-width: 720px;
 }
-.inst-hero .stat-row .stat {
-  flex: 1;
-  padding: 1rem 1.25rem;
-  border-right: 1px solid rgba(255,255,255,0.1);
-}
-.inst-hero .stat-row .stat:last-child { border-right: none; }
+.inst-hero .stat-row .stat { background: #1B2023; }
+.inst-hero .stat-row .stat { padding: 0.95rem 1.15rem; }
 .inst-hero .stat-row .stat .num {
-  font-family: var(--font-mono);
-  font-size: 1.375rem;
-  font-weight: 600;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: #fff;
-  line-height: 1;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 .inst-hero .stat-row .stat .num.accent { color: var(--green-mid); }
 .inst-hero .stat-row .stat .lbl {
-  font-size: 0.7rem;
-  color: rgba(255,255,255,0.45);
+  font-size: var(--t-2xs);
+  color: rgba(255,255,255,0.5);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-top: 4px;
+  letter-spacing: 0.07em;
+  margin-top: 5px;
 }
 
 /* ── Info Band ────────────────────────────────────────────────── */
@@ -330,16 +420,16 @@ input, select, textarea { font-family: inherit; }
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid var(--border);
+  flex-wrap: wrap;
+  margin-bottom: 1.15rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border-strong);
 }
 .sec-hd h2 {
-  font-size: 0.9rem;
+  font-size: var(--t-lg);
   font-weight: 700;
   color: var(--ink);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: -0.01em;
 }
 .sec-hd .sec-hd-meta {
   font-size: 0.75rem;
@@ -411,12 +501,14 @@ input, select, textarea { font-family: inherit; }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.68rem;
-  font-weight: 600;
+  font-size: var(--t-2xs);
+  font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 3px 8px;
+  padding: 2px 7px;
   border-radius: var(--r-sm);
+  line-height: 1.5;
+  white-space: nowrap;
 }
 .tag-green  { background: var(--green-strong); color: var(--green-deep); border: 1px solid var(--green-line); }
 .tag-amber  { background: var(--amber-tint); color: var(--amber); border: 1px solid rgba(180,83,9,0.2); }
@@ -435,54 +527,64 @@ input, select, textarea { font-family: inherit; }
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 0.55rem 1.1rem;
+  padding: 0.6rem 1.15rem;
   border-radius: var(--r-md);
-  font-size: 0.82rem;
+  font-size: var(--t-base);
   font-weight: 600;
+  line-height: 1.2;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
   white-space: nowrap;
+  min-height: 40px;
 }
+.btn:active:not(:disabled) { transform: translateY(0.5px); }
 .btn-primary   { background: var(--green); color: #fff; border-color: var(--green); }
 .btn-primary:hover { background: var(--green-deep); border-color: var(--green-deep); }
-.btn-secondary { background: transparent; color: var(--ink); border-color: var(--border); }
-.btn-secondary:hover { background: var(--surface-muted); }
+.btn-secondary { background: var(--surface-white); color: var(--ink); border-color: var(--border-strong); }
+.btn-secondary:hover { background: var(--surface-muted); border-color: var(--ink-5); }
 .btn-dark      { background: var(--ink); color: #fff; border-color: var(--ink); }
 .btn-dark:hover { background: var(--ink-2); }
 .btn-ghost     { background: transparent; color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.2); }
 .btn-ghost:hover { background: rgba(255,255,255,0.08); color: #fff; }
-.btn-sm        { padding: 0.4rem 0.875rem; font-size: 0.78rem; }
-.btn-lg        { padding: 0.7rem 1.5rem; font-size: 0.9rem; }
+.btn-sm        { padding: 0.35rem 0.8rem; font-size: var(--t-sm); min-height: 32px; }
+.btn-lg        { padding: 0.8rem 1.75rem; font-size: var(--t-md); min-height: 48px; }
 .btn:disabled  { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Form Controls ────────────────────────────────────────────── */
 .form-group { margin-bottom: 1.25rem; }
 .form-label {
   display: block;
-  font-size: 0.75rem;
+  font-size: var(--t-xs);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--ink-3);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 .form-input {
   width: 100%;
-  padding: 0.6rem 0.875rem;
-  border: 1px solid var(--border);
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border-strong);
   border-radius: var(--r-md);
   background: var(--surface-white);
   color: var(--ink);
-  font-size: 0.875rem;
+  font-size: var(--t-base);
+  line-height: 1.4;
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  min-height: 40px;
 }
+.form-input::placeholder { color: var(--ink-5); }
+.form-input:hover:not(:focus):not(:disabled) { border-color: var(--ink-5); }
 .form-input:focus {
-  border-color: var(--green);
-  box-shadow: 0 0 0 3px rgba(14,122,60,0.08);
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
 }
+.form-input:disabled { background: var(--surface-muted); color: var(--ink-4); cursor: not-allowed; }
+.form-input[aria-invalid="true"] { border-color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
 .form-select {
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237A746E' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
@@ -516,30 +618,36 @@ input, select, textarea { font-family: inherit; }
 }
 .data-table thead {
   background: var(--surface-muted);
-  border-bottom: 2px solid var(--border);
+  border-bottom: 1px solid var(--border-strong);
 }
 .data-table thead th {
   text-align: left;
-  padding: 0.65rem 1rem;
-  font-size: 0.68rem;
+  padding: 0.6rem 1rem;
+  font-size: var(--t-2xs);
   font-weight: 700;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-3);
   white-space: nowrap;
 }
+.data-table thead th:last-child { padding-right: 1.25rem; }
 .data-table thead th:first-child { padding-left: 1.25rem; }
 .data-table tbody tr {
   border-bottom: 1px solid var(--border-soft);
   transition: background 0.1s;
 }
 .data-table tbody tr:last-child { border-bottom: none; }
-.data-table tbody tr:hover { background: var(--green-tint); }
+.data-table tbody tr:hover { background: var(--surface-muted); }
 .data-table tbody td {
-  padding: 0.65rem 1rem;
+  padding: 0.6rem 1rem;
   color: var(--ink-3);
   vertical-align: middle;
+  line-height: 1.45;
 }
+.data-table tbody td:last-child { padding-right: 1.25rem; }
+/* Numeric columns line up on the decimal, which is the whole point of a
+   statistics table */
+.data-table td[style*="right"], .data-table .td-num { font-variant-numeric: tabular-nums; }
 .data-table tbody td:first-child { padding-left: 1.25rem; color: var(--ink-4); }
 .data-table .td-primary { color: var(--ink); font-weight: 500; }
 .data-table .td-mono { font-family: var(--font-mono); font-size: 0.78rem; }
@@ -567,22 +675,25 @@ input, select, textarea { font-family: inherit; }
   overflow: hidden;
 }
 .panel-header {
-  padding: 1rem 1.25rem;
+  padding: 0.85rem 1.15rem;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  background: var(--surface-muted);
+  gap: var(--s4);
+  background: var(--surface-white);
+  flex-wrap: wrap;
 }
+/* Panel titles were uppercase micro-caps everywhere, which turns every heading
+   into visual noise and flattens hierarchy. Sentence case at a real size reads
+   as a heading; the uppercase treatment is reserved for field labels. */
 .panel-title {
-  font-size: 0.8rem;
+  font-size: var(--t-base);
   font-weight: 700;
   color: var(--ink);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: -0.005em;
 }
-.panel-body { padding: 1.25rem; }
+.panel-body { padding: 1.15rem; }
 
 /* ── Stat Strip ───────────────────────────────────────────────── */
 .kpi-strip {
@@ -638,22 +749,23 @@ input, select, textarea { font-family: inherit; }
   flex-wrap: wrap;
 }
 .chart-panel-title {
-  font-size: 0.82rem;
+  font-size: var(--t-base);
   font-weight: 700;
   color: var(--ink);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: -0.005em;
 }
 .chart-panel-sub {
-  font-size: 0.75rem;
+  font-size: var(--t-xs);
   color: var(--ink-4);
-  margin-top: 2px;
+  margin-top: 3px;
+  line-height: 1.5;
 }
 .chart-panel-body { padding: 1.25rem; }
 .chart-source {
-  font-size: 0.68rem;
-  color: var(--ink-5);
-  padding: 0.6rem 1.25rem;
+  font-size: var(--t-2xs);
+  color: var(--ink-4);
+  line-height: 1.6;
+  padding: 0.6rem 1.15rem;
   border-top: 1px solid var(--border-soft);
   background: var(--surface-muted);
 }
@@ -860,7 +972,63 @@ input, select, textarea { font-family: inherit; }
 .alert-body { flex: 1; font-size: 0.82rem; color: var(--ink-3); line-height: 1.5; }
 .alert-time { font-size: 0.7rem; color: var(--ink-5); margin-top: 2px; }
 
-/* ── Login ────────────────────────────────────────────────────── */
+
+/* ── Staff sign-in ──────────────────────────────────────────────────────── */
+.login-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+/* A subtle field of the ground colour behind the card, so the card reads as a
+   document laid on a desk rather than a box floating on nothing. */
+.login-main {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 3.5rem 1.25rem 4rem;
+  background: var(--surface);
+}
+.login-col { width: 100%; max-width: 448px; }
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 1.5rem;
+}
+.login-card {
+  background: var(--surface-white);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--green);
+  padding: 1.85rem;
+}
+.login-help {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-top: none;
+  padding: 1.25rem 1.85rem 1.4rem;
+}
+.login-help ul { list-style: none; padding-left: 0 !important; }
+.login-help li { position: relative; padding-left: 1.1rem; margin-bottom: 0.4rem; }
+.login-help li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0.62em;
+  width: 5px; height: 5px;
+  background: var(--ink-5);
+}
+.login-card .form-group { margin-bottom: 1.1rem; }
+
+@media (max-width: 560px) {
+  .login-main { padding: 2rem 1rem 3rem; background: var(--surface); }
+  .login-card { padding: 1.35rem 1.15rem; }
+  .login-help { padding: 1.1rem 1.15rem 1.2rem; }
+  .login-brand { gap: 11px; margin-bottom: 1.15rem; }
+}
+
+/* ── Login (legacy split layout, retained for any old references) ─── */
 .login-wrap {
   min-height: 100vh;
   display: grid;
@@ -1147,9 +1315,7 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
 
   .inst-hero { padding: 2.5rem 1.5rem 2rem; }
   .inst-hero .lead { font-size: 0.9rem; }
-  .inst-hero .stat-row { flex-direction: row; flex-wrap: wrap; }
-  .inst-hero .stat-row .stat { flex: 1 1 40%; border-right: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1); }
-  .inst-hero .stat-row .stat:nth-child(even) { border-right: none; }
+  .inst-hero .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .info-band { padding: 1.5rem 1.25rem; }
   .info-band .cols { grid-template-columns: 1fr; gap: 1.25rem; }
@@ -1199,8 +1365,7 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
 @media (max-width: 768px) {
   .inst-hero { padding: 2rem 1.25rem 1.75rem; }
   .inst-hero h1 { font-size: clamp(1.5rem, 6vw, 2rem); }
-  .inst-hero .stat-row .stat { flex: 1 1 100%; border-right: none; }
-  .inst-hero .stat-row .stat:last-child { border-bottom: none; }
+  .inst-hero .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .login-panel { padding: 2rem 1.5rem; }
 
@@ -1264,7 +1429,6 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   .brand-primary { font-size: 0.85rem; }
 
   .inst-hero h1 { font-size: 1.45rem; }
-  .inst-hero .stat-row { gap: 0; }
   .inst-hero .stat-row .stat { padding: 0.75rem 1rem; }
   .inst-hero .stat-row .stat .num { font-size: 1.1rem; }
 
@@ -1558,3 +1722,71 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
 
 /* ── Table scroll wrapper ── */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ── Responsive pass ─────────────────────────────────────────────────────
+   Written mobile-outwards: the constraint is a 360px Android phone on a
+   slow connection, which is what a field officer or a ministry staffer on
+   the road actually has. */
+
+@media (max-width: 900px) {
+  /* Dashboard content breathes less on tablets */
+  .dash-content { padding: 1.15rem; }
+  .dash-topbar  { gap: 0.4rem; }
+}
+
+@media (max-width: 640px) {
+  :root { --nav-h: 56px; }
+  .inst-hero { padding: 1.75rem 1rem 1.6rem; }
+  .inst-hero .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .inst-hero .stat-row .stat { padding: 0.8rem 0.9rem; }
+  .inst-hero .stat-row .stat .num { font-size: 1.2rem; }
+
+  .page-wrap { padding: 0 1rem; }
+  .page-head { padding: 1.35rem 0; }
+  .page-head h1 { font-size: 1.25rem; }
+  .page-head .lede { font-size: var(--t-base); }
+
+  .sec-hd { margin-bottom: 0.9rem; }
+  .sec-hd h2 { font-size: var(--t-base); }
+
+  .dash-content { padding: 0.9rem; }
+  .dash-topbar  { padding: 0 0.9rem; }
+
+  /* Tables: keep them tabular but let them scroll inside their own frame */
+  .data-table { font-size: var(--t-xs); }
+  .data-table thead th, .data-table tbody td { padding: 0.5rem 0.7rem; }
+  .data-table thead th:first-child, .data-table tbody td:first-child { padding-left: 0.85rem; }
+
+  .chart-panel-head { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .chart-panel-body { padding: 0.75rem 0.4rem 0.4rem; }
+  .chart-source { padding: 0.55rem 0.9rem; }
+
+  /* Stat blocks stack rather than squeezing to unreadable widths */
+  .stat-cell { padding: 0.85rem 0.95rem; }
+  .stat-cell .val { font-size: 1.15rem; }
+
+  /* Modals become sheets — a centred dialog on a phone wastes the screen */
+  .sheet-on-mobile {
+    position: fixed !important;
+    inset: auto 0 0 0 !important;
+    max-width: 100% !important;
+    max-height: 88dvh !important;
+    border-radius: 0 !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .page-wrap { padding: 0 0.85rem; }
+  .gov-banner { font-size: 0.6rem; letter-spacing: 0.02em; padding: 5px 0.75rem; }
+  .btn { padding: 0.55rem 0.9rem; font-size: var(--t-sm); }
+  .panel-header { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+}
+
+/* Respect a reader who has asked for less motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

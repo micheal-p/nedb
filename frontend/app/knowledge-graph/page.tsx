@@ -217,7 +217,7 @@ export default function KnowledgeGraphPage() {
           ) : !data ? (
             <div style={{ padding: "5rem", textAlign: "center", color: "var(--ink-5)" }}>The knowledge graph could not be loaded. Refresh to try again; if it persists the graph tables may not be seeded.</div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "1.25rem", alignItems: "start" }} className="graph-layout">
+            <div className="graph-layout split-rail" style={{ gap: "1.25rem" }}>
               {/* ── LEFT: toolbar + canvas ── */}
               <div>
                 {/* Toolbar: view controls left, status right */}

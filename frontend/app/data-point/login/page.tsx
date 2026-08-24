@@ -60,27 +60,27 @@ function LoginForm() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--surface-muted)", display: "flex", flexDirection: "column" }}>
+    <div className="login-page">
       {/* Official banner */}
       <div className="gov-banner">
         FEDERAL REPUBLIC OF NIGERIA &nbsp;&middot;&nbsp; ENERGY COMMISSION OF NIGERIA (ECN)
       </div>
 
-      <main style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "3rem 1.25rem 4rem" }}>
-        <div style={{ width: "100%", maxWidth: 440 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: "1.75rem" }}>
-            <CoatOfArms size={46} />
+      <main className="login-main">
+        <div className="login-col">
+          <div className="login-brand">
+            <CoatOfArms size={52} />
             <div>
-              <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.15 }}>National Energy Data Bank</div>
-              <div style={{ fontSize: "0.68rem", color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Staff sign-in</div>
+              <div style={{ fontSize: "var(--t-md)", fontWeight: 700, color: "var(--ink)", lineHeight: 1.2, letterSpacing: "-0.01em" }}>National Energy Data Bank</div>
+              <div className="eyebrow" style={{ marginTop: 2, marginBottom: 0 }}>Energy Commission of Nigeria</div>
             </div>
           </div>
 
           <ErrorSummary errors={errors} />
 
-          <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", padding: "1.75rem" }}>
-            <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.4rem" }}>Sign in</h1>
-            <p style={{ fontSize: "0.8rem", color: "var(--ink-3)", marginBottom: "1.5rem", lineHeight: 1.6 }}>
+          <div className="login-card">
+            <h1 style={{ fontSize: "var(--t-xl)", fontWeight: 700, color: "var(--ink)", marginBottom: "0.35rem", letterSpacing: "-0.01em" }}>Sign in</h1>
+            <p style={{ fontSize: "var(--t-base)", color: "var(--ink-3)", marginBottom: "1.6rem", lineHeight: 1.65 }}>
               For Energy Commission of Nigeria staff and authorised agency personnel. You are taken to your own
               workspace automatically once signed in.
             </p>
@@ -142,11 +142,9 @@ function LoginForm() {
           </div>
 
           {/* What to do if you cannot sign in — the part a government page owes the visitor */}
-          <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "none", padding: "1.25rem 1.75rem" }}>
-            <div style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--ink-4)", marginBottom: "0.6rem" }}>
-              If you cannot sign in
-            </div>
-            <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.8rem", color: "var(--ink-3)", lineHeight: 1.9 }}>
+          <div className="login-help">
+            <div className="eyebrow" style={{ marginBottom: "0.55rem" }}>If you cannot sign in</div>
+            <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "var(--t-base)", color: "var(--ink-3)", lineHeight: 1.85 }}>
               <li>Accounts are issued by the NEDB administrator, not self-registered.</li>
               <li>
                 No account yet? <Link href="/portal" style={{ color: "var(--green)", fontWeight: 600, textDecoration: "underline", textUnderlineOffset: 2 }}>Request dashboard access</Link>, or{" "}
@@ -160,12 +158,12 @@ function LoginForm() {
             </ul>
           </div>
 
-          <p style={{ fontSize: "0.72rem", color: "var(--ink-4)", lineHeight: 1.7, marginTop: "1.25rem" }}>
+          <p style={{ fontSize: "var(--t-xs)", color: "var(--ink-4)", lineHeight: 1.7, marginTop: "1.25rem" }}>
             This is an official service. Do not share your credentials. Your sign-in is recorded, and activity in the
             admin console is written to an audit log. Report suspicious activity to the ECN IT helpdesk.
           </p>
 
-          <div style={{ marginTop: "1.25rem", fontSize: "0.72rem", color: "var(--ink-5)", lineHeight: 1.7, borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
+          <div style={{ marginTop: "1.25rem", fontSize: "var(--t-xs)", color: "var(--ink-5)", lineHeight: 1.7, borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
             Energy Commission of Nigeria &nbsp;·&nbsp;{" "}
             <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer" style={{ color: "var(--green)" }}>energy.gov.ng</a>
             <br />
