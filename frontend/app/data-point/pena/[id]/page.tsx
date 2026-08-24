@@ -266,17 +266,17 @@ export default function PenaInsightsPage() {
                 <div className="chart-panel-sub">A = energy secure &nbsp;·&nbsp; E = energy critical{ins.unclassified ? ` · ${ins.unclassified} unclassified` : ""}</div>
               </div>
             </div>
-            <div style={{ padding: "0.75rem 0", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="chart-rows">
               {ins.tier_distribution.map(({ tier, count }) => (
-                <div key={tier} style={{ display: "grid", gridTemplateColumns: "minmax(110px, 150px) minmax(0, 1fr) 40px", alignItems: "center", gap: 10 }}>
+                <div key={tier} className="chart-row">
                   <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
                     <span style={{ width: 11, height: 11, borderRadius: 3, background: TIERS[tier].color, flexShrink: 0, border: "1px solid rgba(0,0,0,0.08)" }} />
-                    <span style={{ fontSize: "0.72rem", color: "var(--ink-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}><strong>{tier}</strong> · {TIERS[tier].label}</span>
+                    <span className="chart-row-label"><strong>{tier}</strong> · {TIERS[tier].label}</span>
                   </div>
-                  <div style={{ height: 14, background: "var(--surface)", borderRadius: 4, overflow: "hidden" }}>
-                    <div style={{ width: `${(count / maxTier) * 100}%`, height: "100%", background: TIERS[tier].color, borderRadius: 4, minWidth: count ? 3 : 0 }} />
+                  <div className="chart-row-track">
+                    <div className="chart-row-fill" style={{ width: `${(count / maxTier) * 100}%`, background: TIERS[tier].color, minWidth: count ? 3 : 0 }} />
                   </div>
-                  <div style={{ fontSize: "0.72rem", fontFamily: "var(--font-mono)", color: "var(--ink-3)", textAlign: "right" }}>{count}</div>
+                  <div className="chart-row-value">{count}</div>
                 </div>
               ))}
             </div>
@@ -290,15 +290,15 @@ export default function PenaInsightsPage() {
                 <div className="chart-panel-sub">Respondent-reported</div>
               </div>
             </div>
-            <div style={{ padding: "0.75rem 0", display: "flex", flexDirection: "column", gap: 10 }}>
-              {ins.energy_sources.length === 0 && <div style={{ fontSize: "0.75rem", color: "var(--ink-5)" }}>No energy-source question on this form.</div>}
+            <div className="chart-rows">
+              {ins.energy_sources.length === 0 && <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-5)" }}>No energy-source question on this form.</div>}
               {ins.energy_sources.map((s) => (
-                <div key={s.name} style={{ display: "grid", gridTemplateColumns: "minmax(110px, 150px) minmax(0, 1fr) 40px", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: "0.72rem", color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
-                  <div style={{ height: 14, background: "var(--surface)", borderRadius: 4, overflow: "hidden" }}>
-                    <div style={{ width: `${(s.count / maxSrc) * 100}%`, height: "100%", background: "var(--green)", borderRadius: 4, minWidth: 3 }} />
+                <div key={s.name} className="chart-row">
+                  <span className="chart-row-label" title={s.name}>{s.name}</span>
+                  <div className="chart-row-track">
+                    <div className="chart-row-fill" style={{ width: `${(s.count / maxSrc) * 100}%`, background: "var(--green)", minWidth: 3 }} />
                   </div>
-                  <div style={{ fontSize: "0.72rem", fontFamily: "var(--font-mono)", color: "var(--ink-3)", textAlign: "right" }}>{s.count}</div>
+                  <div className="chart-row-value">{s.count}</div>
                 </div>
               ))}
             </div>
@@ -316,22 +316,22 @@ export default function PenaInsightsPage() {
               </div>
             </div>
             {ins.timeline.length === 0 ? (
-              <div style={{ padding: "1rem 0", fontSize: "0.75rem", color: "var(--ink-5)" }}>No submissions yet.</div>
+              <div style={{ padding: "1rem 1.25rem", fontSize: "var(--t-xs)", color: "var(--ink-5)" }}>No submissions yet.</div>
             ) : (
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 130, padding: "0.75rem 0 0.25rem", justifyContent: ins.timeline.length < 10 ? "center" : "flex-start" }}>
-                {ins.timeline.map((d) => {
-                  const maxC = Math.max(...ins.timeline.map((x) => x.count));
-                  return (
-                    <div key={d.date} title={`${d.date} — ${d.count} response${d.count === 1 ? "" : "s"}`}
-                      style={{ flex: "1 1 0", minWidth: 4, maxWidth: 44, height: `${(d.count / maxC) * 100}%`, background: "var(--green)", borderRadius: "3px 3px 0 0" }} />
-                  );
-                })}
-              </div>
-            )}
-            {ins.timeline.length > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.62rem", color: "var(--ink-5)", fontFamily: "var(--font-mono)" }}>
-                <span>{ins.timeline[0].date}</span>
-                <span>{ins.timeline[ins.timeline.length - 1].date}</span>
+              <div style={{ padding: "0.9rem 1.25rem 0.25rem" }}>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 130, justifyContent: ins.timeline.length < 10 ? "center" : "flex-start" }}>
+                  {ins.timeline.map((d) => {
+                    const maxC = Math.max(...ins.timeline.map((x) => x.count));
+                    return (
+                      <div key={d.date} title={`${d.date} — ${d.count} response${d.count === 1 ? "" : "s"}`}
+                        style={{ flex: "1 1 0", minWidth: 4, maxWidth: 44, height: `${(d.count / maxC) * 100}%`, background: "var(--green)", borderRadius: "3px 3px 0 0" }} />
+                    );
+                  })}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--t-2xs)", color: "var(--ink-5)", fontVariantNumeric: "tabular-nums", marginTop: 6 }}>
+                  <span>{ins.timeline[0].date}</span>
+                  <span>{ins.timeline[ins.timeline.length - 1].date}</span>
+                </div>
               </div>
             )}
             <div className="chart-source">Hover a bar for the daily count</div>
@@ -344,16 +344,16 @@ export default function PenaInsightsPage() {
                 <div className="chart-panel-sub">₦ per month, respondent-reported</div>
               </div>
             </div>
-            <div style={{ padding: "0.75rem 0", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="chart-rows">
               {ins.income_histogram.map((b) => {
                 const maxB = Math.max(1, ...ins.income_histogram.map((x) => x.count));
                 return (
-                  <div key={b.label} style={{ display: "grid", gridTemplateColumns: "80px 1fr 44px", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: "0.72rem", color: "var(--ink-2)", fontFamily: "var(--font-mono)" }}>{b.label}</span>
-                    <div style={{ height: 14, background: "var(--surface)", borderRadius: 4, overflow: "hidden" }}>
-                      <div style={{ width: `${(b.count / maxB) * 100}%`, height: "100%", background: "var(--green)", borderRadius: 4, minWidth: b.count ? 3 : 0 }} />
+                  <div key={b.label} className="chart-row">
+                    <span className="chart-row-label" style={{ fontVariantNumeric: "tabular-nums" }}>{b.label}</span>
+                    <div className="chart-row-track">
+                      <div className="chart-row-fill" style={{ width: `${(b.count / maxB) * 100}%`, background: "var(--green)", minWidth: b.count ? 3 : 0 }} />
                     </div>
-                    <div style={{ fontSize: "0.72rem", fontFamily: "var(--font-mono)", color: "var(--ink-3)", textAlign: "right" }}>{b.count}</div>
+                    <div className="chart-row-value">{b.count}</div>
                   </div>
                 );
               })}

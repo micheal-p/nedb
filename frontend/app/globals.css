@@ -761,6 +761,48 @@ input, select, textarea { font-family: inherit; }
   line-height: 1.5;
 }
 .chart-panel-body { padding: 1.25rem; }
+/* Rows of labelled bars inside a chart panel (tier bars, source bars, income
+   bands). These used to be written inline with `padding: .75rem 0`, so they ran
+   flush to both panel edges while the heading above them sat 1.25rem in, and the
+   count column was clipped by the border. Same inset as the head, always. */
+.chart-rows {
+  padding: 0.9rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chart-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 150px) minmax(0, 1fr) minmax(34px, auto);
+  align-items: center;
+  gap: 10px;
+}
+.chart-row-label {
+  font-size: var(--t-xs);
+  color: var(--ink-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chart-row-track {
+  height: 14px;
+  background: var(--surface);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.chart-row-fill { height: 100%; border-radius: 4px; }
+.chart-row-value {
+  font-size: var(--t-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  text-align: right;
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .chart-rows { padding: 0.8rem 0.9rem; }
+  .chart-row  { grid-template-columns: minmax(76px, 1fr) minmax(0, 1.4fr) minmax(28px, auto); gap: 8px; }
+}
 .chart-source {
   font-size: var(--t-2xs);
   color: var(--ink-4);

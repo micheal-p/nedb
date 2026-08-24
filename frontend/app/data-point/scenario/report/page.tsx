@@ -174,7 +174,7 @@ function ReportBody() {
           <div className="cover-republic">FEDERAL REPUBLIC OF NIGERIA</div>
           <div className="cover-org">ENERGY COMMISSION OF NIGERIA</div>
           <div className="cover-title">National Energy<br />Planning Report</div>
-          <div className="cover-edition">{presetLabel} · to {horizon}</div>
+          <div className="cover-edition">{effectiveScenario.name && effectiveScenario.name !== "Untitled scenario" ? effectiveScenario.name : presetLabel} · to {horizon}</div>
           <div className="cover-rule" />
           <div className="cover-meta">
             {author ? <>Prepared by {author}<br /></> : null}
@@ -189,8 +189,9 @@ function ReportBody() {
         <div className="no-print" style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", padding: "1.5rem 1.75rem", marginBottom: "1.25rem" }}>
           <div className="eyebrow">NECAL2050 planning report · {reference}</div>
           <h1 style={{ fontSize: "var(--t-2xl)", fontWeight: 700, color: "var(--ink)", lineHeight: 1.2, letterSpacing: "-0.015em", marginBottom: "0.4rem" }}>
-            {presetLabel}, to {horizon}
+            {effectiveScenario.name && effectiveScenario.name !== "Untitled scenario" ? effectiveScenario.name : presetLabel}, to {horizon}
           </h1>
+          <div style={{ fontSize: "var(--t-sm)", color: "var(--ink-4)", marginBottom: "0.5rem" }}>Based on the {presetLabel} pathway</div>
           <p style={{ fontSize: "var(--t-md)", color: "var(--ink-3)", lineHeight: 1.7, maxWidth: "var(--measure)" }}>{presetDescription}</p>
         </div>
 

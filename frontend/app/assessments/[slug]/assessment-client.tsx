@@ -137,7 +137,8 @@ export default function PublicAssessmentPage() {
           /* ── Below the privacy floor: progress, not empty panels ─────────── */
           <div style={{ background: "#fff", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", borderRadius: "var(--r-lg)", padding: "2.5rem 2rem", textAlign: "center", boxShadow: "0 1px 3px rgba(16,24,16,0.05)" }}>
             <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.11em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.75rem" }}>Data collection in progress</div>
-            <div style={{ fontSize: "2.2rem", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--ink)", lineHeight: 1 }}>
+            {/* lineHeight 1 on a 2.2rem face cropped the digits top and bottom. */}
+            <div style={{ fontSize: "2.2rem", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--ink)", lineHeight: 1.15 }}>
               {data.total_responses}<span style={{ color: "var(--ink-5)", fontSize: "1.2rem" }}> / {needed}</span>
             </div>
             <div style={{ fontSize: "0.8rem", color: "var(--ink-4)", marginTop: "0.5rem" }}>verified responses collected</div>
@@ -145,7 +146,7 @@ export default function PublicAssessmentPage() {
               <div style={{ width: `${Math.min(100, (data.total_responses / needed) * 100)}%`, height: "100%", background: "var(--green)", borderRadius: 4 }} />
             </div>
             <p style={{ fontSize: "0.78rem", color: "var(--ink-4)", maxWidth: 460, margin: "1.25rem auto 0", lineHeight: 1.65 }}>
-              Statistics publish automatically once <strong>{needed} verified responses</strong> are collected.
+              Statistics publish automatically once <strong>{needed} verified responses</strong>{" "}are collected.
               This privacy floor (NDPA 2023) prevents any individual&apos;s income or living situation from being
               identifiable in the open data. Full detail is already live for NEDB analysts on the internal dashboard.
             </p>
@@ -180,17 +181,17 @@ export default function PublicAssessmentPage() {
                   <div className="chart-panel-sub">A = energy secure · E = energy critical — from daily supply hours and the share of income spent on energy</div>
                 </div>
               </div>
-              <div style={{ padding: "0.75rem 0", display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="chart-rows">
                 {(data.tier_distribution ?? []).map(({ tier, count }) => (
-                  <div key={tier} style={{ display: "grid", gridTemplateColumns: "minmax(110px, 170px) minmax(0, 1fr) 40px", alignItems: "center", gap: 10 }}>
+                  <div key={tier} className="chart-row">
                     <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
                       <span style={{ width: 11, height: 11, borderRadius: 3, background: TIERS[tier].color, flexShrink: 0, border: "1px solid rgba(0,0,0,0.08)" }} />
-                      <span style={{ fontSize: "0.72rem", color: "var(--ink-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}><strong>{tier}</strong> · {TIERS[tier].label}</span>
+                      <span className="chart-row-label"><strong>{tier}</strong> · {TIERS[tier].label}</span>
                     </div>
-                    <div style={{ height: 14, background: "var(--surface)", borderRadius: 4, overflow: "hidden" }}>
-                      <div style={{ width: `${(count / maxTier) * 100}%`, height: "100%", background: TIERS[tier].color, borderRadius: 4, minWidth: count ? 3 : 0 }} />
+                    <div className="chart-row-track">
+                      <div className="chart-row-fill" style={{ width: `${(count / maxTier) * 100}%`, background: TIERS[tier].color, minWidth: count ? 3 : 0 }} />
                     </div>
-                    <div style={{ fontSize: "0.72rem", fontFamily: "var(--font-mono)", color: "var(--ink-3)", textAlign: "right" }}>{count}</div>
+                    <div className="chart-row-value">{count}</div>
                   </div>
                 ))}
               </div>

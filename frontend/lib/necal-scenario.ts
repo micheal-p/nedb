@@ -25,6 +25,8 @@ import {
 export type Scenario = {
   /** Schema version, so an old link is refused rather than misread. */
   v: 1;
+  /** What the planner called this run. Carried onto the report cover. */
+  name: string;
   presetId: string;
   drivers: PlanningDrivers;
   mix: MixTargets;
@@ -36,6 +38,7 @@ export type Scenario = {
 
 export const DEFAULT_SCENARIO: Scenario = {
   v: 1,
+  name: "Untitled scenario",
   presetId: "access",
   drivers: DEFAULT_DRIVERS,
   mix: DEFAULT_MIX,
@@ -137,6 +140,7 @@ export function decodeScenario(encoded: string | null | undefined): Scenario | n
     if (parsed?.v !== 1 || !parsed.drivers || !parsed.mix) return null;
     return {
       v: 1,
+      name: String(parsed.name ?? "Untitled scenario").slice(0, 120),
       presetId: String(parsed.presetId ?? "custom"),
       drivers: { ...DEFAULT_DRIVERS, ...parsed.drivers },
       mix: { ...DEFAULT_MIX, ...parsed.mix },

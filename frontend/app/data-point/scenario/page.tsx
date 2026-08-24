@@ -54,13 +54,27 @@ function definedGoals(goals: Record<string, number | undefined>): Record<string,
 
 type Tab = "data" | "drivers" | "policy" | "goals" | "results" | "climate";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "data", label: "Data" },
-  { id: "drivers", label: "Drivers" },
-  { id: "policy", label: "Policy" },
-  { id: "goals", label: "Goals" },
-  { id: "results", label: "Results" },
-  { id: "climate", label: "Climate" },
+// Task language, and the plan comes FIRST.
+//
+// The old order opened on a table of model inputs with the charts sitting on
+// tab five, so the reasonable conclusion on landing was that this tool has no
+// charts. The plan is the point of the instrument, so it is what you land on;
+// the numbered steps are the things you change to move it.
+const TABS: { id: Tab; label: string; hint: string }[] = [
+  { id: "results", label: "The plan",       hint: "What this scenario requires: demand, build, cost, emissions" },
+  { id: "data",    label: "1 · Starting point", hint: "What NEDB can anchor, and what has to be assumed" },
+  { id: "drivers", label: "2 · Drivers",    hint: "Population, growth, efficiency, access, losses, the mix" },
+  { id: "policy",  label: "3 · Policy",     hint: "Instruments to switch on, each through a stated mechanism" },
+  { id: "goals",   label: "4 · Targets",    hint: "Set a target and see the gap to it" },
+  { id: "climate", label: "Commitments",    hint: "The plan measured against Nigeria's stated commitments" },
+];
+
+/** The four things a planner does, shown on first arrival. */
+const STEPS: { tab: Tab; title: string; body: string }[] = [
+  { tab: "data",    title: "See what is real", body: "Every input the model wants, marked measured, derived or assumed. Nothing here is invented." },
+  { tab: "drivers", title: "Set the future",   body: "Population, growth, efficiency, access, network losses and the capacity mix you are aiming at." },
+  { tab: "policy",  title: "Switch on policy", body: "Eight instruments. Each reaches the model through a stated mechanism, so you can see why the result moved." },
+  { tab: "goals",   title: "Test it",          body: "Set targets, read the gap, then check the plan against Nigeria's commitments." },
 ];
 
 const fmt = (v: number, d = 0) => v.toLocaleString("en-NG", { maximumFractionDigits: d });
@@ -82,7 +96,10 @@ function Slider({ label, hint, value, min, max, step, unit, onChange }: {
 }
 
 function NecalWorkspace() {
-  const [tab, setTab] = useState<Tab>("data");
+  const [tab, setTab] = useState<Tab>("results");
+  const [name, setName] = useState("Untitled scenario");
+  /** Cleared once the planner changes anything, so the guidance stops nagging. */
+  const [touched, setTouched] = useState(false);
   const [drivers, setDrivers] = useState<PlanningDrivers>(DEFAULT_DRIVERS);
   const [mix, setMix] = useState<MixTargets>(DEFAULT_MIX);
   const [policy, setPolicy] = useState<PolicyMix>({});
@@ -153,15 +170,31 @@ function NecalWorkspace() {
     const p = PRESETS.find((x) => x.id === id);
     if (!p) return;
     setPreset(id);
+    setTouched(true);
     setDrivers((d) => ({ ...DEFAULT_DRIVERS, baseYear: d.baseYear, horizon: d.horizon, tdLossPct: d.tdLossPct, ...p.drivers }));
     setMix(p.mix);
+    // Only rename while the planner has not named it themselves.
+    setName((n) => (n === "Untitled scenario" || PRESETS.some((x) => x.label === n) ? p.label : n));
+  }
+
+  /** Back to a clean sheet, keeping the anchor the data bank gave us. */
+  function newScenario() {
+    setName("Untitled scenario");
+    setPreset("access");
+    setDrivers((d) => ({ ...DEFAULT_DRIVERS, baseYear: d.baseYear, tdLossPct: d.tdLossPct }));
+    setMix(DEFAULT_MIX);
+    setPolicy({});
+    setEcon(DEFAULT_ECONOMICS);
+    setGoals({ clean_share: 60, access: 100, losses: 8 });
+    setTouched(false);
+    setTab("results");
   }
 
   // The whole run, in one place. The printable report derives from exactly this,
   // so the paper version can never carry different numbers from the screen.
   const scenario: Scenario = useMemo(
-    () => ({ v: 1, presetId: preset, drivers, mix, policy, econ, goals: definedGoals(goals) }),
-    [preset, drivers, mix, policy, econ, goals]
+    () => ({ v: 1, name, presetId: preset, drivers, mix, policy, econ, goals: definedGoals(goals) }),
+    [name, preset, drivers, mix, policy, econ, goals]
   );
 
   const { applied, plan, counterfactual, econResult, commitments, shownMix } =
@@ -209,8 +242,45 @@ function NecalWorkspace() {
             </p>
           </div>
           <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+            <button onClick={newScenario} className="btn btn-secondary btn-sm">New scenario</button>
             <Link href={reportHref} className="btn btn-primary btn-sm">Generate report</Link>
             <Link href="/data-point/dashboard" style={{ fontSize: "var(--t-sm)", color: "var(--ink-4)" }}>← Dashboard</Link>
+          </div>
+        </div>
+
+        {/* ── The scenario itself ────────────────────────────────────────────
+            A scenario used to be an implicit thing that existed only as slider
+            positions, so there was nothing to create, name or hand to anyone.
+            It is now an object on the page: it has a name, a starting pathway,
+            and a visible count of what you have changed. */}
+        <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", padding: "0.9rem 1.15rem", marginBottom: "1.15rem" }}>
+          <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+            <label style={{ flex: "1 1 260px", minWidth: 220 }}>
+              <span className="eyebrow" style={{ display: "block", marginBottom: 4 }}>Scenario name</span>
+              <input className="form-input" value={name} maxLength={120}
+                onChange={(e) => { setName(e.target.value); setTouched(true); }}
+                placeholder="e.g. Universal access by 2040, gas-led" />
+            </label>
+            <div style={{ flex: "2 1 420px", minWidth: 280 }}>
+              <span className="eyebrow" style={{ display: "block", marginBottom: 4 }}>Start from a pathway, then change anything</span>
+              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                {PRESETS.map((p) => (
+                  <button key={p.id} onClick={() => applyPreset(p.id)} title={p.description}
+                    style={{
+                      cursor: "pointer", padding: "0.4rem 0.7rem", fontSize: "var(--t-sm)", fontWeight: 600,
+                      background: preset === p.id ? "var(--green-tint)" : "var(--surface-white)",
+                      color: preset === p.id ? "var(--green-deep)" : "var(--ink-3)",
+                      border: `1px solid ${preset === p.id ? "var(--green)" : "var(--border)"}`,
+                    }}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-4)", lineHeight: 1.6, flex: "0 1 200px", minWidth: 160 }}>
+              To {drivers.horizon} · {activeCount} {activeCount === 1 ? "instrument" : "instruments"} on
+              {inputSummary?.anchored ? <> · anchored on {baseYear}</> : null}
+            </div>
           </div>
         </div>
 
@@ -262,22 +332,28 @@ function NecalWorkspace() {
           );
         })()}
 
-        <div style={{ display: "flex", gap: 2, marginBottom: "1.15rem", flexWrap: "wrap", borderBottom: "1px solid var(--border)" }}>
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              style={{
-                padding: "0.55rem 0.9rem", background: "none", border: "none",
-                borderBottom: `2px solid ${tab === t.id ? "var(--green)" : "transparent"}`,
-                color: tab === t.id ? "var(--ink)" : "var(--ink-4)",
-                fontWeight: tab === t.id ? 700 : 500, fontSize: "var(--t-base)", cursor: "pointer",
-              }}>
-              {t.label}
-              {t.id === "policy" && activeCount > 0 && (
-                <span style={{ marginLeft: 6, fontSize: "var(--t-2xs)", fontWeight: 700, background: "var(--green)", color: "#fff", padding: "1px 6px" }}>{activeCount}</span>
-              )}
-            </button>
-          ))}
+        <div className="scroll-x" style={{ borderBottom: "1px solid var(--border)", marginBottom: "0.5rem" }}>
+          <div style={{ display: "flex", gap: 2, minWidth: "max-content" }}>
+            {TABS.map((t) => (
+              <button key={t.id} onClick={() => { setTab(t.id); if (t.id !== "results") setTouched(true); }} title={t.hint}
+                style={{
+                  padding: "0.55rem 0.9rem", background: "none", border: "none", whiteSpace: "nowrap",
+                  borderBottom: `2px solid ${tab === t.id ? "var(--green)" : "transparent"}`,
+                  color: tab === t.id ? "var(--ink)" : "var(--ink-4)",
+                  fontWeight: tab === t.id ? 700 : 500, fontSize: "var(--t-base)", cursor: "pointer",
+                }}>
+                {t.label}
+                {t.id === "policy" && activeCount > 0 && (
+                  <span style={{ marginLeft: 6, fontSize: "var(--t-2xs)", fontWeight: 700, background: "var(--green)", color: "#fff", padding: "1px 6px" }}>{activeCount}</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
+        {/* Says what the tab you are on is for, so the vocabulary is never the barrier. */}
+        <p style={{ fontSize: "var(--t-sm)", color: "var(--ink-4)", margin: "0 0 1.15rem", lineHeight: 1.6 }}>
+          {TABS.find((t) => t.id === tab)?.hint}
+        </p>
 
         {/* Headline figures — on every tab, because they are the point */}
         <div className="grid-auto grid-hair" style={{ marginBottom: "1.25rem" }}>
@@ -295,6 +371,61 @@ function NecalWorkspace() {
             </div>
           ))}
         </div>
+
+        {/* A chart on EVERY tab. The instrument is a picture of a trajectory, and
+            burying every picture behind one tab made it read as a form. This one
+            moves as you drag a slider, which is the whole point of the tool. */}
+        <figure className="chart-panel" style={{ margin: "0 0 1.25rem" }}>
+          <div className="chart-panel-head">
+            <figcaption>
+              <div className="chart-panel-title">Electricity demand to {drivers.horizon}</div>
+              <div className="chart-panel-sub">GWh a year · this scenario against the current trajectory</div>
+            </figcaption>
+            <div className="viz-legend" style={{ padding: 0, border: 0 }}>
+              <span className="viz-legend-item"><span className="viz-swatch" style={{ background: SERIES_COLORS[0] }} />This scenario</span>
+              <span className="viz-legend-item"><span className="viz-swatch" style={{ background: SERIES_COLORS[2] }} />Current trajectory</span>
+            </div>
+          </div>
+          <div className="chart-panel-body">
+            <ResponsiveContainer width="100%" height={190}>
+              <AreaChart data={chartData} margin={{ top: 6, right: 18, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="necalDemand" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={SERIES_COLORS[0]} stopOpacity={0.28} />
+                    <stop offset="100%" stopColor={SERIES_COLORS[0]} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                {axes}
+                <Tooltip content={<VizTooltip unit="GWh" />} cursor={{ stroke: AXIS.grid }} />
+                <Area type="monotone" dataKey="demand" name="This scenario" stroke={SERIES_COLORS[0]} strokeWidth={2} fill="url(#necalDemand)" />
+                <Line type="monotone" dataKey="baseline" name="Current trajectory" stroke={SERIES_COLORS[2]} strokeWidth={1.6} strokeDasharray="5 4" dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="chart-source">
+            Move any driver or switch on a policy instrument and this line moves with it. The dashed line is the same model
+            run on the current-trajectory pathway, so the gap between them is what your scenario changes.
+          </div>
+        </figure>
+
+        {/* First arrival: say what the four steps are, and jump straight to them. */}
+        {!touched && (
+          <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", padding: "1rem 1.15rem", marginBottom: "1.25rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "1rem", flexWrap: "wrap", marginBottom: "0.7rem" }}>
+              <div className="eyebrow">How to build a scenario</div>
+              <button onClick={() => setTouched(true)} style={{ fontSize: "var(--t-xs)", color: "var(--ink-4)", background: "none", border: "none", cursor: "pointer" }}>Hide</button>
+            </div>
+            <div className="grid-auto" style={{ gap: "0.7rem" }}>
+              {STEPS.map((s, i) => (
+                <button key={s.tab} onClick={() => { setTab(s.tab); setTouched(true); }}
+                  style={{ textAlign: "left", cursor: "pointer", padding: "0.7rem 0.85rem", background: "var(--surface-muted)", border: "1px solid var(--border-soft)" }}>
+                  <div style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--ink)", marginBottom: 3 }}>{i + 1} · {s.title}</div>
+                  <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-4)", lineHeight: 1.55 }}>{s.body}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {plan.warnings.length > 0 && (
           <div style={{ background: "var(--amber-tint)", border: "1px solid var(--amber)", padding: "0.75rem 1.05rem", marginBottom: "1.15rem" }}>
@@ -352,20 +483,8 @@ function NecalWorkspace() {
         {/* ── DRIVERS ── */}
         {tab === "drivers" && (
           <>
-            <div className="grid-auto" style={{ gap: "0.7rem", marginBottom: "1.15rem" }}>
-              {PRESETS.map((p) => (
-                <button key={p.id} onClick={() => applyPreset(p.id)}
-                  style={{
-                    textAlign: "left", cursor: "pointer", padding: "0.85rem 1rem",
-                    background: preset === p.id ? "var(--green-tint)" : "var(--surface-white)",
-                    border: `1px solid ${preset === p.id ? "var(--green)" : "var(--border)"}`,
-                  }}>
-                  <div style={{ fontSize: "var(--t-base)", fontWeight: 700, color: preset === p.id ? "var(--green-deep)" : "var(--ink)", marginBottom: 3 }}>{p.label}</div>
-                  <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-4)", lineHeight: 1.5 }}>{p.description}</div>
-                </button>
-              ))}
-            </div>
-
+            {/* The starting pathway lives in the scenario bar at the top of the
+                page now, so it is chosen once rather than repeated here. */}
             <div className="grid-3" style={{ gap: "1rem", alignItems: "start" }}>
               <div className="panel">
                 <div className="panel-header"><span className="panel-title">Demand drivers</span></div>
