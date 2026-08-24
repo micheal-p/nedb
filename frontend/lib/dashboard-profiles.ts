@@ -37,6 +37,11 @@ export interface ProfileDef {
   kpis: KPIDef[];
   /** Optional: shown on the profile header as the legal basis for the mandate. */
   basis?: string;
+  /**
+   * Sections that are not sector-derived but belong to this entity's function:
+   * "compliance" for revenue and upstream regulators, "deals" for investors.
+   */
+  extraViews?: string[];
 }
 
 // ── Series → sector map ─────────────────────────────────────────────────────
@@ -100,14 +105,21 @@ export const VIEW_SECTORS: Record<string, Sector[]> = {
   bioenergy:  ["biomass"],
   revenue:    ["fiscal"],
   faac:       ["fiscal"],
+  // Function-specific sections, granted through extraViews rather than sector.
+  compliance: [],
+  deals:      [],
 };
 
+/** Sections granted only by an explicit extraViews entry, never by sector. */
+const FUNCTION_VIEWS = new Set(["compliance", "deals"]);
+
 /** Sections in their canonical running order. Profiles get a filtered slice. */
-const VIEW_ORDER = ["overview", "brief", "upstream", "midstream", "downstream", "power", "renewable", "bioenergy", "revenue", "faac"];
+const VIEW_ORDER = ["overview", "brief", "upstream", "midstream", "downstream", "power", "renewable", "bioenergy", "revenue", "faac", "compliance", "deals"];
 
 /** Sections this profile may see, in canonical order. */
 export function allowedViews(profile: ProfileDef): string[] {
   return VIEW_ORDER.filter((v) => {
+    if (FUNCTION_VIEWS.has(v)) return profile.extraViews?.includes(v) ?? false;
     const need = VIEW_SECTORS[v] ?? [];
     if (need.length === 0) return true;
     return need.some((s) => profile.mandate.includes(s));
@@ -218,6 +230,7 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     basis: "PIA 2021 — upstream petroleum operations and royalties",
     mandate: ["petroleum", "gas", "fiscal"],
     defaultView: "upstream",
+    extraViews: ["compliance"],
     kpis: [
       { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
       { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
@@ -304,6 +317,7 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     basis: "NRS (Establishment) Act 2025 — energy sector tax administration",
     mandate: ["fiscal", "petroleum", "gas"],
     defaultView: "revenue",
+    extraViews: ["compliance"],
     kpis: [
       { label: "Hydrocarbon Tax",    series: "hydrocarbon_tax",      unit: "₦ Billion" },
       { label: "CIT — Energy",       series: "cit_energy",           unit: "₦ Billion" },
@@ -376,6 +390,7 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     basis: "Energy fiscal analysis",
     mandate: ["fiscal", "petroleum", "gas"],
     defaultView: "revenue",
+    extraViews: ["compliance"],
     kpis: [
       { label: "FAAC Oil Revenue",   series: "faac_oil_revenue",     unit: "₦ Billion" },
       { label: "Upstream Royalties", series: "upstream_royalties",   unit: "₦ Billion" },
@@ -392,6 +407,7 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     basis: "Investor access — upstream, gas and fiscal",
     mandate: ["petroleum", "gas", "fiscal"],
     defaultView: "upstream",
+    extraViews: ["deals"],
     kpis: [
       { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
       { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
@@ -406,6 +422,7 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     basis: "Investor access — fiscal, petroleum and power",
     mandate: ["fiscal", "petroleum", "gas", "electricity"],
     defaultView: "revenue",
+    extraViews: ["deals"],
     kpis: [
       { label: "FAAC Oil Revenue",      series: "faac_oil_revenue",       unit: "₦ Billion" },
       { label: "Upstream Royalties",    series: "upstream_royalties",     unit: "₦ Billion" },
@@ -420,6 +437,7 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     basis: "Investor access — electricity and renewables",
     mandate: ["electricity", "renewable"],
     defaultView: "power",
+    extraViews: ["deals"],
     kpis: [
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
       { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
@@ -434,6 +452,7 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     basis: "Investor access — renewables, power and biomass",
     mandate: ["renewable", "electricity", "biomass"],
     defaultView: "renewable",
+    extraViews: ["deals"],
     kpis: [
       { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },

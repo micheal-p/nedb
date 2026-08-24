@@ -16,6 +16,8 @@ const PenaPanel   = dynamic(() => import("@/components/datapoint/panels/PenaPane
 const ApexAI      = dynamic(() => import("@/components/datapoint/ApexAI"),      { ssr: false });
 const DashboardWidget = dynamic(() => import("@/components/datapoint/DashboardWidget"), { ssr: false });
 const FiscalVarianceTable = dynamic(() => import("@/components/datapoint/FiscalVarianceTable"), { ssr: false });
+const NrsCompliance = dynamic(() => import("@/components/datapoint/NrsCompliance"), { ssr: false });
+const DealPipeline  = dynamic(() => import("@/components/datapoint/DealPipeline"),  { ssr: false });
 
 // ── Real data types ────────────────────────────────────────────
 type SeriesRow = { period: string; value: number; unit?: string };
@@ -127,6 +129,8 @@ const NAV_ITEMS: Record<string, { label: string; section: string }> = {
   bioenergy:  { label: "Bioenergy & Biomass",   section: "Energy Sectors" },
   revenue:    { label: "Revenue Portal",        section: "Fiscal Analysis" },
   faac:       { label: "FAAC Contribution",     section: "Fiscal Analysis" },
+  compliance: { label: "Compliance & Reconciliation", section: "Fiscal Analysis" },
+  deals:      { label: "Opportunity Screen",    section: "Investment" },
 };
 
 
@@ -584,6 +588,22 @@ export default function Dashboard() {
                 agencies={["RMAFC", "DMO", "CBN"]}
                 series={["Total FAAC pool", "Federal budget oil projection", "Benchmark crude price", "Excess Crude Account movements"]}
               />
+            </div>
+          )}
+
+          {/* ── COMPLIANCE (revenue and upstream regulators) ── */}
+          {view === "compliance" && inScope("compliance") && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
+              <NrsCompliance year={selectedYear} />
+            </div>
+          )}
+
+          {/* ── DEALS (investor profiles) ── */}
+          {view === "deals" && inScope("deals") && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
+              <DealPipeline dashData={scopedData} stateMap={stateMap} year={selectedYear} />
             </div>
           )}
 
