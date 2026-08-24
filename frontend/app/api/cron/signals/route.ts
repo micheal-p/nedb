@@ -23,12 +23,18 @@ export async function GET(req: NextRequest) {
     db().from("series_types").select("id, name, unit_default, signal_rules").not("signal_rules", "is", null),
     db().from("energy_records")
       .select("series_type_id, period_date, value, region")
-      .order("period_date", { ascending: true })
+      // Newest first so the cap keeps recent data, then reversed below —
+      // reading ascending meant signals were computed from the oldest rows
+      // once the table passed 3000 records.
+      .order("period_date", { ascending: false })
       .limit(3000),
-    db().from("staff_users").select("email, full_name").eq("role", "admin").eq("is_active", true),
+    // Superadmins are administrators too; an exact role match silently
+    // excluded them from every alert.
+    db().from("staff_users").select("email, full_name").in("role", ["admin", "superadmin"]).eq("is_active", true),
   ]);
 
-  const national = (rows ?? []).filter((r) => !r.region || ["NGA", "", "national"].includes(r.region));
+  const national = (rows ?? []).slice().reverse()
+    .filter((r) => !r.region || ["NGA", "", "national"].includes(r.region));
   const bySeries = new Map<string, { value: number | null }[]>();
   for (const r of national) {
     if (!bySeries.has(r.series_type_id)) bySeries.set(r.series_type_id, []);

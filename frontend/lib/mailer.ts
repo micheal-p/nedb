@@ -85,8 +85,12 @@ export async function sendSystemEmail(opts: {
   subject: string;
   heading: string;
   bodyHtml: string;   // trusted internal HTML (tables, paragraphs)
-}) {
-  const r = client(); if (!r) return;
+}): Promise<boolean> {
+  // Returns whether the message was actually handed to the provider. Callers
+  // that report delivery counts need the truth; this used to swallow failures
+  // and return nothing, so a broadcast could claim success while delivering
+  // to no one.
+  const r = client(); if (!r) return false;
   try {
     await r.emails.send({
       from: FROM,
@@ -104,5 +108,9 @@ export async function sendSystemEmail(opts: {
           </div>
         </div>`,
     });
-  } catch { /* email must never break a cron */ }
+    return true;
+  } catch {
+    // A send failure must never break a cron, but it must be visible.
+    return false;
+  }
 }

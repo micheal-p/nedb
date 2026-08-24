@@ -9,7 +9,7 @@ import NetworkGraph, { type NetworkGraphHandle } from "@/components/charts/Netwo
 
 const ApexAI = dynamic(() => import("@/components/datapoint/ApexAI"), { ssr: false });
 import {
-  NODE_STYLE, EDGE_LABEL, traceDownstream, degreeCentrality,
+  NODE_STYLE, EDGE_LABEL, EDGE_COLOR, traceDownstream, degreeCentrality,
   type GraphData, type GraphNode, type NodeType, type Centrality,
 } from "@/lib/graph-model";
 import { exportGraphXlsx } from "@/lib/graph-excel";
@@ -36,10 +36,13 @@ export default function KnowledgeGraphPage() {
     fetch("/api/graph")
       .then((r) => r.json())
       .then((res: GraphResponse) => {
+        // An error payload has no nodes array; treating it as data used to set
+        // a truthy value and then crash the canvas iterating undefined edges.
+        if (!Array.isArray(res?.nodes) || !Array.isArray(res?.edges)) { setData(null); return; }
         setData({ nodes: res.nodes, edges: res.edges });
         setAnalytics(res.analytics);
       })
-      .catch(() => {})
+      .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, []);
 
@@ -55,6 +58,19 @@ export default function KnowledgeGraphPage() {
       edges: data.edges.filter((e) => keep.has(e.source) && keep.has(e.target)),
     };
   }, [data, hiddenTypes]);
+
+  const visibleCount = filteredData?.nodes.length ?? data?.nodes.length ?? 0;
+
+  // Relationship key built from the edge types actually present, deduplicated
+  // by label so "fuels" and "supplies" no longer print twice.
+  const EDGE_KEY = useMemo(() => {
+    const seen = new Map<string, { label: string; color: string }>();
+    for (const e of filteredData?.edges ?? []) {
+      const label = EDGE_LABEL[e.type] ?? e.type;
+      if (!seen.has(label)) seen.set(label, { label, color: EDGE_COLOR[e.type] ?? "rgba(0,0,0,0.2)" });
+    }
+    return [...seen.values()];
+  }, [filteredData]);
 
   const typeCounts = useMemo(() => {
     const c = new Map<NodeType, number>();
@@ -99,10 +115,14 @@ export default function KnowledgeGraphPage() {
     return undefined;
   }, [mode, analytics, trace, selected]);
 
+  // Selecting a node shows its dossier. It does NOT hijack the view into
+  // trace mode — previously there was no way to simply read a node, and a node
+  // with no downstream edges rendered a near-empty panel.
   function handleNodeClick(node: GraphNode) {
     setSelected(node);
-    setMode("trace");
+    if (mode === "spof") setMode("explore");
   }
+  function traceFrom(node: GraphNode) { setSelected(node); setMode("trace"); }
   function reset() { setMode("explore"); setSelected(null); }
   function showSpof() { setMode("spof"); setSelected(null); }
 
@@ -177,7 +197,7 @@ export default function KnowledgeGraphPage() {
             <p style={{ fontSize: "0.82rem", color: "var(--ink-4)", marginTop: "0.4rem", lineHeight: 1.6 }}>
               Nigeria&apos;s energy system as a connected network — fuels, power plants, the transmission grid,
               distribution companies, states and the policies that govern them. Built in-house on NEDB&apos;s
-              own database. Click any node to trace what it powers downstream.
+              own database. Select any node to read its dossier, then trace what it powers downstream.
             </p>
           </div>
           <div className="no-print" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -195,7 +215,7 @@ export default function KnowledgeGraphPage() {
           {loading ? (
             <div style={{ padding: "5rem", textAlign: "center", color: "var(--ink-5)" }}>Loading knowledge graph…</div>
           ) : !data ? (
-            <div style={{ padding: "5rem", textAlign: "center", color: "var(--ink-5)" }}>Graph unavailable. Run migration 016 to seed the graph.</div>
+            <div style={{ padding: "5rem", textAlign: "center", color: "var(--ink-5)" }}>The knowledge graph could not be loaded. Refresh to try again; if it persists the graph tables may not be seeded.</div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "1.25rem", alignItems: "start" }} className="graph-layout">
               {/* ── LEFT: toolbar + canvas ── */}
@@ -209,8 +229,11 @@ export default function KnowledgeGraphPage() {
                       <button onClick={reset} className="gbtn gbtn-clear">✕ Clear trace: {selected.label}</button>
                     )}
                   </div>
-                  <div style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>
-                    {mode === "spof" ? "Critical nodes highlighted" : mode === "trace" ? "Downstream trace active" : "Drag nodes · scroll to zoom · click to trace"}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <button onClick={() => graphRef.current?.fitView()} className="gbtn" title="Fit the whole network in view">Fit view</button>
+                    <span style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>
+                      {visibleCount} of {data.nodes.length} entities shown
+                    </span>
                   </div>
                 </div>
 
@@ -219,7 +242,7 @@ export default function KnowledgeGraphPage() {
                     ref={graphRef}
                     data={filteredData ?? data}
                     highlight={highlight}
-                    dimUnhighlighted={mode === "trace"}
+                    dimUnhighlighted={mode === "trace" || mode === "spof"}
                     onNodeClick={handleNodeClick}
                     height={560}
                   />
@@ -231,8 +254,14 @@ export default function KnowledgeGraphPage() {
                 )}
 
                 {/* Relationship key */}
-                <div style={{ marginTop: "0.6rem", display: "flex", gap: "0.9rem", flexWrap: "wrap", fontSize: "0.66rem", color: "var(--ink-5)" }}>
-                  {Object.entries(EDGE_LABEL).map(([k, v]) => <span key={k}>— {v}</span>)}
+                <div style={{ marginTop: "0.6rem", display: "flex", gap: "0.9rem", flexWrap: "wrap", fontSize: "0.66rem", color: "var(--ink-4)", alignItems: "center" }}>
+                  <span style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ink-5)" }}>Relationships</span>
+                  {EDGE_KEY.map((e) => (
+                    <span key={e.label} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 16, height: 2, background: e.color, flexShrink: 0 }} />
+                      {e.label}
+                    </span>
+                  ))}
                 </div>
 
                 {/* Mode explainer under the graph */}
@@ -294,13 +323,16 @@ export default function KnowledgeGraphPage() {
                   </div>
                 </div>
 
-                {/* Context panel — trace OR selected OR analytics */}
-                {mode === "trace" && selected && trace && traceBreakdown ? (
+                {/* Context panel — selected node dossier, or analytics */}
+                {selected ? (
                   <div className="gcard">
-                    <div className="gcard-title">Downstream Impact</div>
+                    <div className="gcard-title">{mode === "trace" ? "Downstream Impact" : "Entity"}</div>
                     <div style={{ padding: "0.75rem 1rem" }}>
                       <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)", marginBottom: 2 }}>{selected.label}</div>
-                      <div style={{ fontSize: "0.7rem", color: "var(--ink-5)", marginBottom: "0.6rem", textTransform: "capitalize" }}>{selected.type} · {trace.reached.length} entities affected</div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--ink-5)", marginBottom: "0.6rem" }}>
+                        {NODE_STYLE[selected.type].label}
+                        {mode === "trace" && trace ? ` · ${trace.reached.length} entities affected` : ""}
+                      </div>
                       {/* Node dossier — description + structured facts from meta */}
                       {(() => {
                         const m = (selected.meta ?? {}) as Record<string, unknown>;
@@ -329,7 +361,22 @@ export default function KnowledgeGraphPage() {
                           </>
                         );
                       })()}
-                      {Object.entries(traceBreakdown).map(([t, n]) => (
+                      {mode !== "trace" && (
+                        <button onClick={() => traceFrom(selected)} className="btn btn-primary btn-sm" style={{ width: "100%", justifyContent: "center", marginBottom: "0.6rem" }}>
+                          Trace what this powers →
+                        </button>
+                      )}
+                      {mode === "trace" && trace && trace.reached.length === 0 && (
+                        <div style={{ fontSize: "0.74rem", color: "var(--ink-4)", lineHeight: 1.6 }}>
+                          Nothing downstream — this entity is an endpoint in the network.
+                        </div>
+                      )}
+                      {mode === "trace" && trace && trace.reached.length > 0 && (
+                        <div style={{ fontSize: "0.66rem", color: "var(--ink-5)", marginBottom: "0.4rem" }}>
+                          Traced up to 6 relationship hops.
+                        </div>
+                      )}
+                      {Object.entries(traceBreakdown ?? {}).map(([t, n]) => (
                         <div key={t} style={{ display: "flex", justifyContent: "space-between", padding: "0.35rem 0", borderBottom: "1px solid var(--border)", fontSize: "0.76rem" }}>
                           <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--ink-4)" }}>
                             <span style={{ width: 8, height: 8, borderRadius: "50%", background: NODE_STYLE[t as NodeType].color }} />

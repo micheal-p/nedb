@@ -9,29 +9,13 @@
 
 import { useRef, useState, useEffect, useMemo, useImperativeHandle, forwardRef } from "react";
 import dynamic from "next/dynamic";
-import { NODE_STYLE, type GraphData, type GraphNode } from "@/lib/graph-model";
+import { NODE_STYLE, EDGE_COLOR, type GraphData, type GraphNode } from "@/lib/graph-model";
 
 // Loaded through FG2DWrapper because next/dynamic does not forward refs —
 // the instance ref travels as the plain `fgRef` prop instead.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ForceGraph2D = dynamic(() => import("./FG2DWrapper"), { ssr: false }) as any;
 
-const EDGE_COLOR: Record<string, string> = {
-  fuel_supply: "rgba(180,83,9,0.35)",
-  generates:   "rgba(14,122,60,0.35)",
-  wheels:      "rgba(192,57,43,0.40)",
-  distributes: "rgba(29,78,216,0.30)",
-  governs:     "rgba(10,10,10,0.18)",
-  regulates:   "rgba(124,58,237,0.25)",
-  supplies:    "rgba(8,145,178,0.30)",
-  produces:    "rgba(234,88,12,0.35)",
-  exports:     "rgba(15,118,110,0.35)",
-  operates:    "rgba(87,83,78,0.30)",
-  tracks:      "rgba(30,176,106,0.35)",
-  finances:    "rgba(232,184,75,0.40)",
-  displaces:   "rgba(224,79,57,0.35)",
-  located_in:  "rgba(107,33,168,0.22)",
-};
 
 export interface NetworkGraphHandle {
   capturePng: () => string | null;
@@ -137,8 +121,15 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, Props>(function NetworkGraph
             fitConnected();
           }
         }}
-        linkColor={(l: { type: string }) => EDGE_COLOR[l.type] ?? "rgba(0,0,0,0.15)"}
-        linkWidth={(l: { weight?: number }) => Math.max(0.5, Math.min(4, Math.sqrt((l.weight ?? 1)) / 12))}
+        nodeLabel={(n: GraphNode) => {
+          const m = (n.meta ?? {}) as Record<string, unknown>;
+          const bits = [NODE_STYLE[n.type]?.label ?? n.type];
+          if (m.capacity_mw) bits.push(`${Number(m.capacity_mw).toLocaleString()} MW`);
+          if (m.state) bits.push(String(m.state));
+          return `<div style="font:600 12px Inter,sans-serif;padding:2px 0">${n.label}</div><div style="font:400 11px Inter,sans-serif;opacity:.7">${bits.join(" · ")}</div>`;
+        }}
+        linkColor={(l: { type: string }) => (EDGE_COLOR as Record<string, string>)[l.type] ?? "rgba(0,0,0,0.15)"}
+        linkWidth={(l: { weight?: number }) => Math.max(0.6, Math.min(4, 0.6 + Math.log10(Math.max(1, l.weight ?? 1)) * 1.1))}
         linkDirectionalArrowLength={3.5}
         linkDirectionalArrowRelPos={1}
         onNodeClick={(n: GraphNode) => onNodeClick?.(n)}
@@ -177,8 +168,8 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, Props>(function NetworkGraph
           // with a white halo so text stays legible over edges and nearby nodes
           const label = node.label as string;
           const fontSize = 11 / globalScale;
-          if (globalScale > 1.1 || deg >= 6) {
-            ctx.font = `${fontSize}px Inter, sans-serif`;
+          if (globalScale > 0.55 || deg >= 4 || isHi) {
+            ctx.font = `${isHi ? 600 : 400} ${fontSize}px Inter, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "top";
             ctx.lineWidth = fontSize / 3.5;

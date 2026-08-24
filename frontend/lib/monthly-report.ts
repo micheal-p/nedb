@@ -58,11 +58,16 @@ async function buildReportHtml(): Promise<{ html: string; seriesCount: number } 
     db().from("series_types").select("id, name, unit_default, signal_rules"),
     db().from("energy_records")
       .select("series_type_id, period, period_date, value, region")
-      .order("period_date", { ascending: true })
+      // Newest first so the cap keeps RECENT data — reading ascending meant
+      // that once the table passed 3000 rows the report silently described the
+      // oldest records and published stale "latest" figures.
+      .order("period_date", { ascending: false })
       .limit(3000),
   ]);
 
-  const national = (rows ?? []).filter((r) => !r.region || ["NGA", "", "national"].includes(r.region));
+  // Restore chronological order for the per-series logic below.
+  const national = (rows ?? []).slice().reverse()
+    .filter((r) => !r.region || ["NGA", "", "national"].includes(r.region));
   const bySeries = new Map<string, { period: string; value: number | null }[]>();
   for (const r of national) {
     if (!bySeries.has(r.series_type_id)) bySeries.set(r.series_type_id, []);

@@ -42,6 +42,7 @@ export const ADMIN_NAV: AdminGroup[] = [
     group: "Publications",
     items: [
       { href: "/admin/bulletins", label: "Bulletin Editions", icon: "clipboard" },
+      { href: "/admin/newsroom", label: "Newsroom & Broadcast", icon: "mail" },
     ],
   },
   {

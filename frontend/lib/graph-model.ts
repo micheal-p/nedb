@@ -44,8 +44,27 @@ export const NODE_STYLE: Record<NodeType, { color: string; label: string; size: 
   platform:     { color: "#E8B84B", label: "NEIIA Product",           size: 6 },
 };
 
+/** Link colours, shared by the canvas and the on-page relationship key so the
+ *  legend actually matches what is drawn. */
+export const EDGE_COLOR: Record<EdgeType, string> = {
+  fuel_supply: "rgba(180,83,9,0.35)",
+  generates:   "rgba(14,122,60,0.35)",
+  wheels:      "rgba(192,57,43,0.40)",
+  distributes: "rgba(29,78,216,0.30)",
+  governs:     "rgba(10,10,10,0.18)",
+  regulates:   "rgba(124,58,237,0.25)",
+  supplies:    "rgba(8,145,178,0.30)",
+  produces:    "rgba(234,88,12,0.35)",
+  exports:     "rgba(15,118,110,0.35)",
+  operates:    "rgba(87,83,78,0.30)",
+  tracks:      "rgba(30,176,106,0.35)",
+  finances:    "rgba(232,184,75,0.40)",
+  displaces:   "rgba(224,79,57,0.35)",
+  located_in:  "rgba(107,33,168,0.22)",
+};
+
 export const EDGE_LABEL: Record<EdgeType, string> = {
-  fuel_supply:  "supplies",
+  fuel_supply:  "fuels",
   generates:    "generates to",
   wheels:       "wheels to",
   distributes:  "distributes to",
