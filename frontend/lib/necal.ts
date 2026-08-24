@@ -143,10 +143,21 @@ export function normaliseMix(mix: MixTargets): MixTargets {
  * baseGenerationGwh and baseCapacityMw come from committed NEDB series so the
  * plan starts from the country's real position, not a round number.
  */
+/**
+ * The starting position the plan is anchored on.
+ *
+ * Installed capacity is deliberately NOT part of this. The model derives the
+ * capacity that must exist from required generation, fleet availability and the
+ * reserve margin, so an installed-capacity figure passed in here would either be
+ * ignored or quietly contradict the derivation. Anything the caller knows about
+ * today's fleet belongs in `baseMix`, which the walk actually uses.
+ */
+export type PlanBase = { generationGwh: number; baseMix?: Partial<MixTargets> };
+
 export function runPlan(
   drivers: PlanningDrivers,
   mixTarget: MixTargets,
-  base: { generationGwh: number; capacityMw: number; baseMix?: Partial<MixTargets> }
+  base: PlanBase
 ): PlanResult {
   const warnings: string[] = [];
   const years: PlanYear[] = [];

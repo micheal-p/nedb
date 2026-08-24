@@ -109,18 +109,30 @@ export const VIEW_SECTORS: Record<string, Sector[]> = {
   // Function-specific sections, granted through extraViews rather than sector.
   compliance: [],
   deals:      [],
-  necal:      [],
 };
 
 /** Sections granted only by an explicit extraViews entry, never by sector. */
-const FUNCTION_VIEWS = new Set(["compliance", "deals", "necal"]);
+const FUNCTION_VIEWS = new Set(["compliance", "deals"]);
+
+/**
+ * Capabilities are granted through the same extraViews list but are NOT
+ * dashboard sections — they gate a separate route. Keeping them out of
+ * VIEW_ORDER is what stops them rendering as an empty nav tab.
+ */
+export const CAPABILITIES = new Set(["necal"]);
+
+/** Does this profile hold a named capability, such as the NECAL2050 model? */
+export function hasCapability(profile: ProfileDef, capability: string): boolean {
+  return profile.extraViews?.includes(capability) ?? false;
+}
 
 /** Sections in their canonical running order. Profiles get a filtered slice. */
-const VIEW_ORDER = ["overview", "brief", "upstream", "midstream", "downstream", "power", "renewable", "bioenergy", "revenue", "faac", "compliance", "deals", "necal"];
+const VIEW_ORDER = ["overview", "brief", "upstream", "midstream", "downstream", "power", "renewable", "bioenergy", "revenue", "faac", "compliance", "deals"];
 
 /** Sections this profile may see, in canonical order. */
 export function allowedViews(profile: ProfileDef): string[] {
   return VIEW_ORDER.filter((v) => {
+    if (CAPABILITIES.has(v)) return false;   // capabilities are routes, not tabs
     if (FUNCTION_VIEWS.has(v)) return profile.extraViews?.includes(v) ?? false;
     const need = VIEW_SECTORS[v] ?? [];
     if (need.length === 0) return true;
@@ -339,7 +351,10 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     basis: "Cross-sector executive view",
     mandate: ["petroleum", "gas", "electricity", "renewable", "biomass", "fiscal"],
     defaultView: "overview",
-    extraViews: ["necal"],
+    // No NECAL2050 here on purpose. "executive" is the profile every account
+    // falls back to when none was assigned, so a restricted capability granted
+    // here would be granted to everybody by accident. Planning access is held
+    // by the presidency, ECN and NEMIC profiles, which are assigned deliberately.
     kpis: [
       { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },

@@ -24,19 +24,33 @@ import NecalGate from "@/components/necal/NecalGate";
 import VizTooltip from "@/components/charts/VizTooltip";
 import { SERIES_COLORS, axisProps, fmtAxis, AXIS, STATUS } from "@/lib/viz";
 import {
-  runPlan, normaliseMix, PRESETS, TECHNOLOGIES, TECH_ASSUMPTIONS,
+  PRESETS, TECHNOLOGIES, TECH_ASSUMPTIONS,
   DEFAULT_DRIVERS, DEFAULT_MIX,
   type PlanningDrivers, type MixTargets,
 } from "@/lib/necal";
 import {
-  INSTRUMENTS, applyInstruments, SECTOR_GOALS, DEFAULT_ECONOMICS, economics,
-  assessCommitments, type PolicyMix,
+  INSTRUMENTS, SECTOR_GOALS, DEFAULT_ECONOMICS, type PolicyMix,
 } from "@/lib/necal-policy";
+import { deriveScenario, encodeScenario, type Scenario } from "@/lib/necal-scenario";
 
 type ModelInput = {
-  id: string; label: string; status: "measured" | "derived" | "missing";
+  id: string; label: string; status: "measured" | "derived" | "missing" | "unavailable";
   value: number | null; unit: string; period: string | null; series_id: string | null; note: string;
 };
+
+type InputSummary = {
+  measured: number; derived: number; missing: number; unavailable: number; total: number;
+  anchored: boolean; anchorComplete: boolean; anchorOvercounted: boolean; readFailure: boolean;
+};
+
+/** The T&D loss slider's range. A derived figure outside it is not usable as a driver. */
+const LOSS_MIN = 5;
+const LOSS_MAX = 40;
+
+/** Drop the goals that have no target, so "not set" never travels as a zero. */
+function definedGoals(goals: Record<string, number | undefined>): Record<string, number> {
+  return Object.fromEntries(Object.entries(goals).filter(([, v]) => v != null)) as Record<string, number>;
+}
 
 type Tab = "data" | "drivers" | "policy" | "goals" | "results" | "climate";
 
@@ -74,39 +88,61 @@ function NecalWorkspace() {
   const [policy, setPolicy] = useState<PolicyMix>({});
   const [econ, setEcon] = useState(DEFAULT_ECONOMICS);
   const [preset, setPreset] = useState("access");
-  const [goals, setGoals] = useState<Record<string, number>>({ clean_share: 60, access: 100, losses: 8 });
+  // A goal is either set or not set. Clearing the box must remove the target,
+  // not silently set it to zero — "aim for 0% clean generation" would read as met.
+  const [goals, setGoals] = useState<Record<string, number | undefined>>({ clean_share: 60, access: 100, losses: 8 });
+
+  const setGoal = useCallback((id: string, raw: string) => {
+    const text = raw.trim();
+    setGoals((g) => {
+      if (text === "") { const next = { ...g }; delete next[id]; return next; }
+      const n = Number(text);
+      return Number.isFinite(n) ? { ...g, [id]: n } : g;
+    });
+  }, []);
 
   const [inputs, setInputs] = useState<ModelInput[]>([]);
-  const [inputSummary, setInputSummary] = useState<{ measured: number; derived: number; missing: number; total: number; anchored: boolean } | null>(null);
-  const [base, setBase] = useState({ generationGwh: 0, capacityMw: 0 });
+  const [inputSummary, setInputSummary] = useState<InputSummary | null>(null);
+  const [base, setBase] = useState<{ generationGwh: number }>({ generationGwh: 0 });
   const [baseYear, setBaseYear] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // ── Anchor on what NEDB actually holds ────────────────────────────────────
   const loadInputs = useCallback(async () => {
+    setLoadError(null);
     try {
       const token = await getTokenFresh();
       const r = await fetch("/api/necal/inputs", {
         credentials: "include",
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
-      if (!r.ok) return;
+      if (!r.ok) {
+        const body = await r.json().catch(() => null);
+        setLoadError(body?.error ?? `The data bank did not answer (${r.status}). The plan below runs on assumptions only.`);
+        return;
+      }
       const j = await r.json();
       const list: ModelInput[] = j.inputs ?? [];
       setInputs(list);
       setInputSummary(j.summary ?? null);
 
       const gen = list.find((i) => i.id === "generation");
-      const ren = list.find((i) => i.id === "renewable_capacity");
       const loss = list.find((i) => i.id === "td_loss");
       if (gen?.value) {
-        setBase({ generationGwh: gen.value, capacityMw: ren?.value ?? 0 });
+        setBase({ generationGwh: gen.value });
         if (gen.period) { const y = Number(gen.period); setBaseYear(y); setDrivers((d) => ({ ...d, baseYear: y })); }
       }
-      // A measured loss rate beats an assumed one.
-      if (loss?.status === "derived" && loss.value != null) {
-        setDrivers((d) => ({ ...d, tdLossPct: Math.round(loss.value as number) }));
+      // A measured loss rate beats an assumed one, but only inside the range the
+      // driver accepts. A figure outside it would sit off the end of the slider,
+      // where the user can see the number but cannot move it back.
+      if (loss?.status === "derived" && loss.value != null && Number.isFinite(loss.value)) {
+        const clamped = Math.min(LOSS_MAX, Math.max(LOSS_MIN, Math.round(loss.value)));
+        setDrivers((d) => ({ ...d, tdLossPct: clamped }));
       }
+    } catch {
+      // A failed read is not an empty data bank. Say which one happened.
+      setLoadError("The model inputs could not be loaded. This is a connection problem, not a statement that NEDB holds nothing.");
     } finally {
       setLoading(false);
     }
@@ -121,52 +157,33 @@ function NecalWorkspace() {
     setMix(p.mix);
   }
 
-  const normMix = normaliseMix(mix);
-  const cleanTargetPct = normMix.hydro + normMix.solar + normMix.wind;
-  const applied = useMemo(() => applyInstruments(drivers, policy, cleanTargetPct), [drivers, policy, cleanTargetPct]);
+  // The whole run, in one place. The printable report derives from exactly this,
+  // so the paper version can never carry different numbers from the screen.
+  const scenario: Scenario = useMemo(
+    () => ({ v: 1, presetId: preset, drivers, mix, policy, econ, goals: definedGoals(goals) }),
+    [preset, drivers, mix, policy, econ, goals]
+  );
 
-  // A clean-share boost moves capacity out of the emitting slots proportionally
-  // rather than appearing from nowhere.
-  const effectiveMix = useMemo(() => {
-    if (applied.cleanBoost <= 0) return mix;
-    const emitting = normMix.gas + normMix.oil + normMix.other;
-    if (emitting <= 0) return mix;
-    const take = Math.min(applied.cleanBoost, emitting * 0.9);
-    return {
-      ...mix,
-      gas:   Math.max(0, normMix.gas   - take * (normMix.gas / emitting)),
-      oil:   Math.max(0, normMix.oil   - take * (normMix.oil / emitting)),
-      other: Math.max(0, normMix.other - take * (normMix.other / emitting)),
-      solar: normMix.solar + take * 0.7,
-      wind:  normMix.wind + take * 0.3,
-    };
-  }, [mix, normMix, applied.cleanBoost]);
+  const { applied, plan, counterfactual, econResult, commitments, shownMix } =
+    useMemo(() => deriveScenario(scenario, base), [scenario, base]);
 
-  const plan = useMemo(() => runPlan(applied.drivers, effectiveMix, base), [applied.drivers, effectiveMix, base]);
-  const counterfactual = useMemo(() => {
-    const p = PRESETS.find((x) => x.id === "current")!;
-    return runPlan({ ...DEFAULT_DRIVERS, baseYear: drivers.baseYear, horizon: drivers.horizon, tdLossPct: drivers.tdLossPct, ...p.drivers }, p.mix, base);
-  }, [drivers.baseYear, drivers.horizon, drivers.tdLossPct, base]);
+  const reportHref = `/data-point/scenario/report?s=${encodeScenario(scenario)}`;
 
-  const econResult = useMemo(() => economics(plan, econ, applied.capexMultiplier, applied.carbonPriceUsd), [plan, econ, applied]);
-  const commitments = useMemo(() => assessCommitments(plan, counterfactual), [plan, counterfactual]);
-
-  const chartData = plan.years.map((y, i) => ({
+  const chartData = useMemo(() => plan.years.map((y, i) => ({
     year: y.year,
     demand: Math.round(y.demandGwh),
     generation: Math.round(y.generationGwh),
     emissions: Number(y.emissionsMt.toFixed(1)),
     baseline: counterfactual.years[i] ? Math.round(counterfactual.years[i].demandGwh) : undefined,
     baselineEmissions: counterfactual.years[i] ? Number(counterfactual.years[i].emissionsMt.toFixed(1)) : undefined,
-  }));
+  })), [plan, counterfactual]);
 
-  const mixData = plan.years
+  const mixData = useMemo(() => plan.years
     .filter((_, i) => i % Math.max(1, Math.floor(plan.years.length / 12)) === 0 || i === plan.years.length - 1)
-    .map((y) => ({ year: y.year, ...Object.fromEntries(TECHNOLOGIES.map((t) => [t, Math.round(y.capacityByTech[t])])) }));
+    .map((y) => ({ year: y.year, ...Object.fromEntries(TECHNOLOGIES.map((t) => [t, Math.round(y.capacityByTech[t])])) })), [plan]);
 
   const horizon = plan.years[plan.years.length - 1];
   const activeCount = Object.values(policy).filter((v) => (v ?? 0) > 0).length;
-  const shownMix = normaliseMix(effectiveMix);
 
   const axes = (
     <>
@@ -192,31 +209,58 @@ function NecalWorkspace() {
             </p>
           </div>
           <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
-            <Link href="/data-point/scenario/report" className="btn btn-primary btn-sm">Generate report</Link>
+            <Link href={reportHref} className="btn btn-primary btn-sm">Generate report</Link>
             <Link href="/data-point/dashboard" style={{ fontSize: "var(--t-sm)", color: "var(--ink-4)" }}>← Dashboard</Link>
           </div>
         </div>
 
-        {/* Anchor status — always visible, never buried */}
-        <div style={{
-          background: "var(--surface-white)", border: "1px solid var(--border)",
-          borderLeft: `3px solid ${inputSummary?.anchored ? "var(--green)" : "var(--amber)"}`,
-          padding: "0.75rem 1.05rem", marginBottom: "1.15rem",
-          display: "flex", alignItems: "center", gap: "0.9rem", flexWrap: "wrap",
-        }}>
-          <span style={{ fontSize: "var(--t-2xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: inputSummary?.anchored ? "var(--green-deep)" : "var(--amber)", border: `1px solid ${inputSummary?.anchored ? "var(--green)" : "var(--amber)"}`, padding: "2px 8px" }}>
-            {inputSummary?.anchored ? "Anchored on NEDB" : "Not anchored"}
-          </span>
-          <span style={{ fontSize: "var(--t-sm)", color: "var(--ink-3)", flex: 1, minWidth: 260, lineHeight: 1.6 }}>
-            {loading ? "Reading the data bank…"
-              : inputSummary?.anchored
-                ? <>Base year {baseYear}: {fmt(base.generationGwh)} GWh of committed generation. {inputSummary.measured} of {inputSummary.total} model inputs are measured, {inputSummary.derived} derived, {inputSummary.missing} supplied by assumption.</>
-                : <>No committed generation records, so the plan runs on a nominal anchor rather than Nigeria&apos;s real position. Every figure below is illustrative until that series is filled.</>}
-          </span>
-          <button onClick={() => setTab("data")} style={{ fontSize: "var(--t-xs)", fontWeight: 700, color: "var(--green)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>
-            See every input
-          </button>
-        </div>
+        {/* Anchor status — always visible, never buried.
+            Three distinct states, because they mean different things: anchored on
+            a complete year, anchored on a partial one (which understates
+            everything downstream), and could not be read at all. */}
+        {(() => {
+          const partial = !!inputSummary?.anchored && inputSummary.anchorComplete === false;
+          const doubled = !!inputSummary?.anchorOvercounted;
+          const shaky = partial || doubled;
+          const failed = !!loadError || !!inputSummary?.readFailure;
+          const tone = failed ? "var(--ink-4)" : inputSummary?.anchored && !shaky ? "var(--green)" : "var(--amber)";
+          const deep = failed ? "var(--ink-3)" : inputSummary?.anchored && !shaky ? "var(--green-deep)" : "var(--amber)";
+          const badge = loading ? "Checking" : failed ? "Could not read" : !inputSummary?.anchored ? "Not anchored"
+            : doubled ? "Anchor suspect" : partial ? "Partial year" : "Anchored on NEDB";
+          return (
+            <div style={{
+              background: "var(--surface-white)", border: "1px solid var(--border)",
+              borderLeft: `3px solid ${tone}`,
+              padding: "0.75rem 1.05rem", marginBottom: "1.15rem",
+              display: "flex", alignItems: "center", gap: "0.9rem", flexWrap: "wrap",
+            }}>
+              <span style={{ fontSize: "var(--t-2xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: deep, border: `1px solid ${tone}`, padding: "2px 8px" }}>
+                {badge}
+              </span>
+              <span style={{ fontSize: "var(--t-sm)", color: "var(--ink-3)", flex: 1, minWidth: 260, lineHeight: 1.6 }}>
+                {loading ? "Reading the data bank…"
+                  : loadError ? loadError
+                  : inputSummary?.anchored
+                    ? <>
+                        Base year {baseYear}: {fmt(base.generationGwh)} GWh of committed generation
+                        {doubled ? <strong style={{ color: "var(--amber)" }}> from a year holding more records than it should, so the anchor is probably double counted</strong>
+                          : partial ? <strong style={{ color: "var(--amber)" }}> from an incomplete year, so demand, capacity and capital below are all understated</strong>
+                          : null}.
+                        {" "}{inputSummary.measured} of {inputSummary.total} model inputs are measured, {inputSummary.derived} derived, {inputSummary.missing} supplied by assumption
+                        {inputSummary.unavailable > 0 ? <>, and {inputSummary.unavailable} could not be read</> : null}.
+                      </>
+                    : <>No committed generation records, so the plan runs on a nominal anchor rather than Nigeria&apos;s real position. Every figure below is illustrative until that series is filled.</>}
+              </span>
+              {loadError ? (
+                <button onClick={() => { setLoading(true); loadInputs(); }} className="btn btn-secondary btn-sm">Try again</button>
+              ) : (
+                <button onClick={() => setTab("data")} style={{ fontSize: "var(--t-xs)", fontWeight: 700, color: "var(--green)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>
+                  See every input
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         <div style={{ display: "flex", gap: 2, marginBottom: "1.15rem", flexWrap: "wrap", borderBottom: "1px solid var(--border)" }}>
           {TABS.map((t) => (
@@ -276,8 +320,11 @@ function NecalWorkspace() {
                     <tr key={i.id}>
                       <td className="td-primary">{i.label}</td>
                       <td>
-                        <span className={`tag ${i.status === "measured" ? "tag-green" : i.status === "derived" ? "tag-amber" : "tag-muted"}`}>
-                          {i.status === "measured" ? "Measured" : i.status === "derived" ? "Derived" : "Assumption"}
+                        <span className={`tag ${i.status === "measured" ? "tag-green" : i.status === "derived" ? "tag-amber" : i.status === "unavailable" ? "tag-red" : "tag-muted"}`}>
+                          {i.status === "measured" ? "Measured"
+                            : i.status === "derived" ? "Derived"
+                            : i.status === "unavailable" ? "Could not read"
+                            : "Assumption"}
                         </span>
                       </td>
                       <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: i.value != null ? 600 : 400, color: i.value != null ? "var(--ink)" : "var(--ink-5)" }}>
@@ -455,7 +502,7 @@ function NecalWorkspace() {
                         <label>
                           <span className="eyebrow" style={{ marginBottom: 2, display: "block" }}>Your target</span>
                           <input className="form-input" type="number" value={target ?? ""}
-                            onChange={(e) => setGoals({ ...goals, [g.id]: Number(e.target.value) })}
+                            onChange={(e) => setGoal(g.id, e.target.value)}
                             placeholder="—" style={{ minHeight: 34, textAlign: "right", fontVariantNumeric: "tabular-nums" }} />
                         </label>
                       </div>

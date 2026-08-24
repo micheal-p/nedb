@@ -6,25 +6,64 @@
 // get quoted in cabinet papers, so it is held by the bodies that actually plan,
 // not by everyone with an account.
 //
-// A refusal here names what is missing and how to get it, rather than showing a
-// blank page.
+// This gate does NOT decide anything. It asks the server, which reads the
+// profile off the signed token, and then explains the answer. The profile the
+// browser holds sits in localStorage where the visitor can edit it, so a client
+// side test would be a suggestion rather than a boundary.
+//
+// It also denies by default: a request that fails, times out, or returns
+// anything unexpected lands on the refusal page. The safe direction for a
+// restricted instrument is closed.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getDashboardProfile, getRole, getFullName, isAdminRole } from "@/lib/auth";
-import { PROFILE_MAP, allowedViews } from "@/lib/dashboard-profiles";
+import { getFullName, getToken } from "@/lib/auth";
+
+type Answer = { allowed: boolean; reason: string | null; profile_label: string | null; holders: string[] };
 
 export default function NecalGate({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<"checking" | "allowed" | "denied">("checking");
-  const [profileLabel, setProfileLabel] = useState("");
+  const [answer, setAnswer] = useState<Answer | null>(null);
 
   useEffect(() => {
-    const key = getDashboardProfile() || "executive";
-    const profile = PROFILE_MAP[key] ?? PROFILE_MAP.executive;
-    setProfileLabel(profile.label);
-    // Administrators can always reach it — somebody has to be able to check the
-    // instrument itself.
-    setState(allowedViews(profile).includes("necal") || isAdminRole(getRole()) ? "allowed" : "denied");
+    let live = true;
+
+    (async () => {
+      try {
+        const token = getToken();
+        const res = await fetch("/api/necal/access", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          cache: "no-store",
+        });
+        const body = (await res.json()) as Partial<Answer>;
+        if (!live) return;
+
+        if (res.ok && body?.allowed === true) {
+          setAnswer(body as Answer);
+          setState("allowed");
+        } else {
+          setAnswer({
+            allowed: false,
+            reason: body?.reason ?? "Planning access could not be confirmed.",
+            profile_label: body?.profile_label ?? null,
+            holders: body?.holders ?? [],
+          });
+          setState("denied");
+        }
+      } catch {
+        if (!live) return;
+        // Network failure is not a grant.
+        setAnswer({
+          allowed: false,
+          reason: "Planning access could not be checked. Nothing is opened until it can be.",
+          profile_label: null,
+          holders: [],
+        });
+        setState("denied");
+      }
+    })();
+
+    return () => { live = false; };
   }, []);
 
   if (state === "checking") {
@@ -32,9 +71,7 @@ export default function NecalGate({ children }: { children: React.ReactNode }) {
   }
 
   if (state === "denied") {
-    const holders = Object.values(PROFILE_MAP)
-      .filter((p) => p.extraViews?.includes("necal"))
-      .map((p) => p.label);
+    const holders = answer?.holders ?? [];
 
     return (
       <div style={{ maxWidth: 620, margin: "3rem auto", padding: "0 1.25rem" }}>
@@ -44,17 +81,23 @@ export default function NecalGate({ children }: { children: React.ReactNode }) {
             NECAL2050 is not open to your dashboard
           </h1>
           <p style={{ fontSize: "var(--t-base)", color: "var(--ink-3)", lineHeight: 1.75, marginBottom: "1rem" }}>
-            You are signed in as <strong style={{ color: "var(--ink)" }}>{getFullName() || "a staff user"}</strong> on the{" "}
-            <strong style={{ color: "var(--ink)" }}>{profileLabel}</strong> dashboard. The National Energy Calculator produces
-            the capacity, capital and emissions figures that go into national planning documents, so it is held by the bodies
-            with a planning mandate rather than issued with every account.
+            You are signed in as <strong style={{ color: "var(--ink)" }}>{getFullName() || "a staff user"}</strong>
+            {answer?.profile_label ? <> on the <strong style={{ color: "var(--ink)" }}>{answer.profile_label}</strong> dashboard</> : null}.
+            {" "}The National Energy Calculator produces the capacity, capital and emissions figures that go into national
+            planning documents, so it is held by the bodies with a planning mandate rather than issued with every account.
           </p>
-          <div style={{ background: "var(--surface-muted)", border: "1px solid var(--border-soft)", padding: "0.85rem 1rem", marginBottom: "1.25rem" }}>
-            <div className="eyebrow" style={{ marginBottom: 4 }}>Currently held by</div>
-            <div style={{ fontSize: "var(--t-base)", color: "var(--ink-2)", lineHeight: 1.7 }}>
-              {holders.join(" · ")}
+          {answer?.reason ? (
+            <div style={{ background: "var(--surface-muted)", border: "1px solid var(--border-soft)", padding: "0.85rem 1rem", marginBottom: "1rem" }}>
+              <div className="eyebrow" style={{ marginBottom: 4 }}>Reason given</div>
+              <div style={{ fontSize: "var(--t-base)", color: "var(--ink-2)", lineHeight: 1.7 }}>{answer.reason}</div>
             </div>
-          </div>
+          ) : null}
+          {holders.length ? (
+            <div style={{ background: "var(--surface-muted)", border: "1px solid var(--border-soft)", padding: "0.85rem 1rem", marginBottom: "1.25rem" }}>
+              <div className="eyebrow" style={{ marginBottom: 4 }}>Currently held by</div>
+              <div style={{ fontSize: "var(--t-base)", color: "var(--ink-2)", lineHeight: 1.7 }}>{holders.join(" · ")}</div>
+            </div>
+          ) : null}
           <p style={{ fontSize: "var(--t-base)", color: "var(--ink-3)", lineHeight: 1.75, marginBottom: "1.25rem" }}>
             If your work requires it, ask an administrator to move your account onto a planning profile, or request one
             through the access pipeline. The request is reviewed against your organisation&apos;s remit.

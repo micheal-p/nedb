@@ -22,3 +22,6 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# Build output at repo root (stray)
+/.next/

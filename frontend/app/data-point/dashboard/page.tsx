@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { clearTokens, isLoggedIn, getFullName, getRole, getDashboardProfile, getTokenFresh, isAdminRole, ROLE_LABELS } from "@/lib/auth";
 import type { BuilderTab } from "@/lib/dashboard-builder";
-import { PROFILE_MAP, SERIES_LABELS, allowedViews, scopeData, mandateLabel, seriesInMandate, type KPIDef, type ProfileDef } from "@/lib/dashboard-profiles";
+import { PROFILE_MAP, SERIES_LABELS, allowedViews, scopeData, mandateLabel, seriesInMandate, hasCapability, type KPIDef, type ProfileDef } from "@/lib/dashboard-profiles";
 import { AwaitingData } from "@/components/ui/gov";
 import dynamic from "next/dynamic";
 import CoatOfArms from "@/components/layout/CoatOfArms";
@@ -314,10 +314,15 @@ export default function Dashboard() {
                 <span style={{ fontSize: "0.6rem", background: "var(--green)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>ADMIN</span>
               </Link>
             )}
-            <Link href="/data-point/scenario" className="sb-link">
-              <span className="sb-label">Scenario Studio</span>
-              <span style={{ fontSize: "0.6rem", background: "#1B2A4A", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>NECAL</span>
-            </Link>
+            {/* Only advertised to the profiles that hold it. The gate and the API
+                still enforce; this just stops offering a door most accounts
+                cannot open. */}
+            {(hasCapability(profile, "necal") || isAdminRole(staffRole)) && (
+              <Link href="/data-point/scenario" className="sb-link">
+                <span className="sb-label">Scenario Studio</span>
+                <span style={{ fontSize: "0.6rem", background: "#1B2A4A", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>NECAL</span>
+              </Link>
+            )}
             <Link href="/data-point/pena" className="sb-link">
               <span className="sb-label">Energy Assessments</span>
               <span style={{ fontSize: "0.6rem", background: "var(--green)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>PENA</span>
