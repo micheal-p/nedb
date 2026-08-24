@@ -11,11 +11,15 @@ import PenaDrillMap from "@/components/pena/PenaDrillMap";
 import PenaPointsMap, { type PenaPoint } from "@/components/pena/PenaPointsMap";
 import { isLoggedIn, getRole, isAdminRole } from "@/lib/auth";
 import { ConfirmPanel, FilterChips } from "@/components/ui/gov";
+import PenaAccessPanel from "@/components/pena/PenaAccessPanel";
 import { TIERS, TIER_ORDER, type PenaTier } from "@/lib/pena";
 import { buildBenchmarkIndex, coveragePer100k, DEFAULT_NBS_ROWS, type BenchmarkIndex, type NbsRow } from "@/lib/nbs-benchmarks";
 
+type Access = { level: "none" | "aggregate" | "identifiable" | "export"; reason: string; username: string };
+
 type Insights = {
-  form: { id: number; title: string; slug: string; status: string; is_public_stats: boolean };
+  form: { id: number; title: string; slug: string; status: string; is_public_stats: boolean; is_restricted?: boolean; owner_agency?: string | null };
+  access?: Access;
   questions: { label: string; slug: string }[];
   timeline: { date: string; count: number }[];
   income_histogram: { label: string; count: number }[];
@@ -200,9 +204,38 @@ export default function PenaInsightsPage() {
           </div>
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
             <Link href="/data-point/dashboard" style={{ fontSize: "0.78rem", color: "var(--ink-4)", textDecoration: "none" }}>← Dashboard</Link>
+            <Link href={`/data-point/pena/${id}/analysis`} className="btn btn-primary btn-sm">Analysis bulletin</Link>
             <Link href={`/admin/pena/${ins.form.id}`} style={{ fontSize: "0.78rem", color: "var(--green)", textDecoration: "none", fontWeight: 600 }}>Manage form →</Link>
           </div>
         </div>
+
+        {/* What this viewer is entitled to see, and why */}
+        {ins.access && (
+          <div style={{
+            background: "var(--surface-white)", border: "1px solid var(--border)",
+            borderLeft: `3px solid ${ins.access.level === "aggregate" ? "var(--amber)" : "var(--green)"}`,
+            padding: "0.8rem 1.1rem", marginBottom: "1rem",
+            display: "flex", alignItems: "flex-start", gap: "0.8rem", flexWrap: "wrap",
+          }}>
+            <span style={{
+              fontSize: "var(--t-2xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em",
+              padding: "2px 8px", flexShrink: 0,
+              border: `1px solid ${ins.access.level === "aggregate" ? "var(--amber)" : "var(--green)"}`,
+              color: ins.access.level === "aggregate" ? "var(--amber)" : "var(--green-deep)",
+            }}>
+              {ins.access.level === "export" ? "Full access" : ins.access.level === "identifiable" ? "Identifiable access" : "Aggregate access"}
+            </span>
+            <span style={{ fontSize: "var(--t-sm)", color: "var(--ink-3)", lineHeight: 1.6, flex: 1, minWidth: 240 }}>
+              {ins.access.reason}
+            </span>
+            {ins.form.is_restricted && (
+              <span className="tag tag-ink" style={{ flexShrink: 0 }}>Restricted{ins.form.owner_agency ? ` · ${ins.form.owner_agency}` : ""}</span>
+            )}
+          </div>
+        )}
+
+        {/* Administrators manage who may see this and review who has */}
+        {isAdminRole(getRole()) && <PenaAccessPanel formId={Number(id)} />}
 
         {/* Stat tiles */}
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>

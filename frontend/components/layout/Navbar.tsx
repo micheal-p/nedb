@@ -106,6 +106,7 @@ export default function Navbar({ active }: NavbarProps) {
                 {[
                   { href: "/knowledge-graph", label: "Knowledge Graph",     sub: "Supply-chain network & SPOF analysis" },
                   { href: "/assessments",     label: "PENA Assessments",    sub: "Energy needs surveys — open data" },
+                  { href: "/request-data",    label: "Request Data",        sub: "Bulk datasets and custom extracts" },
                   { href: "/portal",          label: "Dashboard Access",    sub: "Request a role-scoped dashboard" },
                   { href: "/api-docs",        label: "API",                 sub: "Programmatic access & docs" },
                 ].map((item) => (
@@ -152,6 +153,7 @@ export default function Navbar({ active }: NavbarProps) {
           <div style={{ padding: "0.6rem 1rem 0.2rem", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)" }}>Explore</div>
           <Link href="/knowledge-graph" className={`mobile-link${active === "graph" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Knowledge Graph</Link>
           <Link href="/assessments" className={`mobile-link${active === "assessments" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>PENA Assessments</Link>
+          <Link href="/request-data" className="mobile-link" onClick={() => setMenuOpen(false)}>Request Data</Link>
           <Link href="/portal" className="mobile-link" onClick={() => setMenuOpen(false)}>Dashboard Access</Link>
           <Link href="/about" className={`mobile-link${active === "about" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>About NEDB</Link>
           <Link href="/api-docs" className="mobile-link" onClick={() => setMenuOpen(false)}>API Docs</Link>

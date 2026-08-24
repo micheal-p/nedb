@@ -981,51 +981,111 @@ input, select, textarea { font-family: inherit; }
   flex-direction: column;
   background: var(--surface);
 }
-/* A subtle field of the ground colour behind the card, so the card reads as a
-   document laid on a desk rather than a box floating on nothing. */
+.login-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 2rem;
+  background: var(--surface-white);
+  border-bottom: 1px solid var(--border);
+}
+.login-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-3);
+}
+.login-back:hover { color: var(--ink); }
+.login-topbar-alt { font-size: var(--t-sm); font-weight: 600; color: var(--green); }
+.login-topbar-alt:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* The form and its guidance sit side by side so the page does not scroll */
 .login-main {
   flex: 1;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 3.5rem 1.25rem 4rem;
-  background: var(--surface);
-}
-.login-col { width: 100%; max-width: 448px; }
-.login-brand {
-  display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 1.5rem;
+  justify-content: center;
+  padding: 2rem;
 }
+.login-grid {
+  display: grid;
+  grid-template-columns: 400px minmax(0, 1fr);
+  gap: 3rem;
+  align-items: center;
+  width: 100%;
+  max-width: 940px;
+}
+.login-col { min-width: 0; }
+.login-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 1.1rem; }
 .login-card {
   background: var(--surface-white);
   border: 1px solid var(--border);
   border-top: 3px solid var(--green);
-  padding: 1.85rem;
+  padding: 1.6rem;
 }
-.login-help {
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  border-top: none;
-  padding: 1.25rem 1.85rem 1.4rem;
+.login-card .form-group { margin-bottom: 0.95rem; }
+
+.login-aside { min-width: 0; padding-top: 0.5rem; }
+.login-help-list { list-style: none; padding: 0; margin: 0 0 1.25rem; }
+.login-help-list li {
+  position: relative;
+  padding-left: 1.1rem;
+  margin-bottom: 0.55rem;
+  font-size: var(--t-base);
+  color: var(--ink-3);
+  line-height: 1.6;
 }
-.login-help ul { list-style: none; padding-left: 0 !important; }
-.login-help li { position: relative; padding-left: 1.1rem; margin-bottom: 0.4rem; }
-.login-help li::before {
+.login-help-list li::before {
   content: "";
   position: absolute;
-  left: 0; top: 0.62em;
+  left: 0; top: 0.6em;
   width: 5px; height: 5px;
-  background: var(--ink-5);
+  background: var(--green);
 }
-.login-card .form-group { margin-bottom: 1.1rem; }
+.login-link { color: var(--green); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.login-notice {
+  font-size: var(--t-xs);
+  color: var(--ink-4);
+  line-height: 1.7;
+  border-left: 2px solid var(--border-strong);
+  padding-left: 0.85rem;
+  max-width: 46ch;
+}
 
+.login-footer {
+  background: var(--surface-white);
+  border-top: 1px solid var(--border);
+  padding: 0.75rem 2rem;
+}
+.login-footer-inner {
+  max-width: 940px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: var(--t-xs);
+  color: var(--ink-4);
+}
+.login-footer-links { display: flex; gap: 1rem; flex-wrap: wrap; }
+.login-footer-links a { color: var(--ink-4); text-decoration: underline; text-underline-offset: 2px; }
+.login-footer-links a:hover { color: var(--ink); }
+
+@media (max-width: 900px) {
+  .login-grid { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; max-width: 460px; align-items: start; }
+  .login-main { align-items: flex-start; padding: 1.75rem 1.25rem 2.5rem; }
+  .login-aside { padding-top: 0; }
+}
 @media (max-width: 560px) {
-  .login-main { padding: 2rem 1rem 3rem; background: var(--surface); }
-  .login-card { padding: 1.35rem 1.15rem; }
-  .login-help { padding: 1.1rem 1.15rem 1.2rem; }
-  .login-brand { gap: 11px; margin-bottom: 1.15rem; }
+  .login-topbar { padding: 0.55rem 1rem; }
+  .login-main   { padding: 1.25rem 1rem 2rem; }
+  .login-card   { padding: 1.25rem 1.1rem; }
+  .login-footer { padding: 0.7rem 1rem; }
+  .login-footer-inner { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
 }
 
 /* ── Login (legacy split layout, retained for any old references) ─── */

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok, err, requireAuth } from "@/lib/api-helpers";
+import { resolveAccess, logView } from "@/lib/pena-access";
 import { normLga } from "@/lib/geo";
 import { TIER_ORDER, VERIFY_TTL_HOURS } from "@/lib/pena";
 
@@ -37,11 +38,27 @@ const median = (xs: number[]) => {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req);
   if (!auth) return err("Unauthorized", 401);
-  const isAdmin = ["admin", "superadmin"].includes((auth as { role?: string }).role ?? "");
   const { id } = await params;
 
-  const { data: form } = await db().from("pena_forms").select("id, title, slug, status, is_public_stats").eq("id", id).single();
+  const { data: form } = await db()
+    .from("pena_forms")
+    .select("id, title, slug, status, is_public_stats, is_restricted, owner_agency")
+    .eq("id", id)
+    .single();
   if (!form) return err("Assessment not found", 404);
+
+  // Who is looking, and what are they entitled to see?
+  const viewer = await resolveAccess(
+    Number(form.id),
+    String(auth.username ?? auth.sub ?? "unknown"),
+    String((auth as { role?: string }).role ?? "viewer")
+  );
+  if (viewer.level === "none") return err(viewer.reason, 403);
+  const isAdmin = viewer.level === "export" || viewer.level === "identifiable";
+
+  // Personal data access is recorded — NDPA 2023 expects the question "who
+  // looked at this" to have an answer.
+  await logView(Number(form.id), viewer.username, "view", isAdmin);
 
   const { data: allQs } = await db()
     .from("pena_questions")
@@ -157,7 +174,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }));
 
   return ok({
-    form: { id: form.id, title: form.title, slug: form.slug, status: form.status, is_public_stats: form.is_public_stats },
+    form: { id: form.id, title: form.title, slug: form.slug, status: form.status, is_public_stats: form.is_public_stats, is_restricted: form.is_restricted, owner_agency: form.owner_agency },
+    // The viewer is told what they can see and why, rather than silently
+    // receiving a thinner payload than a colleague.
+    access: { level: viewer.level, reason: viewer.reason, username: viewer.username },
     questions: (allQs ?? []).map((q) => ({ label: q.label, slug: q.slug })),
     timeline,
     income_histogram,

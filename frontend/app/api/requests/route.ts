@@ -26,8 +26,17 @@ export async function POST(req: NextRequest) {
     purpose: purpose.trim(),
     requested_series: Array.isArray(requested_series) ? requested_series : [],
     date_range: date_range?.trim() ?? null,
-  }).select("id").single();
+  }).select("id, created_at").single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ id: data.id, message: "Request received. The NEDB team will contact you within 3 business days." }, { status: 201 });
+
+  // Reference derived from the row id, matching the access-request scheme, so
+  // an applicant always has something to quote back at us.
+  const year = new Date(data.created_at as string).getFullYear();
+  const reference = `NEDB/DR/${year}/${String(data.id).padStart(5, "0")}`;
+  return NextResponse.json({
+    id: data.id,
+    reference,
+    message: `Request received. Your reference is ${reference}. The NEDB data management unit will respond within 3 working days.`,
+  }, { status: 201 });
 }
