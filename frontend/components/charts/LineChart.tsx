@@ -33,7 +33,7 @@ export default function LineChart({ data, unit, projectionData }: Props) {
   return (
     <ResponsiveContainer width="100%" height={360}>
       <ReLineChart data={merged} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" />
+        <CartesianGrid  stroke="#E7E5E0" />
         <XAxis
           dataKey="period"
           tick={{ fontSize: 11, fill: "#8E867B" }}

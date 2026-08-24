@@ -1962,3 +1962,114 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   .term-exit { width: auto; }
   .term-body { padding: 0.9rem; }
 }
+
+/* ── Chart system ─────────────────────────────────────────────────────────
+   Shared anatomy for every chart. The data is the only loud thing: grid and
+   axes are recessive, marks are thin, and separation is done with surface
+   gaps rather than strokes. */
+
+.viz-views { display: inline-flex; border: 1px solid var(--border); background: var(--surface-white); }
+.viz-view {
+  padding: 3px 10px;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--ink-4);
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+}
+.viz-view:last-child { border-right: none; }
+.viz-view:hover { background: var(--surface-muted); color: var(--ink); }
+.viz-view.is-active { background: var(--ink); color: #fff; }
+
+.viz-export {
+  padding: 3px 10px;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  color: var(--green-deep);
+  background: var(--green-tint);
+  border: 1px solid var(--green-line);
+  cursor: pointer;
+}
+.viz-export:hover { background: var(--green-strong); }
+
+/* Legend: identity never rests on colour alone, so it is always present for
+   two or more series */
+.viz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  padding: 0.5rem 1.15rem 0;
+}
+.viz-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+.viz-swatch { width: 10px; height: 10px; flex-shrink: 0; border-radius: 1px; }
+
+/* Tooltip */
+.viz-tip {
+  background: var(--surface-white);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-3);
+  padding: 0.5rem 0.65rem;
+  min-width: 150px;
+}
+.viz-tip-head {
+  font-size: var(--t-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-4);
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.viz-tip-table { width: 100%; border-collapse: collapse; }
+.viz-tip-name {
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+  padding: 2px 10px 2px 0;
+  white-space: nowrap;
+}
+.viz-tip-chip {
+  display: inline-block;
+  width: 8px; height: 8px;
+  margin-right: 6px;
+  border-radius: 1px;
+  vertical-align: baseline;
+}
+/* The value wears text tokens, never the series colour */
+.viz-tip-val {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  color: var(--ink);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Recharts furniture */
+.recharts-cartesian-grid line { stroke: var(--border-soft); }
+.recharts-cartesian-axis-line { stroke: var(--border); }
+.recharts-tooltip-wrapper { outline: none; }
+.recharts-surface { overflow: visible; }
+
+/* Empty and unavailable states carry the same frame as a real chart, so a
+   missing series is visibly missing rather than silently absent */
+.viz-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 180px;
+  padding: 1.5rem;
+  text-align: center;
+}
+.viz-empty-title { font-size: var(--t-base); font-weight: 600; color: var(--ink-3); }
+.viz-empty-note  { font-size: var(--t-xs); color: var(--ink-5); max-width: 42ch; line-height: 1.6; }

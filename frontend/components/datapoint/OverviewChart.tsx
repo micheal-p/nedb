@@ -1,3 +1,4 @@
+import { SERIES_COLORS } from "@/lib/viz";
 "use client";
 
 import {
@@ -33,24 +34,24 @@ export default function OverviewChart() {
       <AreaChart data={DATA} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
         <defs>
           <linearGradient id="gradPMS" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%"  stopColor="#0E7A3C" stopOpacity={0.25} />
-            <stop offset="95%" stopColor="#0E7A3C" stopOpacity={0.02} />
+            <stop offset="5%"  stopColor={SERIES_COLORS[0]} stopOpacity={0.25} />
+            <stop offset="95%" stopColor={SERIES_COLORS[0]} stopOpacity={0.02} />
           </linearGradient>
           <linearGradient id="gradAGO" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%"  stopColor="#E04F39" stopOpacity={0.2} />
-            <stop offset="95%" stopColor="#E04F39" stopOpacity={0.02} />
+            <stop offset="5%"  stopColor={SERIES_COLORS[2]} stopOpacity={0.2} />
+            <stop offset="95%" stopColor={SERIES_COLORS[2]} stopOpacity={0.02} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" />
-        <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#8E867B" }} tickLine={false} axisLine={{ stroke: "#E7E5E0" }} />
-        <YAxis tick={{ fontSize: 11, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}K`} />
+        <CartesianGrid stroke="var(--border-soft)" vertical={false} />
+        <XAxis dataKey="period" tick={{ fontSize: 11, fill: "var(--ink-4)" }} tickLine={false} axisLine={false} />
+        <YAxis tick={{ fontSize: 11, fill: "var(--ink-4)" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}K`} />
         <Tooltip
           contentStyle={{ background: "#FFFFFF", border: "1px solid #E7E5E0", borderRadius: 8, fontSize: 12 }}
           formatter={(v, name) => [`${Number(v).toLocaleString()} L`, name === "pms" ? "PMS" : "AGO"]}
         />
         <Legend wrapperStyle={{ fontSize: 12, color: "#5C5650" }} formatter={(v) => v === "pms" ? "PMS (Petrol)" : "AGO (Diesel)"} />
-        <Area type="monotone" dataKey="pms" stroke="#0E7A3C" fill="url(#gradPMS)" strokeWidth={2} />
-        <Area type="monotone" dataKey="ago" stroke="#E04F39" fill="url(#gradAGO)" strokeWidth={2} />
+        <Area type="monotone" dataKey="pms" stroke={SERIES_COLORS[0]} fill="url(#gradPMS)" strokeWidth={2} />
+        <Area type="monotone" dataKey="ago" stroke={SERIES_COLORS[2]} fill="url(#gradAGO)" strokeWidth={2} />
       </AreaChart>
     </ResponsiveContainer>
   );

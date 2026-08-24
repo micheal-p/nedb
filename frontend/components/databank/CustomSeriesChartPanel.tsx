@@ -137,7 +137,7 @@ export default function CustomSeriesChartPanel({ seriesName, columns, records }:
         ) : mode === "bar" ? (
           <ResponsiveContainer width="100%" height={340}>
             <BarChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" vertical={false} />
+              <CartesianGrid  stroke="#E7E5E0" vertical={false} />
               <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={{ stroke: "#E7E5E0" }} tickLine={false} interval="preserveStartEnd" />
               <YAxis tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
               <Tooltip
@@ -150,7 +150,7 @@ export default function CustomSeriesChartPanel({ seriesName, columns, records }:
         ) : (
           <ResponsiveContainer width="100%" height={340}>
             <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" />
+              <CartesianGrid  stroke="#E7E5E0" />
               <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={{ stroke: "#E7E5E0" }} tickLine={false} interval="preserveStartEnd" />
               <YAxis tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
               <Tooltip

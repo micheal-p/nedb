@@ -150,7 +150,7 @@ export default function ReportView({ meta, records }: Props) {
           <div ref={mainChartRef} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "0.75rem" }}>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={lineData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" />
+                <CartesianGrid  stroke="#E7E5E0" />
                 <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={{ stroke: "#E7E5E0" }} tickLine={false} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 10, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
                 <Tooltip formatter={(v: unknown) => [`${Number(v).toLocaleString()} ${meta.unit}`, meta.name]} />

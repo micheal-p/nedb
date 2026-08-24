@@ -1,233 +1,117 @@
 "use client";
 
-import { useState } from "react";
+// ── SectorChart ─────────────────────────────────────────────────────────────
+// The platform's workhorse chart, rebuilt on the validated chart system.
+//
+// What changed from the old one and why:
+//   • Nine chart types were offered including radar and scatter for what is
+//     almost always a time series. A form is chosen for the data's job, not
+//     offered as a menu — so the switcher is now line, area, column, share and
+//     table, and the share views only appear when a share is a sensible read.
+//   • Colours came from whatever the caller passed. They now come from the
+//     validated categorical order, assigned to the entity so filtering never
+//     repaints the survivors.
+//   • Every point carried a dot and the tooltip abbreviated. Marks are now thin
+//     with a surface ring, the endpoint alone is labelled, and the tooltip
+//     carries full precision.
+//   • A table view is always available, so no chart is the only way to read
+//     the figures.
+
+import { useState, useMemo } from "react";
 import {
-  LineChart, Line, BarChart, Bar, AreaChart, Area,
-  PieChart, Pie, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis,
-  ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, LabelList,
 } from "recharts";
+import ChartFrame, { seriesColor, type SeriesDef, type ViewKind } from "@/components/charts/ChartFrame";
+import VizTooltip from "@/components/charts/VizTooltip";
+import { axisProps, fmtAxis, fmtFull, AXIS } from "@/lib/viz";
 
 interface DataPoint { period: string; [key: string]: string | number }
-interface Series    { key: string; label: string; color: string }
 
-interface SectorChartProps {
-  title:      string;
-  subtitle?:  string;
-  source?:    string;
-  data:       DataPoint[];
-  series:     Series[];
-  unit?:      string;
-  height?:    number;
-  filename?:  string;
-  note?:      string;
-  defaultType?: ChartType;
+interface Props {
+  title: string;
+  subtitle?: string;
+  source?: string;
+  data: DataPoint[];
+  series: { key: string; label: string; color?: string }[];
+  unit?: string;
+  height?: number;
+  filename?: string;
+  note?: string;
+  defaultType?: ViewKind;
+  /** Show share-of-total views. Only meaningful when the series are parts of one whole. */
+  allowShare?: boolean;
 }
 
-type ChartType = "line" | "bar" | "area" | "column" | "pie" | "donut" | "radar" | "scatter" | "histogram" | "table";
+export default function SectorChart({
+  title, subtitle, source, data, series, unit = "",
+  height = 260, filename, note, defaultType = "line", allowShare = false,
+}: Props) {
+  const [view, setView] = useState<ViewKind>(defaultType);
 
-const CHART_TYPES: { id: ChartType; icon: string; label: string }[] = [
-  { id: "line",      icon: "〜", label: "Line"      },
-  { id: "area",      icon: "◭", label: "Area"      },
-  { id: "bar",       icon: "▌", label: "Bar"       },
-  { id: "column",    icon: "▄", label: "Column"    },
-  { id: "pie",       icon: "◑", label: "Pie"       },
-  { id: "donut",     icon: "◎", label: "Donut"     },
-  { id: "radar",     icon: "✦", label: "Radar"     },
-  { id: "scatter",   icon: "⁙", label: "Scatter"   },
-  { id: "histogram", icon: "▦", label: "Histogram" },
-  { id: "table",     icon: "≣", label: "Table"     },
-];
+  const defs: SeriesDef[] = series.map((s) => ({ key: s.key, label: s.label, color: s.color }));
+  const views: ViewKind[] = allowShare
+    ? ["line", "area", "column", "donut", "table"]
+    : ["line", "area", "column", "table"];
 
-const RADIAN = Math.PI / 180;
-function renderCustomLabel(props: { cx?: number; cy?: number; midAngle?: number; innerRadius?: number; outerRadius?: number; percent?: number }) {
-  const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, percent = 0 } = props;
-  if (percent < 0.05) return null;
-  const r = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + r * Math.cos(-midAngle * RADIAN);
-  const y = cy + r * Math.sin(-midAngle * RADIAN);
-  return <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight={700}>{`${(percent * 100).toFixed(0)}%`}</text>;
-}
+  const hasData = data.length > 0 && series.some((s) => data.some((d) => d[s.key] != null));
 
-export default function SectorChart({ title, subtitle, source, data, series, unit = "", height = 268, filename, note, defaultType = "line" }: SectorChartProps) {
-  const [chartType, setChartType] = useState<ChartType>(defaultType);
-  // chart type switcher — no pagination needed
-
-  function downloadCSV() {
-    if (!data.length) return;
-    const keys   = ["period", ...series.map((s) => s.key)];
-    const header = keys.join(",");
-    const rows   = data.map((r) => keys.map((k) => r[k] ?? "").join(",")).join("\n");
-    const blob   = new Blob([`${header}\n${rows}`], { type: "text/csv" });
-    const url    = URL.createObjectURL(blob);
-    const a      = document.createElement("a");
-    a.href = url; a.download = `${(filename ?? title).replace(/\s+/g, "-").toLowerCase()}.csv`; a.click();
+  function exportCsv() {
+    const keys = ["period", ...series.map((s) => s.key)];
+    const head = ["Period", ...series.map((s) => `${s.label}${unit ? ` (${unit})` : ""}`)].join(",");
+    const body = data.map((r) => keys.map((k) => r[k] ?? "").join(",")).join("\n");
+    const blob = new Blob([`${head}\n${body}`], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(filename ?? title).replace(/\s+/g, "-").toLowerCase()}.csv`;
+    a.click();
     URL.revokeObjectURL(url);
   }
 
-  // For histogram: bin the first series values
-  const histData = (() => {
-    const vals = data.map((d) => Number(d[series[0]?.key] ?? 0));
-    const min  = Math.min(...vals), max = Math.max(...vals);
-    const bins = 8;
-    const size = (max - min) / bins || 1;
-    const buckets = Array.from({ length: bins }, (_, i) => ({ period: `${(min + size * i).toFixed(0)}–${(min + size * (i + 1)).toFixed(0)}`, value: 0 }));
-    vals.forEach((v) => { const i = Math.min(Math.floor((v - min) / size), bins - 1); buckets[i].value++; });
-    return buckets;
-  })();
+  // Share view aggregates each series across the period — only offered when the
+  // caller says the series are parts of one whole.
+  const shareData = useMemo(() =>
+    series.map((s) => ({
+      name: s.label,
+      key: s.key,
+      value: data.reduce((a, d) => a + (Number(d[s.key]) || 0), 0),
+    })).filter((d) => d.value > 0),
+  [series, data]);
 
-  // For pie / donut: aggregate by period into one value per series
-  const pieData = series.map((s) => ({ name: s.label, value: Math.round(data.reduce((acc, d) => acc + Number(d[s.key] ?? 0), 0) / data.length), color: s.color }));
-  if (pieData.length === 1) {
-    // Single series — use period slices
-    const slices = data.slice(0, 8).map((d) => ({ name: d.period, value: Number(d[series[0].key] ?? 0), color: "" }));
-    const baseColor = series[0].color;
-    const palette   = ["#0E7A3C","#1D4ED8","#B45309","#7C3AED","#9F1239","#059669","#0369A1","#78350F"];
-    slices.forEach((s, i) => { s.color = palette[i % palette.length]; });
-    if (chartType === "pie" || chartType === "donut") {
-      return <ChartShell title={title} subtitle={subtitle} chartType={chartType} setChartType={setChartType} downloadCSV={downloadCSV} note={note}>
-        <ResponsiveContainer width="100%" height={height}>
-          <PieChart>
-            <Pie data={slices} cx="50%" cy="50%" innerRadius={chartType === "donut" ? "45%" : 0} outerRadius="75%"
-              dataKey="value" labelLine={false} label={renderCustomLabel}>
-              {slices.map((s, i) => <Cell key={i} fill={s.color} />)}
-            </Pie>
-            <Tooltip formatter={(v) => [`${Number(v).toLocaleString()} ${unit}`, ""]} />
-            <Legend wrapperStyle={{ fontSize: "0.7rem" }} />
-          </PieChart>
-        </ResponsiveContainer>
-        {source && <div className="chart-source">{source}</div>}
-      </ChartShell>;
-    }
-    pieData.length = 0; pieData.push(...slices.map((s) => ({ ...s, color: baseColor })));
-  }
+  const tooltip = <Tooltip content={<VizTooltip unit={unit} />} cursor={{ stroke: AXIS.grid, strokeWidth: 1 }} />;
 
-  const commonAxis = {
-    xAxis: <XAxis dataKey="period" tick={{ fontSize: 10, fill: "var(--ink-5)" }} axisLine={false} tickLine={false} />,
-    yAxis: <YAxis tick={{ fontSize: 10, fill: "var(--ink-5)" }} width={44} axisLine={false} tickLine={false} />,
-    grid:  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />,
-  };
+  const axes = (
+    <>
+      <CartesianGrid stroke={AXIS.grid} vertical={false} />
+      <XAxis dataKey="period" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
+      <YAxis {...axisProps} width={54} tickFormatter={fmtAxis} />
+    </>
+  );
 
-  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 12px", fontSize: "0.78rem", boxShadow: "var(--shadow-2)", minWidth: 140 }}>
-        <div style={{ fontWeight: 700, color: "var(--ink)", marginBottom: 6, borderBottom: "1px solid var(--border)", paddingBottom: 4 }}>{label}</div>
-        {payload.map((p) => (
-          <div key={p.name} style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 2 }}>
-            <span style={{ color: "var(--ink-4)" }}>{p.name}</span>
-            <span style={{ fontWeight: 600, fontFamily: "var(--font-mono)", color: p.color }}>{Number(p.value).toLocaleString()} {unit}</span>
+  function plot() {
+    if (!hasData) {
+      return (
+        <div className="viz-empty">
+          <div className="viz-empty-title">No data for this period</div>
+          <div className="viz-empty-note">
+            This chart is empty because no records have been committed for it, not because the value is zero.
           </div>
-        ))}
-      </div>
-    );
-  };
+        </div>
+      );
+    }
 
-  const renderChart = () => {
-    if (chartType === "pie" || chartType === "donut") {
+    if (view === "table") {
       return (
-        <PieChart>
-          <Pie data={pieData} cx="50%" cy="50%" innerRadius={chartType === "donut" ? "45%" : 0} outerRadius="75%"
-            dataKey="value" nameKey="name" labelLine={false} label={renderCustomLabel}>
-            {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
-          </Pie>
-          <Tooltip formatter={(v) => [`${Number(v).toLocaleString()} ${unit}`, ""]} />
-          <Legend wrapperStyle={{ fontSize: "0.7rem" }} />
-        </PieChart>
-      );
-    }
-    if (chartType === "radar") {
-      const radarData = data.slice(0, 12).map((d) => ({ subject: d.period, ...Object.fromEntries(series.map((s) => [s.key, d[s.key]])) }));
-      return (
-        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-          <PolarGrid stroke="var(--border)" />
-          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: "var(--ink-5)" }} />
-          <Tooltip content={<CustomTooltip />} />
-          {series.length > 1 && <Legend wrapperStyle={{ fontSize: "0.72rem" }} />}
-          {series.map((s) => <Radar key={s.key} name={s.label} dataKey={s.key} stroke={s.color} fill={s.color} fillOpacity={0.2} />)}
-        </RadarChart>
-      );
-    }
-    if (chartType === "scatter") {
-      const scatterData = data.map((d, i) => ({ x: i + 1, y: Number(d[series[0].key] ?? 0), z: series[1] ? Number(d[series[1].key] ?? 0) : 1 }));
-      return (
-        <ScatterChart margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-          {commonAxis.grid}
-          <XAxis type="number" dataKey="x" name="Index" tick={{ fontSize: 10, fill: "var(--ink-5)" }} axisLine={false} tickLine={false} />
-          <YAxis type="number" dataKey="y" name={series[0].label} tick={{ fontSize: 10, fill: "var(--ink-5)" }} width={44} axisLine={false} tickLine={false} />
-          {series[1] && <ZAxis type="number" dataKey="z" range={[30, 200]} name={series[1].label} />}
-          <Tooltip cursor={{ strokeDasharray: "3 3" }} content={({ active, payload }) => {
-            if (!active || !payload?.length) return null;
-            const d = payload[0].payload;
-            return <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: "0.75rem" }}><div style={{ fontWeight: 700 }}>{series[0].label}</div><div style={{ fontFamily: "var(--font-mono)", color: series[0].color }}>{d.y.toLocaleString()} {unit}</div></div>;
-          }} />
-          <Scatter data={scatterData} fill={series[0].color} />
-        </ScatterChart>
-      );
-    }
-    if (chartType === "histogram") {
-      return (
-        <BarChart data={histData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-          {commonAxis.grid}{commonAxis.xAxis}{commonAxis.yAxis}
-          <Tooltip formatter={(v) => [`${v} observations`, "Frequency"]} />
-          <Bar dataKey="value" name="Frequency" fill={series[0]?.color ?? "#0E7A3C"} radius={[3, 3, 0, 0]} />
-        </BarChart>
-      );
-    }
-    if (chartType === "column") {
-      return (
-        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, left: 60, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-          <XAxis type="number" tick={{ fontSize: 10, fill: "var(--ink-5)" }} axisLine={false} tickLine={false} />
-          <YAxis type="category" dataKey="period" tick={{ fontSize: 9, fill: "var(--ink-5)" }} axisLine={false} tickLine={false} width={55} />
-          <Tooltip content={<CustomTooltip />} />
-          {series.length > 1 && <Legend wrapperStyle={{ fontSize: "0.72rem" }} />}
-          {series.map((s) => <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.color} radius={[0, 3, 3, 0]} maxBarSize={28} />)}
-        </BarChart>
-      );
-    }
-    if (chartType === "area") {
-      return (
-        <AreaChart data={data} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-          <defs>{series.map((s) => <linearGradient key={s.key} id={`grad-${s.key}`} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={s.color} stopOpacity={0.18} /><stop offset="95%" stopColor={s.color} stopOpacity={0} /></linearGradient>)}</defs>
-          {commonAxis.grid}{commonAxis.xAxis}{commonAxis.yAxis}
-          <Tooltip content={<CustomTooltip />} />
-          {series.length > 1 && <Legend wrapperStyle={{ fontSize: "0.72rem" }} />}
-          {series.map((s) => <Area key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} fill={`url(#grad-${s.key})`} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />)}
-        </AreaChart>
-      );
-    }
-    if (chartType === "bar") {
-      return (
-        <BarChart data={data} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-          {commonAxis.grid}{commonAxis.xAxis}{commonAxis.yAxis}
-          <Tooltip content={<CustomTooltip />} />
-          {series.length > 1 && <Legend wrapperStyle={{ fontSize: "0.72rem" }} />}
-          {series.map((s) => <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.color} radius={[3, 3, 0, 0]} maxBarSize={40} />)}
-        </BarChart>
-      );
-    }
-    // default: line
-    return (
-      <LineChart data={data} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-        {commonAxis.grid}{commonAxis.xAxis}{commonAxis.yAxis}
-        <Tooltip content={<CustomTooltip />} />
-        {series.length > 1 && <Legend wrapperStyle={{ fontSize: "0.72rem" }} />}
-        {series.map((s) => <Line key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />)}
-      </LineChart>
-    );
-  };
-
-  return (
-    <ChartShell title={title} subtitle={subtitle} chartType={chartType} setChartType={setChartType} downloadCSV={downloadCSV} note={note}>
-      {chartType === "table" ? (
-        /* View as table — the accessible twin of every chart */
-        <div className="data-table-wrap" style={{ border: "none", borderRadius: 0, maxHeight: height + 40, overflowY: "auto" }}>
-          <table className="data-table" style={{ fontSize: "0.76rem" }}>
+        <div className="scroll-x">
+          <table className="data-table" style={{ fontSize: "var(--t-sm)" }}>
             <thead>
               <tr>
                 <th>Period</th>
-                {series.map((s) => <th key={s.key} style={{ textAlign: "right" }}>{s.label}{unit ? ` (${unit})` : ""}</th>)}
+                {series.map((s) => (
+                  <th key={s.key} style={{ textAlign: "right" }}>{s.label}{unit ? ` (${unit})` : ""}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -236,7 +120,7 @@ export default function SectorChart({ title, subtitle, source, data, series, uni
                   <td className="td-primary">{r.period}</td>
                   {series.map((s) => (
                     <td key={s.key} style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {r[s.key] == null || r[s.key] === "" ? "—" : Number(r[s.key]).toLocaleString()}
+                      {r[s.key] == null || r[s.key] === "" ? "—" : fmtFull(Number(r[s.key]))}
                     </td>
                   ))}
                 </tr>
@@ -244,48 +128,109 @@ export default function SectorChart({ title, subtitle, source, data, series, uni
             </tbody>
           </table>
         </div>
-      ) : (
-        <div className="chart-panel-body" style={{ padding: "0.75rem 0.25rem 0.25rem" }}>
-          <ResponsiveContainer width="100%" height={height}>
-            {renderChart()}
-          </ResponsiveContainer>
-        </div>
-      )}
-      {source && <div className="chart-source">Source: {source}</div>}
-    </ChartShell>
-  );
-}
+      );
+    }
 
-function ChartShell({ title, subtitle, chartType, setChartType, downloadCSV, note, children }: {
-  title: string; subtitle?: string; chartType: ChartType; setChartType: (t: ChartType) => void;
-  downloadCSV: () => void; note?: string; children: React.ReactNode;
-}) {
-  return (
-    <div className="chart-panel">
-      <div className="chart-panel-head" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
-        <div style={{ minWidth: 0 }}>
-          <div className="chart-panel-title">{title}</div>
-          {subtitle && <div className="chart-panel-sub">{subtitle}</div>}
-        </div>
-        <div style={{ display: "flex", gap: 3, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
-          {CHART_TYPES.map((t) => (
-            <button key={t.id} onClick={() => setChartType(t.id)} title={t.label} style={{
-              height: 26, padding: "0 7px", fontSize: "0.68rem", fontWeight: 700,
-              border: "1px solid var(--border)", borderRadius: 4,
-              background: chartType === t.id ? "var(--ink)" : "transparent",
-              color: chartType === t.id ? "#fff" : "var(--ink-4)", cursor: "pointer",
-            }}>
-              <span title={t.label}>{t.icon}</span>
-            </button>
+    if (view === "donut" || view === "pie") {
+      return (
+        <ResponsiveContainer width="100%" height={height}>
+          <PieChart>
+            <Pie
+              data={shareData} dataKey="value" nameKey="name"
+              cx="50%" cy="50%"
+              innerRadius={view === "donut" ? "52%" : 0}
+              outerRadius="78%"
+              // 2px surface gap between segments does the separating, not a stroke
+              paddingAngle={1}
+              stroke="var(--surface-white)"
+              strokeWidth={2}
+              labelLine={false}
+            >
+              {shareData.map((d) => <Cell key={d.key} fill={seriesColor(defs, d.key)} />)}
+            </Pie>
+            <Tooltip content={<VizTooltip unit={unit} />} />
+          </PieChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    if (view === "column") {
+      return (
+        <ResponsiveContainer width="100%" height={height}>
+          <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }} barGap={2}>
+            {axes}{tooltip}
+            {series.map((s) => (
+              <Bar key={s.key} dataKey={s.key} name={s.label}
+                fill={seriesColor(defs, s.key)}
+                // 4px rounded data-end, square at the baseline
+                radius={[4, 4, 0, 0]}
+                maxBarSize={24} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    if (view === "area") {
+      return (
+        <ResponsiveContainer width="100%" height={height}>
+          <AreaChart data={data} margin={{ top: 8, right: 22, left: 0, bottom: 0 }}>
+            {axes}{tooltip}
+            {series.map((s) => {
+              const c = seriesColor(defs, s.key);
+              return (
+                <Area key={s.key} type="monotone" dataKey={s.key} name={s.label}
+                  stroke={c} strokeWidth={2}
+                  // a wash, never a saturated block
+                  fill={c} fillOpacity={0.1}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--surface-white)" }} />
+              );
+            })}
+          </AreaChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    // Default: line
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <LineChart data={data} margin={{ top: 8, right: 30, left: 0, bottom: 0 }}>
+          {axes}{tooltip}
+          {series.map((s) => (
+            <Line key={s.key} type="monotone" dataKey={s.key} name={s.label}
+              stroke={seriesColor(defs, s.key)} strokeWidth={2}
+              strokeLinecap="round" strokeLinejoin="round"
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--surface-white)" }}>
+              {/* Label the endpoint only — a number on every point goes unread */}
+              {series.length <= 3 && (
+                <LabelList dataKey={s.key} position="right" offset={8}
+                  content={(props) => {
+                    const p = props as { index?: number; x?: number | string; y?: number | string; value?: number | string };
+                    if (p.index !== data.length - 1 || p.value == null) return null;
+                    return (
+                      <text x={Number(p.x) + 6} y={Number(p.y)} dy={4}
+                        fontSize={11} fontWeight={600} fill={AXIS.label}>
+                        {fmtAxis(Number(p.value))}
+                      </text>
+                    );
+                  }} />
+              )}
+            </Line>
           ))}
-          <button onClick={downloadCSV} style={{ height: 26, padding: "0 10px", fontSize: "0.68rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-strong)", color: "var(--green-deep)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            CSV
-          </button>
-          {note && <span style={{ fontSize: "0.65rem", color: "var(--amber)", fontWeight: 600 }}>{note}</span>}
-        </div>
-      </div>
-      {children}
-    </div>
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  return (
+    <ChartFrame
+      title={title} subtitle={subtitle} source={source ? `Source: ${source}` : undefined} note={note}
+      series={defs} views={views} view={view} onView={setView}
+      onExport={hasData ? exportCsv : undefined}
+    >
+      {plot()}
+    </ChartFrame>
   );
 }

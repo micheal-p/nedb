@@ -258,7 +258,7 @@ export default function NecalPage() {
               <div className="chart-panel-body">
                 <ResponsiveContainer width="100%" height={280}>
                   <LineChart data={chartData} margin={{ top: 6, right: 14, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <CartesianGrid stroke="var(--border-soft)" vertical={false} />
                     <XAxis dataKey="year" tick={{ fontSize: 10, fill: "var(--ink-5)" }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: "var(--ink-5)" }} width={62} axisLine={false} tickLine={false} />
                     <Tooltip formatter={(v, n) => [`${fmt(Number(v))} GWh`, String(n)]} />
@@ -285,7 +285,7 @@ export default function NecalPage() {
               <div className="chart-panel-body">
                 <ResponsiveContainer width="100%" height={280}>
                   <AreaChart data={mixData} margin={{ top: 6, right: 14, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <CartesianGrid stroke="var(--border-soft)" vertical={false} />
                     <XAxis dataKey="year" tick={{ fontSize: 10, fill: "var(--ink-5)" }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: "var(--ink-5)" }} width={62} axisLine={false} tickLine={false} />
                     <Tooltip formatter={(v, n) => [`${fmt(Number(v))} MW`, TECH_ASSUMPTIONS[n as Technology]?.label ?? String(n)]} />
@@ -312,7 +312,7 @@ export default function NecalPage() {
               <div className="chart-panel-body">
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={chartData} margin={{ top: 6, right: 14, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <CartesianGrid stroke="var(--border-soft)" vertical={false} />
                     <XAxis dataKey="year" tick={{ fontSize: 10, fill: "var(--ink-5)" }} axisLine={false} tickLine={false} />
                     <YAxis yAxisId="l" tick={{ fontSize: 10, fill: "var(--ink-5)" }} width={50} axisLine={false} tickLine={false} />
                     <YAxis yAxisId="r" orientation="right" domain={[0, 100]} tick={{ fontSize: 10, fill: "var(--ink-5)" }} width={40} axisLine={false} tickLine={false} />

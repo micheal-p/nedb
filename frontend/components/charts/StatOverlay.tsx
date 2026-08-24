@@ -38,7 +38,7 @@ interface Props {
 const axisX = (
   <XAxis dataKey="period" tick={{ fontSize: 10, fill: INK5 }} axisLine={{ stroke: BORDER }} tickLine={false} interval="preserveStartEnd" />
 );
-const grid = <CartesianGrid strokeDasharray="3 3" stroke={BORDER} vertical={false} />;
+const grid = <CartesianGrid  stroke={BORDER} vertical={false} />;
 
 function pctTooltip() {
   return (

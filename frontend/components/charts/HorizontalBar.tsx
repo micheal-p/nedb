@@ -37,7 +37,7 @@ export default function HorizontalBar({ data, unit }: Props) {
         layout="vertical"
         margin={{ top: 8, right: 40, bottom: 8, left: 80 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" horizontal={false} />
+        <CartesianGrid  stroke="#E7E5E0" horizontal={false} />
         <XAxis
           type="number"
           tick={{ fontSize: 11, fill: "#8E867B" }}

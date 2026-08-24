@@ -1,3 +1,4 @@
+import { SERIES_COLORS } from "@/lib/viz";
 "use client";
 
 import { fmtCompact } from "@/lib/format";
@@ -33,7 +34,7 @@ export default function StackedArea({ data, unit }: Props) {
               <stop offset="95%" stopColor="#0E7A3C" stopOpacity={0.02} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" />
+          <CartesianGrid  stroke="#E7E5E0" />
           <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#8E867B" }} tickLine={false} axisLine={{ stroke: "#E7E5E0" }} interval="preserveStartEnd" />
           <YAxis tick={{ fontSize: 11, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
           <Tooltip
@@ -58,12 +59,12 @@ export default function StackedArea({ data, unit }: Props) {
     return entry;
   });
 
-  const PALETTE = ["#0E7A3C", "#E04F39", "#f59e0b", "#3b82f6", "#8b5cf6", "#06b6d4"];
+  const PALETTE = SERIES_COLORS;
 
   return (
     <ResponsiveContainer width="100%" height={360}>
       <AreaChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E0" />
+        <CartesianGrid  stroke="#E7E5E0" />
         <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#8E867B" }} tickLine={false} axisLine={{ stroke: "#E7E5E0" }} interval="preserveStartEnd" />
         <YAxis tick={{ fontSize: 11, fill: "#8E867B" }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
         <Tooltip
