@@ -1,350 +1,641 @@
 "use client";
 
 // ── NECAL2050 — National Energy Calculator ──────────────────────────────────
-// Anchored on committed NEDB data, planned from drivers, and honest about its
-// assumptions. See lib/necal.ts for the model itself.
+// A planning instrument, not a chart. Six modules:
+//
+//   Data      what NEDB can actually anchor, and what it cannot
+//   Drivers   population, activity, efficiency, access, system assumptions
+//   Policy    instruments you switch on, each reaching the model by a mechanism
+//   Goals     sector targets with the gap to them
+//   Results   demand, build, mix, emissions, economics
+//   Climate   the plan measured against Nigeria's stated commitments
+//
+// Nothing here is invented data. Every figure is either measured from NEDB, or
+// an assumption the model shows you and lets you change.
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
-  LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import { getTokenFresh } from "@/lib/auth";
+import NecalGate from "@/components/necal/NecalGate";
+import VizTooltip from "@/components/charts/VizTooltip";
+import { SERIES_COLORS, axisProps, fmtAxis, AXIS, STATUS } from "@/lib/viz";
 import {
   runPlan, normaliseMix, PRESETS, TECHNOLOGIES, TECH_ASSUMPTIONS,
   DEFAULT_DRIVERS, DEFAULT_MIX,
-  type PlanningDrivers, type MixTargets, type Technology,
+  type PlanningDrivers, type MixTargets,
 } from "@/lib/necal";
+import {
+  INSTRUMENTS, applyInstruments, SECTOR_GOALS, DEFAULT_ECONOMICS, economics,
+  assessCommitments, type PolicyMix,
+} from "@/lib/necal-policy";
 
-type SeriesRow = { period: string; value: number; unit?: string };
+type ModelInput = {
+  id: string; label: string; status: "measured" | "derived" | "missing";
+  value: number | null; unit: string; period: string | null; series_id: string | null; note: string;
+};
+
+type Tab = "data" | "drivers" | "policy" | "goals" | "results" | "climate";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "data", label: "Data" },
+  { id: "drivers", label: "Drivers" },
+  { id: "policy", label: "Policy" },
+  { id: "goals", label: "Goals" },
+  { id: "results", label: "Results" },
+  { id: "climate", label: "Climate" },
+];
 
 const fmt = (v: number, d = 0) => v.toLocaleString("en-NG", { maximumFractionDigits: d });
 
 function Slider({ label, hint, value, min, max, step, unit, onChange }: {
-  label: string; hint?: string; value: number; min: number; max: number; step: number; unit: string;
-  onChange: (v: number) => void;
+  label: string; hint?: string; value: number; min: number; max: number; step: number; unit: string; onChange: (v: number) => void;
 }) {
   return (
-    <label style={{ display: "block", marginBottom: "0.9rem" }}>
+    <label style={{ display: "block", marginBottom: "0.85rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3 }}>
-        <span style={{ fontSize: "0.76rem", fontWeight: 600, color: "var(--ink-2)" }}>{label}</span>
-        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--green-deep)", fontVariantNumeric: "tabular-nums" }}>
-          {value}{unit}
-        </span>
+        <span style={{ fontSize: "var(--t-sm)", fontWeight: 600, color: "var(--ink-2)" }}>{label}</span>
+        <span style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--green-deep)", fontVariantNumeric: "tabular-nums" }}>{value}{unit}</span>
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: "100%", accentColor: "var(--green)" }} />
-      {hint && <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", lineHeight: 1.5, marginTop: 2 }}>{hint}</div>}
+        onChange={(e) => onChange(Number(e.target.value))} style={{ width: "100%", accentColor: "var(--green)" }} />
+      {hint && <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-5)", lineHeight: 1.5, marginTop: 2 }}>{hint}</div>}
     </label>
   );
 }
 
-export default function NecalPage() {
+function NecalWorkspace() {
+  const [tab, setTab] = useState<Tab>("data");
   const [drivers, setDrivers] = useState<PlanningDrivers>(DEFAULT_DRIVERS);
   const [mix, setMix] = useState<MixTargets>(DEFAULT_MIX);
+  const [policy, setPolicy] = useState<PolicyMix>({});
+  const [econ, setEcon] = useState(DEFAULT_ECONOMICS);
   const [preset, setPreset] = useState("access");
-  const [base, setBase] = useState({ generationGwh: 0, capacityMw: 0 });
-  const [baseYearFound, setBaseYearFound] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [compare, setCompare] = useState(true);
+  const [goals, setGoals] = useState<Record<string, number>>({ clean_share: 60, access: 100, losses: 8 });
 
-  // Anchor the plan on committed NEDB data rather than a round number.
-  const loadBase = useCallback(async () => {
+  const [inputs, setInputs] = useState<ModelInput[]>([]);
+  const [inputSummary, setInputSummary] = useState<{ measured: number; derived: number; missing: number; total: number; anchored: boolean } | null>(null);
+  const [base, setBase] = useState({ generationGwh: 0, capacityMw: 0 });
+  const [baseYear, setBaseYear] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // ── Anchor on what NEDB actually holds ────────────────────────────────────
+  const loadInputs = useCallback(async () => {
     try {
       const token = await getTokenFresh();
-      const head = await fetch("/api/dashboard-data", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : undefined }).then((r) => r.json());
-      const years: number[] = head.years ?? [];
-      const latestYear = years.length ? Math.max(...years) : null;
-      const payload = latestYear && latestYear !== head.year
-        ? await fetch(`/api/dashboard-data?year=${latestYear}`, { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : undefined }).then((r) => r.json())
-        : head;
+      const r = await fetch("/api/necal/inputs", {
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!r.ok) return;
+      const j = await r.json();
+      const list: ModelInput[] = j.inputs ?? [];
+      setInputs(list);
+      setInputSummary(j.summary ?? null);
 
-      const series: Record<string, SeriesRow[]> = payload.series ?? {};
-      const sum = (id: string) => (series[id] ?? []).reduce((a, r) => a + Number(r.value ?? 0), 0);
-      const last = (id: string) => { const rows = series[id] ?? []; return rows.length ? Number(rows[rows.length - 1].value) : 0; };
-
-      const generationGwh = sum("electricity_generation");
-      const capacityMw = last("renewable_energy");
-      setBase({ generationGwh, capacityMw });
-      if (latestYear) {
-        setBaseYearFound(latestYear);
-        setDrivers((d) => ({ ...d, baseYear: latestYear }));
+      const gen = list.find((i) => i.id === "generation");
+      const ren = list.find((i) => i.id === "renewable_capacity");
+      const loss = list.find((i) => i.id === "td_loss");
+      if (gen?.value) {
+        setBase({ generationGwh: gen.value, capacityMw: ren?.value ?? 0 });
+        if (gen.period) { const y = Number(gen.period); setBaseYear(y); setDrivers((d) => ({ ...d, baseYear: y })); }
       }
-    } catch {
-      /* the plan still runs on its nominal anchor */
+      // A measured loss rate beats an assumed one.
+      if (loss?.status === "derived" && loss.value != null) {
+        setDrivers((d) => ({ ...d, tdLossPct: Math.round(loss.value as number) }));
+      }
     } finally {
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => { loadBase(); }, [loadBase]);
+  useEffect(() => { loadInputs(); }, [loadInputs]);
 
   function applyPreset(id: string) {
     const p = PRESETS.find((x) => x.id === id);
     if (!p) return;
     setPreset(id);
-    setDrivers((d) => ({ ...DEFAULT_DRIVERS, baseYear: d.baseYear, horizon: d.horizon, ...p.drivers }));
+    setDrivers((d) => ({ ...DEFAULT_DRIVERS, baseYear: d.baseYear, horizon: d.horizon, tdLossPct: d.tdLossPct, ...p.drivers }));
     setMix(p.mix);
   }
 
-  const plan = useMemo(() => runPlan(drivers, mix, base), [drivers, mix, base]);
+  const normMix = normaliseMix(mix);
+  const cleanTargetPct = normMix.hydro + normMix.solar + normMix.wind;
+  const applied = useMemo(() => applyInstruments(drivers, policy, cleanTargetPct), [drivers, policy, cleanTargetPct]);
+
+  // A clean-share boost moves capacity out of the emitting slots proportionally
+  // rather than appearing from nowhere.
+  const effectiveMix = useMemo(() => {
+    if (applied.cleanBoost <= 0) return mix;
+    const emitting = normMix.gas + normMix.oil + normMix.other;
+    if (emitting <= 0) return mix;
+    const take = Math.min(applied.cleanBoost, emitting * 0.9);
+    return {
+      ...mix,
+      gas:   Math.max(0, normMix.gas   - take * (normMix.gas / emitting)),
+      oil:   Math.max(0, normMix.oil   - take * (normMix.oil / emitting)),
+      other: Math.max(0, normMix.other - take * (normMix.other / emitting)),
+      solar: normMix.solar + take * 0.7,
+      wind:  normMix.wind + take * 0.3,
+    };
+  }, [mix, normMix, applied.cleanBoost]);
+
+  const plan = useMemo(() => runPlan(applied.drivers, effectiveMix, base), [applied.drivers, effectiveMix, base]);
   const counterfactual = useMemo(() => {
     const p = PRESETS.find((x) => x.id === "current")!;
-    return runPlan({ ...DEFAULT_DRIVERS, baseYear: drivers.baseYear, horizon: drivers.horizon, ...p.drivers }, p.mix, base);
-  }, [drivers.baseYear, drivers.horizon, base]);
+    return runPlan({ ...DEFAULT_DRIVERS, baseYear: drivers.baseYear, horizon: drivers.horizon, tdLossPct: drivers.tdLossPct, ...p.drivers }, p.mix, base);
+  }, [drivers.baseYear, drivers.horizon, drivers.tdLossPct, base]);
+
+  const econResult = useMemo(() => economics(plan, econ, applied.capexMultiplier, applied.carbonPriceUsd), [plan, econ, applied]);
+  const commitments = useMemo(() => assessCommitments(plan, counterfactual), [plan, counterfactual]);
 
   const chartData = plan.years.map((y, i) => ({
     year: y.year,
     demand: Math.round(y.demandGwh),
     generation: Math.round(y.generationGwh),
-    capacity: Math.round(y.capacityMw),
     emissions: Number(y.emissionsMt.toFixed(1)),
-    clean: Number(y.cleanSharePct.toFixed(1)),
     baseline: counterfactual.years[i] ? Math.round(counterfactual.years[i].demandGwh) : undefined,
+    baselineEmissions: counterfactual.years[i] ? Number(counterfactual.years[i].emissionsMt.toFixed(1)) : undefined,
   }));
 
-  const mixData = plan.years.filter((_, i) => i % Math.max(1, Math.floor(plan.years.length / 12)) === 0 || i === plan.years.length - 1)
-    .map((y) => ({
-      year: y.year,
-      ...Object.fromEntries(TECHNOLOGIES.map((t) => [t, Math.round(y.capacityByTech[t])])),
-    }));
+  const mixData = plan.years
+    .filter((_, i) => i % Math.max(1, Math.floor(plan.years.length / 12)) === 0 || i === plan.years.length - 1)
+    .map((y) => ({ year: y.year, ...Object.fromEntries(TECHNOLOGIES.map((t) => [t, Math.round(y.capacityByTech[t])])) }));
 
-  const norm = normaliseMix(mix);
-  const horizonYear = plan.years[plan.years.length - 1];
+  const horizon = plan.years[plan.years.length - 1];
+  const activeCount = Object.values(policy).filter((v) => (v ?? 0) > 0).length;
+  const shownMix = normaliseMix(effectiveMix);
+
+  const axes = (
+    <>
+      <CartesianGrid stroke={AXIS.grid} vertical={false} />
+      <XAxis dataKey="year" {...axisProps} minTickGap={28} />
+      <YAxis {...axisProps} width={56} tickFormatter={fmtAxis} />
+    </>
+  );
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--surface)", padding: "2rem 1.5rem 4rem" }}>
-      <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+    <div style={{ minHeight: "100vh", background: "var(--surface)", padding: "1.5rem 1.25rem 4rem" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", marginBottom: "1.25rem" }}>
           <div>
-            <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-4)", marginBottom: "0.25rem" }}>Planning · NECAL2050</div>
-            <h1 style={{ fontSize: "1.6rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>National Energy Calculator</h1>
-            <p style={{ fontSize: "0.83rem", color: "var(--ink-3)", marginTop: "0.4rem", maxWidth: 720, lineHeight: 1.65 }}>
-              Plans forward from drivers rather than extrapolating a line: population, economic activity, efficiency and
-              access set demand; the energy balance sets required generation; availability and reserve margin set the
-              capacity that must exist; the mix sets what it costs and what it emits.
+            <div className="eyebrow">Planning · NECAL2050</div>
+            <h1 style={{ fontSize: "var(--t-2xl)", fontWeight: 700, color: "var(--ink)", margin: 0, letterSpacing: "-0.015em" }}>National Energy Calculator</h1>
+            <p style={{ fontSize: "var(--t-base)", color: "var(--ink-3)", marginTop: "0.4rem", maxWidth: "var(--measure)", lineHeight: 1.7 }}>
+              Plans forward from drivers: population, activity, efficiency and access set demand; the energy balance sets
+              required generation; availability and reserve set the capacity that must exist; the mix sets what it costs and
+              what it emits. Policy instruments reach the model through those same drivers, so every effect is traceable to a
+              mechanism.
             </p>
           </div>
-          <Link href="/data-point/dashboard" style={{ fontSize: "0.78rem", color: "var(--ink-4)" }}>← Dashboard</Link>
+          <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+            <Link href="/data-point/scenario/report" className="btn btn-primary btn-sm">Generate report</Link>
+            <Link href="/data-point/dashboard" style={{ fontSize: "var(--t-sm)", color: "var(--ink-4)" }}>← Dashboard</Link>
+          </div>
         </div>
 
-        {/* Anchor */}
-        <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderLeft: "3px solid var(--green)", padding: "0.8rem 1.1rem", marginBottom: "1.25rem", fontSize: "0.8rem", color: "var(--ink-3)", lineHeight: 1.6 }}>
-          {loading ? "Loading the committed base year from the data bank…" : base.generationGwh > 0 ? (
-            <>Anchored on <strong style={{ color: "var(--ink)" }}>{fmt(base.generationGwh)} GWh</strong> of committed generation for {baseYearFound}. Demand is uplifted by the suppressed-demand assumption below, because consumption today reflects what the grid could supply, not what the country needed.</>
-          ) : (
-            <>No committed generation records were found, so the plan runs on a nominal anchor. Commit generation data to anchor it on the real position.</>
-          )}
+        {/* Anchor status — always visible, never buried */}
+        <div style={{
+          background: "var(--surface-white)", border: "1px solid var(--border)",
+          borderLeft: `3px solid ${inputSummary?.anchored ? "var(--green)" : "var(--amber)"}`,
+          padding: "0.75rem 1.05rem", marginBottom: "1.15rem",
+          display: "flex", alignItems: "center", gap: "0.9rem", flexWrap: "wrap",
+        }}>
+          <span style={{ fontSize: "var(--t-2xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: inputSummary?.anchored ? "var(--green-deep)" : "var(--amber)", border: `1px solid ${inputSummary?.anchored ? "var(--green)" : "var(--amber)"}`, padding: "2px 8px" }}>
+            {inputSummary?.anchored ? "Anchored on NEDB" : "Not anchored"}
+          </span>
+          <span style={{ fontSize: "var(--t-sm)", color: "var(--ink-3)", flex: 1, minWidth: 260, lineHeight: 1.6 }}>
+            {loading ? "Reading the data bank…"
+              : inputSummary?.anchored
+                ? <>Base year {baseYear}: {fmt(base.generationGwh)} GWh of committed generation. {inputSummary.measured} of {inputSummary.total} model inputs are measured, {inputSummary.derived} derived, {inputSummary.missing} supplied by assumption.</>
+                : <>No committed generation records, so the plan runs on a nominal anchor rather than Nigeria&apos;s real position. Every figure below is illustrative until that series is filled.</>}
+          </span>
+          <button onClick={() => setTab("data")} style={{ fontSize: "var(--t-xs)", fontWeight: 700, color: "var(--green)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>
+            See every input
+          </button>
         </div>
 
-        {/* Pathways */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "0.75rem", marginBottom: "1.5rem" }}>
-          {PRESETS.map((p) => (
-            <button key={p.id} onClick={() => applyPreset(p.id)}
+        <div style={{ display: "flex", gap: 2, marginBottom: "1.15rem", flexWrap: "wrap", borderBottom: "1px solid var(--border)" }}>
+          {TABS.map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id)}
               style={{
-                textAlign: "left", cursor: "pointer", padding: "0.9rem 1rem",
-                background: preset === p.id ? "var(--green-tint)" : "var(--surface-white)",
-                border: `1px solid ${preset === p.id ? "var(--green)" : "var(--border)"}`,
+                padding: "0.55rem 0.9rem", background: "none", border: "none",
+                borderBottom: `2px solid ${tab === t.id ? "var(--green)" : "transparent"}`,
+                color: tab === t.id ? "var(--ink)" : "var(--ink-4)",
+                fontWeight: tab === t.id ? 700 : 500, fontSize: "var(--t-base)", cursor: "pointer",
               }}>
-              <div style={{ fontSize: "0.85rem", fontWeight: 700, color: preset === p.id ? "var(--green-deep)" : "var(--ink)", marginBottom: 3 }}>{p.label}</div>
-              <div style={{ fontSize: "0.72rem", color: "var(--ink-4)", lineHeight: 1.5 }}>{p.description}</div>
+              {t.label}
+              {t.id === "policy" && activeCount > 0 && (
+                <span style={{ marginLeft: 6, fontSize: "var(--t-2xs)", fontWeight: 700, background: "var(--green)", color: "#fff", padding: "1px 6px" }}>{activeCount}</span>
+              )}
             </button>
           ))}
         </div>
 
-        <div className="necal-layout split-rail-left" style={{ gap: "1.25rem" }}>
-
-          {/* ── Drivers ── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div className="panel">
-              <div className="panel-header"><span className="panel-title">Drivers</span></div>
-              <div style={{ padding: "1rem 1.1rem" }}>
-                <Slider label="Horizon" value={drivers.horizon} min={2030} max={2060} step={5} unit=""
-                  onChange={(v) => setDrivers({ ...drivers, horizon: v })} />
-                <Slider label="Population growth" value={drivers.populationGrowthPct} min={0} max={4} step={0.1} unit="%/yr"
-                  hint="Drives household demand." onChange={(v) => setDrivers({ ...drivers, populationGrowthPct: v })} />
-                <Slider label="GDP growth" value={drivers.gdpGrowthPct} min={0} max={8} step={0.1} unit="%/yr"
-                  hint="Drives commercial and industrial demand." onChange={(v) => setDrivers({ ...drivers, gdpGrowthPct: v })} />
-                <Slider label="Energy intensity change" value={drivers.energyIntensityChangePct} min={-3} max={1} step={0.1} unit="%/yr"
-                  hint="Negative means efficiency improving — less energy per unit of output." onChange={(v) => setDrivers({ ...drivers, energyIntensityChangePct: v })} />
-                <Slider label="Access at horizon" value={drivers.accessTargetPct} min={drivers.accessPct} max={100} step={1} unit="%"
-                  hint={`From ${drivers.accessPct}% today. Closing this gap adds real demand.`} onChange={(v) => setDrivers({ ...drivers, accessTargetPct: v })} />
-                <Slider label="Suppressed demand" value={drivers.suppressedDemandPct} min={0} max={80} step={5} unit="%"
-                  hint="How much unmet need sits behind today's consumption. Planning off metered consumption alone under-builds the system." onChange={(v) => setDrivers({ ...drivers, suppressedDemandPct: v })} />
-              </div>
+        {/* Headline figures — on every tab, because they are the point */}
+        <div className="grid-auto grid-hair" style={{ marginBottom: "1.25rem" }}>
+          {[
+            { l: `Demand ${drivers.horizon}`, v: horizon ? `${fmt(horizon.demandGwh)} GWh` : "—", s: plan.totals.demandGrowthMultiple ? `${plan.totals.demandGrowthMultiple.toFixed(1)}× today` : "" },
+            { l: "Capacity required", v: horizon ? `${fmt(horizon.capacityMw)} MW` : "—", s: `${fmt(plan.totals.capacityAddedMw)} MW to build` },
+            { l: "Capital requirement", v: `$${fmt(econResult.capexUsdBn, 1)}bn`, s: `₦${fmt(econResult.capexNgnTn, 1)}tn at ₦${econ.fxNgnPerUsd}/$` },
+            { l: `Emissions ${drivers.horizon}`, v: `${fmt(plan.totals.horizonEmissionsMt, 1)} Mt`, s: `peak ${fmt(plan.totals.peakEmissionsMt, 1)} Mt` },
+            { l: "Clean generation", v: `${fmt(plan.totals.horizonCleanPct, 0)}%`, s: "at horizon" },
+          ].map((c) => (
+            <div key={c.l} className="stat-cell">
+              <div className="val">{c.v}</div>
+              <div className="lbl">{c.l}</div>
+              {c.s && <div className="sub">{c.s}</div>}
             </div>
+          ))}
+        </div>
 
-            <div className="panel">
-              <div className="panel-header"><span className="panel-title">System assumptions</span></div>
-              <div style={{ padding: "1rem 1.1rem" }}>
-                <Slider label="T&D losses today" value={drivers.tdLossPct} min={5} max={40} step={1} unit="%"
-                  onChange={(v) => setDrivers({ ...drivers, tdLossPct: v })} />
-                <Slider label="T&D losses at horizon" value={drivers.tdLossTargetPct} min={4} max={40} step={1} unit="%"
-                  hint="Every point of loss avoided is capacity you do not have to build." onChange={(v) => setDrivers({ ...drivers, tdLossTargetPct: v })} />
-                <Slider label="Fleet availability" value={drivers.availabilityPct} min={20} max={90} step={1} unit="%"
-                  hint="Share of installed capacity that actually delivers. Nigeria's realised availability is well below nameplate." onChange={(v) => setDrivers({ ...drivers, availabilityPct: v })} />
-                <Slider label="Reserve margin" value={drivers.reserveMarginPct} min={0} max={40} step={1} unit="%"
-                  hint="Headroom over requirement for outages and demand peaks." onChange={(v) => setDrivers({ ...drivers, reserveMarginPct: v })} />
-              </div>
+        {plan.warnings.length > 0 && (
+          <div style={{ background: "var(--amber-tint)", border: "1px solid var(--amber)", padding: "0.75rem 1.05rem", marginBottom: "1.15rem" }}>
+            <div className="eyebrow" style={{ color: "var(--amber)", marginBottom: 4 }}>Read this plan with these caveats</div>
+            <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "var(--t-sm)", color: "var(--ink-2)", lineHeight: 1.7 }}>
+              {plan.warnings.map((w, i) => <li key={i}>{w}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {/* ── DATA ── */}
+        {tab === "data" && (
+          <div className="panel">
+            <div className="panel-header">
+              <span className="panel-title">Model inputs and where they come from</span>
+              <span style={{ fontSize: "var(--t-xs)", color: "var(--ink-5)" }}>Nothing here is invented</span>
             </div>
-
-            <div className="panel">
-              <div className="panel-header">
-                <span className="panel-title">Capacity mix at horizon</span>
-                <span style={{ fontSize: "0.7rem", color: "var(--ink-5)" }}>normalised to 100%</span>
-              </div>
-              <div style={{ padding: "0.9rem 1.1rem" }}>
-                {TECHNOLOGIES.map((t) => (
-                  <div key={t} style={{ marginBottom: "0.7rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3 }}>
-                      <span style={{ fontSize: "0.76rem", color: "var(--ink-2)", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ width: 9, height: 9, background: TECH_ASSUMPTIONS[t].color, flexShrink: 0 }} />
-                        {TECH_ASSUMPTIONS[t].label}
-                      </span>
-                      <span style={{ fontSize: "0.76rem", fontWeight: 700, color: "var(--green-deep)", fontVariantNumeric: "tabular-nums" }}>{norm[t].toFixed(0)}%</span>
-                    </div>
-                    <input type="range" min={0} max={100} step={1} value={mix[t]}
-                      onChange={(e) => setMix({ ...mix, [t]: Number(e.target.value) })}
-                      style={{ width: "100%", accentColor: TECH_ASSUMPTIONS[t].color }} />
-                  </div>
-                ))}
-              </div>
+            <div className="scroll-x">
+              <table className="data-table" style={{ fontSize: "var(--t-sm)" }}>
+                <thead><tr><th>Input</th><th>Status</th><th style={{ textAlign: "right" }}>Value</th><th>Period</th><th>Basis</th></tr></thead>
+                <tbody>
+                  {inputs.map((i) => (
+                    <tr key={i.id}>
+                      <td className="td-primary">{i.label}</td>
+                      <td>
+                        <span className={`tag ${i.status === "measured" ? "tag-green" : i.status === "derived" ? "tag-amber" : "tag-muted"}`}>
+                          {i.status === "measured" ? "Measured" : i.status === "derived" ? "Derived" : "Assumption"}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: i.value != null ? 600 : 400, color: i.value != null ? "var(--ink)" : "var(--ink-5)" }}>
+                        {i.value != null ? `${fmt(i.value, 1)} ${i.unit}` : "—"}
+                      </td>
+                      <td style={{ fontVariantNumeric: "tabular-nums", color: "var(--ink-4)" }}>{i.period ?? "—"}</td>
+                      <td style={{ fontSize: "var(--t-xs)", color: "var(--ink-3)", lineHeight: 1.55, maxWidth: 420 }}>
+                        {i.note}
+                        {i.series_id && i.status === "missing" && (
+                          <> <Link href={`/terminal/entry?series=${i.series_id}`} style={{ color: "var(--green)", fontWeight: 600 }}>Fill it →</Link></>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="chart-source">
+              Measured figures are read from committed NEDB records. Derived figures are computed from two or more measured
+              series. Assumptions are yours: the model shows the value it used and never presents one as a measurement.
             </div>
           </div>
+        )}
 
-          {/* ── Results ── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", minWidth: 0 }}>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1px", background: "var(--border)", border: "1px solid var(--border)" }}>
-              {[
-                { label: `Demand ${drivers.horizon}`, value: horizonYear ? `${fmt(horizonYear.demandGwh)} GWh` : "—", sub: plan.totals.demandGrowthMultiple ? `${plan.totals.demandGrowthMultiple.toFixed(1)}× today` : "" },
-                { label: "Capacity required", value: horizonYear ? `${fmt(horizonYear.capacityMw)} MW` : "—", sub: `${fmt(plan.totals.capacityAddedMw)} MW to build` },
-                { label: "Capital requirement", value: `$${fmt(plan.totals.capexUsdBn, 1)}bn`, sub: `to ${drivers.horizon}, overnight cost` },
-                { label: `Emissions ${drivers.horizon}`, value: `${fmt(plan.totals.horizonEmissionsMt, 1)} Mt`, sub: `peak ${fmt(plan.totals.peakEmissionsMt, 1)} Mt` },
-                { label: "Clean generation", value: `${fmt(plan.totals.horizonCleanPct, 0)}%`, sub: "non-emitting share at horizon" },
-              ].map((c) => (
-                <div key={c.label} style={{ background: "var(--surface-white)", padding: "1rem 1.1rem" }}>
-                  <div style={{ fontSize: "0.64rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ink-4)", marginBottom: 5 }}>{c.label}</div>
-                  <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>{c.value}</div>
-                  <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 3 }}>{c.sub}</div>
-                </div>
+        {/* ── DRIVERS ── */}
+        {tab === "drivers" && (
+          <>
+            <div className="grid-auto" style={{ gap: "0.7rem", marginBottom: "1.15rem" }}>
+              {PRESETS.map((p) => (
+                <button key={p.id} onClick={() => applyPreset(p.id)}
+                  style={{
+                    textAlign: "left", cursor: "pointer", padding: "0.85rem 1rem",
+                    background: preset === p.id ? "var(--green-tint)" : "var(--surface-white)",
+                    border: `1px solid ${preset === p.id ? "var(--green)" : "var(--border)"}`,
+                  }}>
+                  <div style={{ fontSize: "var(--t-base)", fontWeight: 700, color: preset === p.id ? "var(--green-deep)" : "var(--ink)", marginBottom: 3 }}>{p.label}</div>
+                  <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-4)", lineHeight: 1.5 }}>{p.description}</div>
+                </button>
               ))}
             </div>
 
-            {plan.warnings.length > 0 && (
-              <div style={{ background: "var(--amber-tint)", border: "1px solid var(--amber)", padding: "0.8rem 1.1rem" }}>
-                <div style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--amber)", marginBottom: 5 }}>Read the plan with these caveats</div>
-                <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.78rem", color: "var(--ink-2)", lineHeight: 1.7 }}>
-                  {plan.warnings.map((w, i) => <li key={i}>{w}</li>)}
-                </ul>
-              </div>
-            )}
-
-            {/* Demand */}
-            <div className="chart-panel">
-              <div className="chart-panel-head">
-                <div>
-                  <div className="chart-panel-title">Electricity demand and required generation</div>
-                  <div className="chart-panel-sub">GWh per year · generation exceeds demand by transmission and distribution losses</div>
+            <div className="grid-3" style={{ gap: "1rem", alignItems: "start" }}>
+              <div className="panel">
+                <div className="panel-header"><span className="panel-title">Demand drivers</span></div>
+                <div style={{ padding: "1rem" }}>
+                  <Slider label="Horizon" value={drivers.horizon} min={2030} max={2060} step={5} unit="" onChange={(v) => setDrivers({ ...drivers, horizon: v })} />
+                  <Slider label="Population growth" value={drivers.populationGrowthPct} min={0} max={4} step={0.1} unit="%/yr" hint="Drives household demand." onChange={(v) => setDrivers({ ...drivers, populationGrowthPct: v })} />
+                  <Slider label="GDP growth" value={drivers.gdpGrowthPct} min={0} max={8} step={0.1} unit="%/yr" hint="Drives commercial and industrial demand." onChange={(v) => setDrivers({ ...drivers, gdpGrowthPct: v })} />
+                  <Slider label="Energy intensity change" value={Number(drivers.energyIntensityChangePct.toFixed(1))} min={-3} max={1} step={0.1} unit="%/yr" hint="Negative means efficiency improving." onChange={(v) => setDrivers({ ...drivers, energyIntensityChangePct: v })} />
+                  <Slider label="Access at horizon" value={drivers.accessTargetPct} min={drivers.accessPct} max={100} step={1} unit="%" hint={`From ${drivers.accessPct}% today. Closing this gap adds real demand.`} onChange={(v) => setDrivers({ ...drivers, accessTargetPct: v })} />
+                  <Slider label="Suppressed demand" value={drivers.suppressedDemandPct} min={0} max={80} step={5} unit="%" hint="Unmet need behind today's consumption. Planning off metered consumption alone under-builds the system." onChange={(v) => setDrivers({ ...drivers, suppressedDemandPct: v })} />
                 </div>
-                <label style={{ fontSize: "0.72rem", color: "var(--ink-3)", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                  <input type="checkbox" checked={compare} onChange={(e) => setCompare(e.target.checked)} style={{ accentColor: "var(--green)" }} />
-                  Compare with current trajectory
-                </label>
+              </div>
+
+              <div className="panel">
+                <div className="panel-header"><span className="panel-title">System assumptions</span></div>
+                <div style={{ padding: "1rem" }}>
+                  <Slider label="T&D losses today" value={drivers.tdLossPct} min={5} max={40} step={1} unit="%" onChange={(v) => setDrivers({ ...drivers, tdLossPct: v })} />
+                  <Slider label="T&D losses at horizon" value={Number(drivers.tdLossTargetPct.toFixed(0))} min={4} max={40} step={1} unit="%" hint="Every point of loss avoided is capacity you do not have to build." onChange={(v) => setDrivers({ ...drivers, tdLossTargetPct: v })} />
+                  <Slider label="Fleet availability" value={drivers.availabilityPct} min={20} max={90} step={1} unit="%" hint="Share of installed capacity that actually delivers." onChange={(v) => setDrivers({ ...drivers, availabilityPct: v })} />
+                  <Slider label="Reserve margin" value={drivers.reserveMarginPct} min={0} max={40} step={1} unit="%" hint="Headroom for outages and peaks." onChange={(v) => setDrivers({ ...drivers, reserveMarginPct: v })} />
+                </div>
+              </div>
+
+              <div className="panel">
+                <div className="panel-header">
+                  <span className="panel-title">Capacity mix at horizon</span>
+                  <span style={{ fontSize: "var(--t-xs)", color: "var(--ink-5)" }}>normalised</span>
+                </div>
+                <div style={{ padding: "0.9rem 1rem" }}>
+                  {TECHNOLOGIES.map((t) => (
+                    <div key={t} style={{ marginBottom: "0.65rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3 }}>
+                        <span style={{ fontSize: "var(--t-sm)", color: "var(--ink-2)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ width: 9, height: 9, background: TECH_ASSUMPTIONS[t].color }} />
+                          {TECH_ASSUMPTIONS[t].label}
+                        </span>
+                        <span style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--green-deep)", fontVariantNumeric: "tabular-nums" }}>
+                          {shownMix[t].toFixed(0)}%
+                        </span>
+                      </div>
+                      <input type="range" min={0} max={100} step={1} value={mix[t]}
+                        onChange={(e) => setMix({ ...mix, [t]: Number(e.target.value) })}
+                        style={{ width: "100%", accentColor: TECH_ASSUMPTIONS[t].color }} />
+                    </div>
+                  ))}
+                  {applied.cleanBoost > 0 && (
+                    <div style={{ fontSize: "var(--t-xs)", color: "var(--green-deep)", background: "var(--green-tint)", padding: "0.45rem 0.6rem", marginTop: "0.4rem", lineHeight: 1.5 }}>
+                      Policy instruments add {applied.cleanBoost.toFixed(0)} points of clean share on top of your targets, taken proportionally from the emitting slots.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── POLICY ── */}
+        {tab === "policy" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+            <div style={{ fontSize: "var(--t-base)", color: "var(--ink-3)", lineHeight: 1.7, maxWidth: "var(--measure)" }}>
+              Each instrument reaches the model through a stated mechanism rather than a fudge factor, so you can see why the
+              result moved. Strength is how fully the policy is implemented, not how well it works.
+            </div>
+            {INSTRUMENTS.map((inst) => {
+              const strength = policy[inst.id] ?? 0;
+              const on = strength > 0;
+              return (
+                <div key={inst.id} style={{
+                  background: "var(--surface-white)", border: `1px solid ${on ? "var(--green-line)" : "var(--border)"}`,
+                  borderLeft: `3px solid ${on ? "var(--green)" : "var(--border)"}`, padding: "0.95rem 1.15rem",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "flex-start", flexWrap: "wrap", marginBottom: "0.5rem" }}>
+                    <div style={{ minWidth: 260, flex: 1 }}>
+                      <div style={{ fontSize: "var(--t-md)", fontWeight: 700, color: "var(--ink)", marginBottom: 3 }}>{inst.label}</div>
+                      <div style={{ fontSize: "var(--t-sm)", color: "var(--ink-3)", lineHeight: 1.6 }}>{inst.lever}</div>
+                    </div>
+                    <div style={{ minWidth: 220, flex: "0 1 260px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--t-xs)", marginBottom: 2 }}>
+                        <span style={{ color: "var(--ink-4)" }}>Implementation</span>
+                        <span style={{ fontWeight: 700, color: on ? "var(--green-deep)" : "var(--ink-5)", fontVariantNumeric: "tabular-nums" }}>{strength}%</span>
+                      </div>
+                      <input type="range" min={0} max={100} step={5} value={strength}
+                        onChange={(e) => setPolicy({ ...policy, [inst.id]: Number(e.target.value) })}
+                        style={{ width: "100%", accentColor: "var(--green)" }} />
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "0.6rem", borderTop: "1px solid var(--border-soft)", paddingTop: "0.5rem" }}>
+                    <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-3)", lineHeight: 1.6 }}>
+                      <strong style={{ color: "var(--ink-2)" }}>Mechanism:</strong> {inst.mechanism}
+                    </div>
+                    <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-4)", lineHeight: 1.6 }}>
+                      <strong style={{ color: "var(--ink-3)" }}>Basis:</strong> {inst.basis}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── GOALS ── */}
+        {tab === "goals" && (
+          <div className="panel">
+            <div className="panel-header">
+              <span className="panel-title">Sector goals and the gap to them</span>
+              <span style={{ fontSize: "var(--t-xs)", color: "var(--ink-5)" }}>Set a target; the plan is measured against it</span>
+            </div>
+            <div style={{ padding: "0.6rem 0" }}>
+              {SECTOR_GOALS.map((g) => {
+                const delivered = g.read(plan);
+                const target = goals[g.id];
+                const gap = target !== undefined && delivered != null ? delivered - target : null;
+                const meets = gap == null ? null : g.higherIsBetter ? gap >= 0 : gap <= 0;
+                return (
+                  <div key={g.id} style={{ padding: "0.8rem 1.15rem", borderBottom: "1px solid var(--border-soft)" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "minmax(200px, 1.4fr) repeat(auto-fit, minmax(120px, 1fr))", gap: "0.9rem", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: "var(--t-base)", fontWeight: 700, color: "var(--ink)" }}>{g.label}</div>
+                        <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-4)", lineHeight: 1.5 }}>{g.hint}</div>
+                        {g.reference && (
+                          <div style={{ fontSize: "var(--t-2xs)", color: "var(--ink-5)", marginTop: 2 }}>
+                            Reference: {g.reference.value}{g.unit === "%" ? "%" : ` ${g.unit}`} — {g.reference.label}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="eyebrow" style={{ marginBottom: 2 }}>This plan</div>
+                        <div style={{ fontSize: "var(--t-lg)", fontWeight: 700, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
+                          {delivered == null ? "—" : `${fmt(delivered, 1)}${g.unit === "%" ? "%" : ""}`}
+                          {g.unit !== "%" && delivered != null && <span style={{ fontSize: "var(--t-xs)", color: "var(--ink-4)", marginLeft: 4 }}>{g.unit}</span>}
+                        </div>
+                      </div>
+                      <div>
+                        <label>
+                          <span className="eyebrow" style={{ marginBottom: 2, display: "block" }}>Your target</span>
+                          <input className="form-input" type="number" value={target ?? ""}
+                            onChange={(e) => setGoals({ ...goals, [g.id]: Number(e.target.value) })}
+                            placeholder="—" style={{ minHeight: 34, textAlign: "right", fontVariantNumeric: "tabular-nums" }} />
+                        </label>
+                      </div>
+                      <div>
+                        <div className="eyebrow" style={{ marginBottom: 2 }}>Gap</div>
+                        {gap == null ? (
+                          <span style={{ fontSize: "var(--t-sm)", color: "var(--ink-5)" }}>Set a target</span>
+                        ) : (
+                          <span style={{ fontSize: "var(--t-base)", fontWeight: 700, color: meets ? "var(--green)" : "var(--amber)", fontVariantNumeric: "tabular-nums" }}>
+                            {meets ? "▲ met" : `${gap > 0 ? "+" : "−"}${fmt(Math.abs(gap), 1)}${g.unit === "%" ? "%" : ` ${g.unit}`}`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="chart-source">
+              Targets are yours. Where a published national commitment exists it is shown as a reference, but the model does
+              not assume you are aiming at it.
+            </div>
+          </div>
+        )}
+
+        {/* ── RESULTS ── */}
+        {tab === "results" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.15rem" }}>
+
+            <figure className="chart-panel" style={{ margin: 0 }}>
+              <div className="chart-panel-head">
+                <figcaption>
+                  <div className="chart-panel-title">Electricity demand and required generation</div>
+                  <div className="chart-panel-sub">GWh per year · generation exceeds demand by network losses</div>
+                </figcaption>
+              </div>
+              <div className="viz-legend">
+                <span className="viz-legend-item"><span className="viz-swatch" style={{ background: SERIES_COLORS[1] }} />Required generation</span>
+                <span className="viz-legend-item"><span className="viz-swatch" style={{ background: SERIES_COLORS[0] }} />Delivered demand</span>
+                <span className="viz-legend-item"><span className="viz-swatch" style={{ background: SERIES_COLORS[2] }} />Current trajectory</span>
               </div>
               <div className="chart-panel-body">
                 <ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={chartData} margin={{ top: 6, right: 14, left: 0, bottom: 0 }}>
-                    <CartesianGrid stroke="var(--border-soft)" vertical={false} />
-                    <XAxis dataKey="year" tick={{ fontSize: 10, fill: "var(--ink-5)" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: "var(--ink-5)" }} width={62} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(v, n) => [`${fmt(Number(v))} GWh`, String(n)]} />
-                    <Legend wrapperStyle={{ fontSize: "0.72rem" }} />
-                    <Line type="monotone" dataKey="generation" name="Required generation" stroke="#1B2A4A" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="demand" name="Delivered demand" stroke="#0E7A3C" strokeWidth={2} dot={false} />
-                    {compare && <Line type="monotone" dataKey="baseline" name="Current trajectory" stroke="#B45309" strokeWidth={1.6} strokeDasharray="5 4" dot={false} />}
+                  <LineChart data={chartData} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
+                    {axes}
+                    <Tooltip content={<VizTooltip unit="GWh" />} cursor={{ stroke: AXIS.grid }} />
+                    <Line type="monotone" dataKey="generation" name="Required generation" stroke={SERIES_COLORS[1]} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--surface-white)" }} />
+                    <Line type="monotone" dataKey="demand" name="Delivered demand" stroke={SERIES_COLORS[0]} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--surface-white)" }} />
+                    <Line type="monotone" dataKey="baseline" name="Current trajectory" stroke={SERIES_COLORS[2]} strokeWidth={1.6} strokeDasharray="5 4" dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
               <div className="chart-source">
-                Demand = base demand × population × GDP × efficiency × access. Base demand uplifts committed consumption by the suppressed-demand assumption.
+                Demand = base demand × population × activity × efficiency × access. The dashed line is the same model run on
+                the current-trajectory pathway, for comparison.
               </div>
-            </div>
+            </figure>
 
-            {/* Capacity build */}
-            <div className="chart-panel">
+            <figure className="chart-panel" style={{ margin: 0 }}>
               <div className="chart-panel-head">
-                <div>
+                <figcaption>
                   <div className="chart-panel-title">Installed capacity by technology</div>
-                  <div className="chart-panel-sub">MW · the build the plan implies</div>
-                </div>
+                  <div className="chart-panel-sub">MW · the build this plan implies</div>
+                </figcaption>
+              </div>
+              <div className="viz-legend">
+                {TECHNOLOGIES.map((t) => (
+                  <span key={t} className="viz-legend-item"><span className="viz-swatch" style={{ background: TECH_ASSUMPTIONS[t].color }} />{TECH_ASSUMPTIONS[t].label}</span>
+                ))}
               </div>
               <div className="chart-panel-body">
                 <ResponsiveContainer width="100%" height={280}>
-                  <AreaChart data={mixData} margin={{ top: 6, right: 14, left: 0, bottom: 0 }}>
-                    <CartesianGrid stroke="var(--border-soft)" vertical={false} />
-                    <XAxis dataKey="year" tick={{ fontSize: 10, fill: "var(--ink-5)" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: "var(--ink-5)" }} width={62} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(v, n) => [`${fmt(Number(v))} MW`, TECH_ASSUMPTIONS[n as Technology]?.label ?? String(n)]} />
-                    <Legend wrapperStyle={{ fontSize: "0.72rem" }} formatter={(n: string) => TECH_ASSUMPTIONS[n as Technology]?.label ?? n} />
+                  <AreaChart data={mixData} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
+                    {axes}
+                    <Tooltip content={<VizTooltip unit="MW" />} />
                     {TECHNOLOGIES.map((t) => (
-                      <Area key={t} type="monotone" dataKey={t} stackId="1" stroke={TECH_ASSUMPTIONS[t].color} fill={TECH_ASSUMPTIONS[t].color} fillOpacity={0.75} />
+                      <Area key={t} type="monotone" dataKey={t} name={TECH_ASSUMPTIONS[t].label} stackId="1"
+                        stroke={TECH_ASSUMPTIONS[t].color} strokeWidth={1}
+                        fill={TECH_ASSUMPTIONS[t].color} fillOpacity={0.85} />
                     ))}
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
               <div className="chart-source">
-                Capacity = generation ÷ (8,760 h × availability) × (1 + reserve margin), apportioned along the mix pathway from today&apos;s mix to the target.
+                Capacity = generation ÷ (8,760 h × availability) × (1 + reserve margin), walked from today&apos;s mix to your target.
+              </div>
+            </figure>
+
+            <div className="split-rail" style={{ gap: "1.15rem" }}>
+              <figure className="chart-panel" style={{ margin: 0 }}>
+                <div className="chart-panel-head">
+                  <figcaption>
+                    <div className="chart-panel-title">Annual capital requirement</div>
+                    <div className="chart-panel-sub">USD billion per year, overnight cost</div>
+                  </figcaption>
+                </div>
+                <div className="chart-panel-body">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={econResult.annualCapexUsdBn} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                      <CartesianGrid stroke={AXIS.grid} vertical={false} />
+                      <XAxis dataKey="year" {...axisProps} minTickGap={28} />
+                      <YAxis {...axisProps} width={48} tickFormatter={fmtAxis} />
+                      <Tooltip content={<VizTooltip unit="bn USD" />} />
+                      <Bar dataKey="value" name="Capital requirement" fill={SERIES_COLORS[3]} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="chart-source">Excludes grid reinforcement, storage and financing costs.</div>
+              </figure>
+
+              <div className="panel">
+                <div className="panel-header"><span className="panel-title">Economic consequences</span></div>
+                <div style={{ padding: "0.9rem 1.1rem" }}>
+                  {[
+                    { l: "Total capital", v: `$${fmt(econResult.capexUsdBn, 1)}bn`, s: `₦${fmt(econResult.capexNgnTn, 1)}tn` },
+                    { l: "Present value", v: `$${fmt(econResult.presentValueUsdBn, 1)}bn`, s: `at ${econ.discountRatePct}% discount` },
+                    { l: "Domestic spend", v: `$${fmt(econResult.domesticSpendUsdBn, 1)}bn`, s: `${econ.localContentPct}% local content` },
+                    { l: "Construction jobs", v: fmt(econResult.constructionJobYears), s: "job-years over the plan" },
+                    { l: "Operating jobs", v: fmt(econResult.operatingJobsAtHorizon), s: "at the horizon" },
+                    ...(applied.carbonPriceUsd > 0 ? [{ l: "Carbon revenue", v: `$${fmt(econResult.carbonRevenueUsdBn, 1)}bn`, s: `at $${applied.carbonPriceUsd.toFixed(0)}/tonne` }] : []),
+                  ].map((r) => (
+                    <div key={r.l} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "1rem", padding: "0.4rem 0", borderBottom: "1px solid var(--border-soft)" }}>
+                      <span style={{ fontSize: "var(--t-sm)", color: "var(--ink-3)" }}>{r.l}</span>
+                      <span style={{ textAlign: "right" }}>
+                        <span style={{ fontSize: "var(--t-base)", fontWeight: 700, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{r.v}</span>
+                        <span style={{ display: "block", fontSize: "var(--t-2xs)", color: "var(--ink-5)" }}>{r.s}</span>
+                      </span>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: "0.8rem" }}>
+                    <Slider label="Local content" value={econ.localContentPct} min={0} max={100} step={5} unit="%" onChange={(v) => setEcon({ ...econ, localContentPct: v })} />
+                    <Slider label="Discount rate" value={econ.discountRatePct} min={0} max={20} step={0.5} unit="%" onChange={(v) => setEcon({ ...econ, discountRatePct: v })} />
+                  </div>
+                </div>
+                <div className="chart-source">
+                  Job coefficients and local content are assumptions, not Nigerian measurements. They are shown so the figures
+                  can be challenged rather than taken on trust.
+                </div>
               </div>
             </div>
 
-            {/* Emissions */}
-            <div className="chart-panel">
+            <figure className="chart-panel" style={{ margin: 0 }}>
               <div className="chart-panel-head">
-                <div>
-                  <div className="chart-panel-title">Emissions and clean generation share</div>
-                  <div className="chart-panel-sub">Million tonnes CO₂e per year, and the non-emitting share of generation</div>
-                </div>
+                <figcaption>
+                  <div className="chart-panel-title">Emissions trajectory</div>
+                  <div className="chart-panel-sub">Million tonnes CO₂e per year from the generation mix</div>
+                </figcaption>
+              </div>
+              <div className="viz-legend">
+                <span className="viz-legend-item"><span className="viz-swatch" style={{ background: STATUS.critical }} />This pathway</span>
+                <span className="viz-legend-item"><span className="viz-swatch" style={{ background: SERIES_COLORS[2] }} />Current trajectory</span>
               </div>
               <div className="chart-panel-body">
-                <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={chartData} margin={{ top: 6, right: 14, left: 0, bottom: 0 }}>
-                    <CartesianGrid stroke="var(--border-soft)" vertical={false} />
-                    <XAxis dataKey="year" tick={{ fontSize: 10, fill: "var(--ink-5)" }} axisLine={false} tickLine={false} />
-                    <YAxis yAxisId="l" tick={{ fontSize: 10, fill: "var(--ink-5)" }} width={50} axisLine={false} tickLine={false} />
-                    <YAxis yAxisId="r" orientation="right" domain={[0, 100]} tick={{ fontSize: 10, fill: "var(--ink-5)" }} width={40} axisLine={false} tickLine={false} />
-                    <Tooltip />
-                    <Legend wrapperStyle={{ fontSize: "0.72rem" }} />
-                    <Line yAxisId="l" type="monotone" dataKey="emissions" name="Emissions (Mt CO₂e)" stroke="#B91C1C" strokeWidth={2} dot={false} />
-                    <Line yAxisId="r" type="monotone" dataKey="clean" name="Clean share (%)" stroke="#059669" strokeWidth={2} dot={false} />
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={chartData} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
+                    {axes}
+                    <Tooltip content={<VizTooltip unit="Mt CO₂e" />} cursor={{ stroke: AXIS.grid }} />
+                    {chartData.some((d) => d.year === 2030) && (
+                      <ReferenceLine x={2030} stroke={AXIS.tick} strokeDasharray="3 3"
+                        label={{ value: "NDC 2030", fontSize: 10, fill: AXIS.tick, position: "top" }} />
+                    )}
+                    <Line type="monotone" dataKey="baselineEmissions" name="Current trajectory" stroke={SERIES_COLORS[2]} strokeWidth={1.6} strokeDasharray="5 4" dot={false} />
+                    <Line type="monotone" dataKey="emissions" name="This pathway" stroke={STATUS.critical} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--surface-white)" }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
               <div className="chart-source">
-                Emissions apportion generation by each technology&apos;s realistic capacity factor, not by installed capacity — solar capacity does not generate like gas capacity.
+                Emissions apportion generation by each technology&apos;s realistic capacity factor, not by installed capacity —
+                solar capacity does not generate like gas capacity.
               </div>
-            </div>
+            </figure>
 
-            {/* Assumptions register */}
             <div className="panel">
               <div className="panel-header">
                 <span className="panel-title">Assumptions register</span>
-                <span style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>Every coefficient the plan uses</span>
+                <span style={{ fontSize: "var(--t-xs)", color: "var(--ink-5)" }}>Every coefficient the model uses</span>
               </div>
-              <div className="data-table-wrap" style={{ border: "none", borderRadius: 0 }}>
-                <table className="data-table" style={{ fontSize: "0.76rem" }}>
-                  <thead>
-                    <tr>
-                      <th>Technology</th>
-                      <th style={{ textAlign: "right" }}>Capex (USD/kW)</th>
-                      <th style={{ textAlign: "right" }}>Capacity factor</th>
-                      <th style={{ textAlign: "right" }}>Emission factor (gCO₂e/kWh)</th>
-                      <th style={{ textAlign: "right" }}>Share at horizon</th>
-                    </tr>
-                  </thead>
+              <div className="scroll-x">
+                <table className="data-table" style={{ fontSize: "var(--t-sm)" }}>
+                  <thead><tr><th>Technology</th><th style={{ textAlign: "right" }}>Capex (USD/kW)</th><th style={{ textAlign: "right" }}>Capacity factor</th><th style={{ textAlign: "right" }}>Emission factor (gCO₂e/kWh)</th><th style={{ textAlign: "right" }}>Share at horizon</th></tr></thead>
                   <tbody>
                     {TECHNOLOGIES.map((t) => (
                       <tr key={t}>
@@ -357,26 +648,61 @@ export default function NecalPage() {
                         <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmt(TECH_ASSUMPTIONS[t].capexUsdPerKw)}</td>
                         <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{TECH_ASSUMPTIONS[t].capacityFactorPct}%</td>
                         <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{TECH_ASSUMPTIONS[t].emissionFactor}</td>
-                        <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>{norm[t].toFixed(0)}%</td>
+                        <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>{shownMix[t].toFixed(0)}%</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
               <div className="chart-source">
-                Planning assumptions, not measured NEDB data. Capital costs are overnight costs excluding grid reinforcement,
-                storage and financing. Emission factors are lifecycle medians. Change any of them and the plan changes with them.
+                Planning assumptions, not NEDB measurements. Capital costs are overnight costs excluding grid reinforcement,
+                storage and financing. Emission factors are lifecycle medians.
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        )}
 
-      <style>{`
-        @media (max-width: 980px) {
-          .necal-layout { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
+        {/* ── CLIMATE ── */}
+        {tab === "climate" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
+            <div style={{ fontSize: "var(--t-base)", color: "var(--ink-3)", lineHeight: 1.7, maxWidth: "var(--measure)" }}>
+              Nigeria&apos;s stated commitments, and what this pathway does against them. The model covers power sector
+              emissions only, so a pass here is a pass on one sector, not on the whole economy-wide commitment.
+            </div>
+            {commitments.map((c) => {
+              const tone = c.status === "on_track" ? STATUS.good : c.status === "off_track" ? STATUS.serious : "var(--ink-4)";
+              return (
+                <div key={c.id} style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderLeft: `3px solid ${tone}`, padding: "1rem 1.25rem" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 9, flexWrap: "wrap", marginBottom: "0.4rem" }}>
+                    <span style={{ fontSize: "var(--t-2xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: tone, border: `1px solid ${tone}`, padding: "1px 7px" }}>
+                      {c.status === "on_track" ? "On track" : c.status === "off_track" ? "Off track" : "Not assessable"}
+                    </span>
+                    <span style={{ fontSize: "var(--t-md)", fontWeight: 700, color: "var(--ink)" }}>{c.label}</span>
+                  </div>
+                  <p style={{ fontSize: "var(--t-base)", color: "var(--ink-2)", lineHeight: 1.75, margin: "0 0 0.5rem", maxWidth: "var(--measure)" }}>{c.reading}</p>
+                  <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-4)", lineHeight: 1.6, borderTop: "1px solid var(--border-soft)", paddingTop: "0.45rem" }}>
+                    <strong style={{ color: "var(--ink-3)" }}>Commitment:</strong> {c.detail}
+                    <br />
+                    <strong style={{ color: "var(--ink-3)" }}>Test applied:</strong> {c.test}
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-4)", lineHeight: 1.7, borderTop: "1px solid var(--border)", paddingTop: "0.8rem" }}>
+              Commitment values are as published by the Federal Government. The assessment is this model&apos;s reading of a
+              single pathway and is not an official compliance determination.
+            </div>
+          </div>
+        )}
+      </div>
     </div>
+  );
+}
+
+export default function NecalPage() {
+  return (
+    <NecalGate>
+      <NecalWorkspace />
+    </NecalGate>
   );
 }

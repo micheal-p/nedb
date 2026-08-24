@@ -39,7 +39,8 @@ export interface ProfileDef {
   basis?: string;
   /**
    * Sections that are not sector-derived but belong to this entity's function:
-   * "compliance" for revenue and upstream regulators, "deals" for investors.
+   * "compliance" for revenue and upstream regulators, "deals" for investors,
+   * "necal" for the bodies that actually do national energy planning.
    */
   extraViews?: string[];
 }
@@ -108,13 +109,14 @@ export const VIEW_SECTORS: Record<string, Sector[]> = {
   // Function-specific sections, granted through extraViews rather than sector.
   compliance: [],
   deals:      [],
+  necal:      [],
 };
 
 /** Sections granted only by an explicit extraViews entry, never by sector. */
-const FUNCTION_VIEWS = new Set(["compliance", "deals"]);
+const FUNCTION_VIEWS = new Set(["compliance", "deals", "necal"]);
 
 /** Sections in their canonical running order. Profiles get a filtered slice. */
-const VIEW_ORDER = ["overview", "brief", "upstream", "midstream", "downstream", "power", "renewable", "bioenergy", "revenue", "faac", "compliance", "deals"];
+const VIEW_ORDER = ["overview", "brief", "upstream", "midstream", "downstream", "power", "renewable", "bioenergy", "revenue", "faac", "compliance", "deals", "necal"];
 
 /** Sections this profile may see, in canonical order. */
 export function allowedViews(profile: ProfileDef): string[] {
@@ -158,6 +160,7 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     basis: "National oversight — all energy sectors",
     mandate: ["petroleum", "gas", "electricity", "renewable", "biomass", "fiscal"],
     defaultView: "overview",
+    extraViews: ["necal"],
     kpis: [
       { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
       { label: "Oil Revenue (FAAC)",     series: "faac_oil_revenue",       unit: "₦ Billion" },
@@ -172,6 +175,7 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     basis: "ECN Act, CAP. E10 LFN 2004 — co-ordination across all energy carriers",
     mandate: ["petroleum", "gas", "electricity", "renewable", "biomass", "fiscal"],
     defaultView: "overview",
+    extraViews: ["necal"],
     kpis: [
       { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
       { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
@@ -273,6 +277,7 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     basis: "Energy management and infrastructure",
     mandate: ["electricity", "renewable", "biomass"],
     defaultView: "power",
+    extraViews: ["necal"],
     kpis: [
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
       { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
@@ -334,6 +339,7 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     basis: "Cross-sector executive view",
     mandate: ["petroleum", "gas", "electricity", "renewable", "biomass", "fiscal"],
     defaultView: "overview",
+    extraViews: ["necal"],
     kpis: [
       { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
