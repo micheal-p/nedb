@@ -1,6 +1,6 @@
-import { SERIES_COLORS } from "@/lib/viz";
 "use client";
 
+import { SERIES_COLORS } from "@/lib/viz";
 // Multi-country electricity generation comparison (Ember via OWID).
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { fmtCompact } from "@/lib/format";

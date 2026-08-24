@@ -1,6 +1,6 @@
-import { SERIES_COLORS } from "@/lib/viz";
 "use client";
 
+import { SERIES_COLORS } from "@/lib/viz";
 import { fmtCompact } from "@/lib/format";
 import {
   AreaChart,
