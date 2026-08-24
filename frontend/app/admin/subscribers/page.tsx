@@ -8,7 +8,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getToken, getRole } from "@/lib/auth";
+import { getToken, getRole, isAdminRole } from "@/lib/auth";
 
 interface Cycle {
   anchor_at: string; due_at: string; due: boolean; days_left: number;
@@ -40,7 +40,7 @@ export default function SubscribersAdmin() {
 
   useEffect(() => {
     if (!getToken()) { router.replace("/data-point/login?redirect=/admin/subscribers"); return; }
-    if (getRole() !== "admin") { router.replace("/data-point/dashboard"); return; }
+    if (!isAdminRole(getRole())) { router.replace("/data-point/dashboard"); return; }
     load();
   }, [router, load]);
 

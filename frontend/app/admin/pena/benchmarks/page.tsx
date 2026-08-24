@@ -8,7 +8,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { isLoggedIn, getRole } from "@/lib/auth";
+import { isLoggedIn, getRole, isAdminRole } from "@/lib/auth";
 import { type NbsRow } from "@/lib/nbs-benchmarks";
 
 type EditRow = { state_name: string; lga_name: string; population: string; poverty_rate: string; source: string };
@@ -26,7 +26,7 @@ export default function NbsBenchmarksPage() {
 
   useEffect(() => {
     if (!isLoggedIn()) { router.replace("/data-point/login?redirect=/admin/pena/benchmarks"); return; }
-    if (getRole() !== "admin") { router.replace("/data-point/dashboard"); return; }
+    if (!isAdminRole(getRole())) { router.replace("/data-point/dashboard"); return; }
     fetch("/api/pena/benchmarks")
       .then((r) => (r.ok ? r.json() : null))
       .then((j: { rows: NbsRow[]; from_defaults?: boolean } | null) => {

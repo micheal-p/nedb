@@ -7,7 +7,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getToken, getRole } from "@/lib/auth";
+import { getToken, getRole, isAdminRole } from "@/lib/auth";
 
 interface Row {
   id: string; name: string; sector: string; frequency: string; unit: string;
@@ -37,7 +37,7 @@ export default function FreshnessAdmin() {
 
   useEffect(() => {
     if (!getToken()) { router.replace("/data-point/login?redirect=/admin/freshness"); return; }
-    if (getRole() !== "admin") { router.replace("/data-point/dashboard"); return; }
+    if (!isAdminRole(getRole())) { router.replace("/data-point/dashboard"); return; }
     load();
   }, [router, load]);
 

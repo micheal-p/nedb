@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { isLoggedIn, getRole } from "@/lib/auth";
+import { isLoggedIn, getRole, isAdminRole } from "@/lib/auth";
 import { penaSlugify } from "@/lib/pena";
 
 type PenaForm = {
@@ -115,7 +115,7 @@ export default function PenaAdminPage() {
 
   useEffect(() => {
     if (!isLoggedIn()) { router.replace("/data-point/login?redirect=/admin/pena"); return; }
-    if (getRole() !== "admin") { router.replace("/data-point/dashboard"); return; }
+    if (!isAdminRole(getRole())) { router.replace("/data-point/dashboard"); return; }
     load();
   }, [router, load]);
 

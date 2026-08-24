@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getTokenFresh, getRole, clearTokens } from "@/lib/auth";
+import { getTokenFresh, getRole, clearTokens, isAdminRole } from "@/lib/auth";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 
 interface EnergyRec {
@@ -58,7 +58,7 @@ export default function DataBankPage() {
   const load = useCallback(async () => {
     const token = await getTokenFresh();
     if (!token) { router.replace("/data-point/login?redirect=/admin/databank"); return; }
-    if (getRole() !== "admin") { router.replace("/data-point/dashboard"); return; }
+    if (!isAdminRole(getRole())) { router.replace("/data-point/dashboard"); return; }
     setLoading(true);
     try {
       const res = await fetch("/api/admin/records?limit=2000", {

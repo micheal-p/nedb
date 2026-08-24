@@ -1,5 +1,6 @@
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { db } from "@/lib/supabase-server";
 
 const BASE = "https://nedb.vercel.app";
 
@@ -94,14 +95,24 @@ const METHOD_BG: Record<string, string> = {
   GET: "#F0FDF4", POST: "#EFF6FF", PATCH: "#FFFBEB", DELETE: "#FEF2F2",
 };
 
-const SERIES_IDS = [
-  "crude_oil_production", "natural_gas_production", "pms_sales", "ago_sales",
-  "kerosine_sales", "lpg_sales", "electricity_generation", "electricity_sent_out",
-  "electricity_consumption", "renewable_energy", "fuelwood_consumption", "faac_oil_revenue",
-  "upstream_royalties",
-];
+async function publishedSeries(): Promise<{ id: string; name: string }[]> {
+  try {
+    const { data } = await db()
+      .from("series_types")
+      .select("id, name")
+      .eq("is_public", true)
+      .order("sector").order("name");
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
 
-export default function ApiDocsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ApiDocsPage() {
+  const published = await publishedSeries();
+  const SERIES_IDS = published.map((s) => s.id);
   return (
     <>
       <Navbar />
@@ -112,7 +123,7 @@ export default function ApiDocsPage() {
             NEDB Public API
           </h1>
           <p style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.55)", maxWidth: 600, lineHeight: 1.6 }}>
-            Free, open access to Nigeria's national energy statistics. No API key required for public endpoints.
+            Open access to the energy statistics the Energy Commission has published. A series appears here only once it has been published for public access; withheld series are not served.
             Base URL: <code style={{ fontFamily: "var(--font-mono)", color: "var(--green)", fontSize: "0.85rem" }}>{BASE}</code>
           </p>
         </div>
@@ -204,10 +215,10 @@ export default function ApiDocsPage() {
               <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--ink)", marginBottom: "1rem" }}>Usage & Rate Limits</h2>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1rem" }}>
                 {[
-                  { label: "Authentication", value: "Public endpoints — no key required. IoT ingest requires X-API-Key header (contact ECN for device keys)." },
-                  { label: "Rate limits",    value: "500 requests/minute per IP. Sustained scraping is rate-limited — use the export endpoint for bulk downloads." },
+                  { label: "Authentication", value: "No key needed to read published data. An API key raises your rate limit and is supplied in an X-API-Key header; it does not widen what you can see. Request one from ECN Data Management." },
+                  { label: "Rate limits",    value: "60 requests/minute for anonymous callers, 600/minute with an API key. Use the export endpoint for bulk downloads rather than paging the data endpoint." },
                   { label: "Data licence",   value: "Published under ECN Open Data Policy. Attribution required: cite NEDB (Energy Commission of Nigeria)." },
-                  { label: "Data currency",  value: "Updated as Energy Commission staff commit new data. Each series page shows the last upload date." },
+                  { label: "Coverage",       value: "Only published series are served. An unpublished series returns 404, and each series exposes only the fields the Commission has published for it." },
                   { label: "Format",         value: "All responses are JSON (UTF-8). Export endpoint returns CSV or XLSX. All dates are ISO 8601." },
                   { label: "Contact",        value: "For API access issues or data queries, contact ECN Data Management at data@energy.gov.ng" },
                 ].map((item) => (

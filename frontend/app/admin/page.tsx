@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, type StaffUser } from "@/lib/api";
-import { getToken, getRole, getFullName } from "@/lib/auth";
+import { getToken, getRole, getFullName, isAdminRole } from "@/lib/auth";
 import InfoTip from "@/components/ui/InfoTip";
 
 interface Company {
@@ -185,7 +185,7 @@ export default function AdminPage() {
   const loadUsers = useCallback(async () => {
     const token = getToken();
     if (!token) { router.replace("/data-point/login?redirect=/admin"); return; }
-    if (getRole() !== "admin") { router.replace("/"); return; }
+    if (!isAdminRole(getRole())) { router.replace("/"); return; }
     setUsersLoading(true);
     const data = await api.listStaff(token).catch(() => []);
     setUsers(data);
@@ -360,7 +360,7 @@ export default function AdminPage() {
   useEffect(() => {
     const token = getToken();
     if (!token) { router.replace("/data-point/login?redirect=/admin"); return; }
-    if (getRole() !== "admin") { router.replace("/"); return; }
+    if (!isAdminRole(getRole())) { router.replace("/"); return; }
     loadUsers();
     loadCompanies();
     loadRequests();

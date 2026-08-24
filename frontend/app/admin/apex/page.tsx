@@ -7,7 +7,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getToken, getRole } from "@/lib/auth";
+import { getToken, getRole, isAdminRole } from "@/lib/auth";
 
 interface ApiKey { id: number; key: string; label: string; owner: string | null; is_active: boolean; created_at: string; last_used: string | null }
 
@@ -70,7 +70,7 @@ export default function ApexAdmin() {
 
   useEffect(() => {
     if (!getToken()) { router.replace("/data-point/login?redirect=/admin/apex"); return; }
-    if (getRole() !== "admin") { router.replace("/data-point/dashboard"); return; }
+    if (!isAdminRole(getRole())) { router.replace("/data-point/dashboard"); return; }
     load();
     loadKeys();
   }, [router, load, loadKeys]);
