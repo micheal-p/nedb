@@ -48,6 +48,7 @@ export const ADMIN_NAV: AdminGroup[] = [
     group: "Intelligence",
     items: [
       { href: "/admin/apex", label: "Apex AI", icon: "spark" },
+      { href: "/admin/api", label: "Public API", icon: "code" },
       { href: "/knowledge-graph", label: "Knowledge Graph", icon: "graph" },
     ],
   },
@@ -74,6 +75,7 @@ export const ADMIN_ICONS: Record<string, string> = {
   spark:     "M12 2l2.4 6.8L21 11l-6.6 2.2L12 20l-2.4-6.8L3 11l6.6-2.2z",
   graph:     "M5 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM7 7l4 8M17 7l-4 8",
   mail:      "M3 5h18v14H3zM3 6l9 7 9-7",
+  code:      "M8 6l-6 6 6 6M16 6l6 6-6 6",
 };
 
 // The section title shown in the top bar for the active route.

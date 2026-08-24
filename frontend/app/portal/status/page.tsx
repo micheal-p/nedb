@@ -47,7 +47,7 @@ export default function AccessRequestStatusPage() {
       <main style={{ background: "var(--surface)", padding: "2.5rem 0 5rem", minHeight: "60vh" }}>
         <div className="page-wrap" style={{ maxWidth: 560 }}>
           <div style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-4)", marginBottom: "0.3rem" }}>
-            <Link href="/portal" style={{ color: "var(--green)" }}>Intelligence Portal</Link> / Status
+            <Link href="/portal" style={{ color: "var(--green)" }}>Dashboard Access</Link> / Status
           </div>
           <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.4rem" }}>Check an Access Request</h1>
           <p style={{ fontSize: "0.82rem", color: "var(--ink-4)", marginBottom: "1.75rem", lineHeight: 1.6 }}>

@@ -1,13 +1,51 @@
 import { NextRequest } from "next/server";
 import * as XLSX from "xlsx";
 import { db } from "@/lib/supabase-server";
-import { requireAuth, ok, err } from "@/lib/api-helpers";
+import { requireRole, ok, err } from "@/lib/api-helpers";
 
-const VALID_UNITS = new Set([
-  "Barrels", "Barrels/day", "MMSCFD", "MMSCF", "Litres", "Metric Tonnes",
-  "GWh", "MWh", "MW", "MWh/hr", "MWh/day", "Thousand Barrels",
-  "Million Barrels", "BCF", "TCF", "KG", "Tonnes", "Number", "%",
-]);
+// Unit codelist. Compared case- and space-insensitively, and the aliases the
+// rest of the platform actually issues (admin Data Entry, series defaults,
+// downloaded templates) are first-class entries — previously a file exported
+// using the app's own conventions failed validation on every single row
+// because "M Barrels" and "Bcf" were not on this list.
+const UNIT_ALIASES: Record<string, string> = {
+  "m barrels": "Million Barrels",
+  "million barrels": "Million Barrels",
+  "thousand barrels": "Thousand Barrels",
+  "barrels": "Barrels",
+  "barrels/day": "Barrels/day",
+  "bcf": "BCF",
+  "tcf": "TCF",
+  "mmscfd": "MMSCFD",
+  "mmscf": "MMSCF",
+  "m litres": "Million Litres",
+  "million litres": "Million Litres",
+  "litres": "Litres",
+  "mt": "Metric Tonnes",
+  "metric tonnes": "Metric Tonnes",
+  "tonnes": "Tonnes",
+  "kg": "KG",
+  "gwh": "GWh",
+  "mwh": "MWh",
+  "mw": "MW",
+  "mwh/hr": "MWh/hr",
+  "mwh/day": "MWh/day",
+  "m m³": "Million m³",
+  "m m3": "Million m³",
+  "million m³": "Million m³",
+  "₦ billion": "₦ Billion",
+  "ngn billion": "₦ Billion",
+  "₦ million": "₦ Million",
+  "number": "Number",
+  "%": "%",
+};
+
+/** Canonical unit for an input, or null when it is not in the codelist. */
+function canonicalUnit(raw: string): string | null {
+  return UNIT_ALIASES[raw.trim().toLowerCase().replace(/\s+/g, " ")] ?? null;
+}
+
+const ALLOWED_UNIT_LIST = [...new Set(Object.values(UNIT_ALIASES))].join(", ");
 
 function parsePeriodDate(period: string): string | null {
   // Annual: 2023
@@ -77,11 +115,17 @@ function validateRows(rawRows: Record<string, string>[], seriesTypeId: string, s
       else value = v;
     }
 
-    // unit
+    // unit — normalised to the canonical codelist spelling on the way in
+    let canonUnit = "";
     if (!unit) {
       rowErrs.push({ row_number: rowNum, column_name: "unit", error_type: "missing_required", error_message: "unit is required" });
-    } else if (!VALID_UNITS.has(unit)) {
-      rowErrs.push({ row_number: rowNum, column_name: "unit", error_type: "invalid_unit", error_message: `unit "${unit}" is not in the allowed codelist`, raw_value: unit });
+    } else {
+      const c = canonicalUnit(unit);
+      if (!c) {
+        rowErrs.push({ row_number: rowNum, column_name: "unit", error_type: "invalid_unit", error_message: `unit "${unit}" is not in the codelist. Accepted units: ${ALLOWED_UNIT_LIST}`, raw_value: unit });
+      } else {
+        canonUnit = c;
+      }
     }
 
     if (rowErrs.length) { errors.push(...rowErrs); return; }
@@ -93,7 +137,7 @@ function validateRows(rawRows: Record<string, string>[], seriesTypeId: string, s
       region: (raw["region"] ?? "NGA").trim() || "NGA",
       fuel_product: (raw["fuel_product"] ?? "").trim() || null,
       value,
-      unit,
+      unit: canonUnit,
       source: (raw["source"] ?? "").trim() || null,
       notes:  (raw["notes"]  ?? "").trim() || null,
       methodology_version: (raw["methodology_version"] ?? "v1").trim() || "v1",
@@ -105,7 +149,7 @@ function validateRows(rawRows: Record<string, string>[], seriesTypeId: string, s
 }
 
 export async function POST(req: NextRequest) {
-  const claims = await requireAuth(req);
+  const claims = await requireRole(req, "editor");
   if (!claims) return err("authentication required", 401);
 
   const formData = await req.formData().catch(() => null);

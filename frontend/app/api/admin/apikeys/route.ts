@@ -1,23 +1,23 @@
 import { NextRequest } from "next/server";
 import { randomBytes } from "node:crypto";
 import { db } from "@/lib/supabase-server";
-import { ok, err, requireAuth } from "@/lib/api-helpers";
+import { ok, err, requireAdmin } from "@/lib/api-helpers";
 
 // Admin management of public API keys (issue / list / toggle).
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireAdmin(req);
   if (!auth) return err("Unauthorized", 401);
   const { data, error } = await db()
     .from("api_keys")
-    .select("id, key, label, owner, is_active, created_by, created_at, last_used")
+    .select("id, key, label, owner, is_active, created_by, created_at, last_used, rate_limit, call_count")
     .order("created_at", { ascending: false });
   if (error) return err(error.message, 500);
   return ok(data ?? []);
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireAdmin(req);
   if (!auth) return err("Unauthorized", 401);
   const body = await req.json().catch(() => null);
   if (!body?.label) return err("label is required", 400);
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireAdmin(req);
   if (!auth) return err("Unauthorized", 401);
   const body = await req.json().catch(() => null);
   if (!body?.id) return err("id is required", 400);

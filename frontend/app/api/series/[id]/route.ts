@@ -1,8 +1,12 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok, err } from "@/lib/api-helpers";
+import { authorizeApiCall } from "@/lib/api-exposure";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await authorizeApiCall(req);
+  if (!auth.ok) return err(auth.error, auth.status);
+
   const { id } = await params;
 
   const { data, error } = await db()
@@ -12,9 +16,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       energy_records(count)
     `)
     .eq("id", id)
+    .eq("is_public", true)
     .single();
 
-  if (error || !data) return err("series not found", 404);
+  if (error || !data) return err("Series not found or not published for public access.", 404);
 
   const shaped = {
     ...data,

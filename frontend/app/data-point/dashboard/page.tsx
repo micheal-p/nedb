@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { clearTokens, isLoggedIn, getFullName, getRole, getDashboardProfile, getTokenFresh, isAdminRole, ROLE_LABELS } from "@/lib/auth";
 import type { BuilderTab } from "@/lib/dashboard-builder";
-import { PROFILE_MAP, SERIES_LABELS, type KPIDef, type ProfileDef } from "@/lib/dashboard-profiles";
+import { PROFILE_MAP, SERIES_LABELS, allowedViews, scopeData, mandateLabel, seriesInMandate, type KPIDef, type ProfileDef } from "@/lib/dashboard-profiles";
 import { AwaitingData } from "@/components/ui/gov";
 import dynamic from "next/dynamic";
 import CoatOfArms from "@/components/layout/CoatOfArms";
@@ -128,7 +128,6 @@ const NAV_ITEMS: Record<string, { label: string; section: string }> = {
   revenue:    { label: "Revenue Portal",        section: "Fiscal Analysis" },
   faac:       { label: "FAAC Contribution",     section: "Fiscal Analysis" },
 };
-const SOON_VIEWS = new Set(["midstream", "bioenergy", "faac"]);
 
 
 function downloadTableCSV(filename: string, headers: string[], rows: (string | number)[][]) {
@@ -242,13 +241,29 @@ export default function Dashboard() {
   }, [selectedYear]);
 
   // Convenience aliases — empty array if not yet uploaded
-  const s = (id: string): SeriesRow[] => dashData[id] ?? [];
+  // ── Mandate scoping ──────────────────────────────────────────
+  // Everything downstream of here reads scoped data only: a profile can never
+  // render, chart, export or be alerted on a series outside its mandate.
+  const scopedData     = useMemo(() => scopeData(profile, dashData),     [profile, dashData]);
+  const scopedPrevData = useMemo(() => scopeData(profile, prevDashData), [profile, prevDashData]);
+  const s = (id: string): SeriesRow[] => scopedData[id] ?? [];
 
   function logout() { clearTokens(); router.replace("/data-point/login"); }
   function navigate(id: string) { setView(id); setSidebarOpen(false); }
 
+  const allowed = useMemo(() => allowedViews(profile), [profile]);
+
+  // Belt-and-braces: a view outside the mandate can never stay rendered, even
+  // if reached by a stale state value or a profile switch.
+  useEffect(() => {
+    if (!view || view.startsWith("custom:")) return;
+    if (!allowed.includes(view)) setView(profile.defaultView);
+  }, [view, allowed, profile.defaultView]);
+
+  const inScope = (v: string) => v.startsWith("custom:") || allowed.includes(v);
+
   const orderedNav = [
-    ...profile.navOrder.map((id) => ({ id, ...NAV_ITEMS[id] })),
+    ...allowed.map((id) => ({ id, ...NAV_ITEMS[id] })),
     ...customTabs.map((tb) => ({ id: `custom:${tb.id}`, label: tb.label, section: "Custom Tabs" })),
   ];
   const sections   = [...new Set(orderedNav.map((n) => n.section))];
@@ -272,17 +287,12 @@ export default function Dashboard() {
         {sections.map((sec) => (
           <div key={sec}>
             <div className="sb-section">{sec}</div>
-            {orderedNav.filter((n) => n.section === sec).map((item) => {
-              const soon = SOON_VIEWS.has(item.id);
-              return (
-                <button key={item.id} className={`sb-link${view === item.id ? " active" : ""}`}
-                  onClick={() => !soon && navigate(item.id)}
-                  style={soon ? { opacity: 0.4, cursor: "not-allowed" } : undefined}>
-                  <span className="sb-label">{item.label}</span>
-                  {soon && <span style={{ fontSize: "0.58rem", fontWeight: 700, background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)", padding: "1px 5px", borderRadius: 3, whiteSpace: "nowrap" }}>DATA PENDING</span>}
-                </button>
-              );
-            })}
+            {orderedNav.filter((n) => n.section === sec).map((item) => (
+              <button key={item.id} className={`sb-link${view === item.id ? " active" : ""}`}
+                onClick={() => navigate(item.id)}>
+                <span className="sb-label">{item.label}</span>
+              </button>
+            ))}
           </div>
         ))}
         <div style={{ marginTop: "auto" }}>
@@ -341,7 +351,7 @@ export default function Dashboard() {
               <h2 style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.2, marginBottom: "0.3rem" }}>{profile.roleTitle}</h2>
               <p style={{ fontSize: "0.78rem", color: "var(--ink-4)", lineHeight: 1.5, maxWidth: 540 }}>{profile.persona}</p>
               {(() => {
-                const live = profile.kpis.filter((k) => (dashData[k.series] ?? []).length > 0).length;
+                const live = profile.kpis.filter((k) => (scopedData[k.series] ?? []).length > 0).length;
                 const total = profile.kpis.length;
                 return (
                   <div style={{ fontSize: "0.72rem", fontWeight: 600, marginTop: "0.4rem", color: live === total ? "var(--green)" : "var(--amber)" }}>
@@ -350,15 +360,16 @@ export default function Dashboard() {
                 );
               })()}
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Welcome back</div>
-              <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--ink)" }}>{staffName}</div>
+            <div style={{ textAlign: "right", minWidth: 0 }}>
+              <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Data scope</div>
+              <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>{mandateLabel(profile)}</div>
+              {profile.basis && <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 2, maxWidth: 300 }}>{profile.basis}</div>}
             </div>
           </div>
 
           {/* KPI strip — computed live from dashData */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "1px", background: "var(--border)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden", marginBottom: "1.5rem" }}>
-            {profile.kpis.map((def) => { const m = computeKPI(def, dashData, prevDashData); return (
+            {profile.kpis.map((def) => { const m = computeKPI(def, scopedData, scopedPrevData); return (
               <div key={m.label} className="metric-card" style={{ border: "none", borderRadius: 0 }}>
                 <div className="mc-label">{m.label}</div>
                 <div className="mc-value">{m.value}{m.unit && m.value !== "—" && <span style={{ fontSize: "0.75rem", color: "var(--ink-4)", fontFamily: "var(--font-sans)", marginLeft: 4 }}>{m.unit}</span>}</div>
@@ -377,7 +388,7 @@ export default function Dashboard() {
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.25rem" }}>
                 {s("crude_oil_production").length ? <SectorChart title="Crude Oil Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC" data={s("crude_oil_production")} series={[{ key: "value", label: "Production", color: profile.color }]} unit="M Barrels" filename="crude-oil-production" /> : <EmptyChart seriesName="Crude Oil Production" />}
                 <div className="panel">
-                  {(() => { const liveAlerts = computeAnomalies(dashData); const highCount = liveAlerts.filter((a) => a.level === "high").length; return (<>
+                  {(() => { const liveAlerts = computeAnomalies(scopedData); const highCount = liveAlerts.filter((a) => a.level === "high").length; return (<>
                   <div className="panel-header">
                     <span className="panel-title">Anomaly Feed</span>
                     {liveAlerts.length > 0 && <span className="tag tag-red" style={{ fontSize: "0.6rem" }}>{highCount} High</span>}
@@ -416,7 +427,7 @@ export default function Dashboard() {
           )}
 
           {/* ── DOWNSTREAM ── */}
-          {view === "downstream" && (
+          {view === "downstream" && inScope("downstream") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Monthly Trend" subtitle={`PMS · AGO · LPG volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS (M L)", color: "#0E7A3C" }, { key: "ago", label: "AGO (M L)", color: "#1D4ED8" }, { key: "lpg", label: "LPG (MT)", color: "#B45309" }]} unit="" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
@@ -435,7 +446,7 @@ export default function Dashboard() {
           )}
 
           {/* ── UPSTREAM ── */}
-          {view === "upstream" && (
+          {view === "upstream" && inScope("upstream") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
@@ -458,7 +469,7 @@ export default function Dashboard() {
           )}
 
           {/* ── POWER ── */}
-          {view === "power" && (
+          {view === "power" && inScope("power") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               {(s("electricity_generation").length || s("electricity_sent_out").length) ? <SectorChart title="Electricity Generation vs. Sent Out" subtitle={`Monthly GWh · ${selectedYear}`} source="NERC / TCN" data={mergeSeries([{ data: s("electricity_generation"), key: "generation" }, { data: s("electricity_sent_out"), key: "sent_out" }])} series={[{ key: "generation", label: "Generation (GWh)", color: "#1D4ED8" }, { key: "sent_out", label: "Sent Out (GWh)", color: "#0E7A3C" }]} unit="GWh" filename="electricity-generation" /> : <EmptyChart seriesName="Electricity Generation" />}
@@ -478,7 +489,7 @@ export default function Dashboard() {
           )}
 
           {/* ── RENEWABLE ── */}
-          {view === "renewable" && (
+          {view === "renewable" && inScope("renewable") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
@@ -492,7 +503,7 @@ export default function Dashboard() {
                     { label: "Renewable Capacity",   series: "renewable_energy",     unit: "MW" },
                     { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
                     { label: "Fuelwood Consumption", series: "fuelwood_consumption", unit: "M m³", higherIsBetter: false },
-                  ] as KPIDef[]).map((def) => { const m = computeKPI(def, dashData, prevDashData); return (
+                  ] as KPIDef[]).map((def) => { const m = computeKPI(def, scopedData, scopedPrevData); return (
                     <div key={m.label}>
                       <div className="kpi-label">{m.label}</div>
                       <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--ink)", fontFamily: "var(--font-mono)", marginTop: 4 }}>
@@ -509,15 +520,70 @@ export default function Dashboard() {
           )}
 
           {/* ── REVENUE ── */}
-          {view === "revenue" && (
+          {view === "revenue" && inScope("revenue") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
                 {s("faac_oil_revenue").length ? <SectorChart title="Oil Revenue — FAAC Contribution" subtitle={`Quarterly ₦B · ${selectedYear}`} source="RMAFC / CBN" data={s("faac_oil_revenue")} series={[{ key: "value", label: "FAAC Oil Revenue (₦B)", color: "#7C3AED" }]} unit="₦B" filename="faac-oil-revenue" /> : <EmptyChart seriesName="FAAC Oil Revenue" />}
                 {s("upstream_royalties").length ? <SectorChart title="Upstream Royalties Collected" subtitle={`Quarterly ₦B · ${selectedYear}`} source="NUPRC / FIRS" data={s("upstream_royalties")} series={[{ key: "value", label: "Royalties (₦B)", color: "#9F1239" }]} unit="₦B" filename="upstream-royalties" /> : <EmptyChart seriesName="Upstream Royalties" />}
               </div>
-              <FiscalVarianceTable dashData={dashData} prevDashData={prevDashData} year={selectedYear} />
+              <FiscalVarianceTable dashData={scopedData} prevDashData={scopedPrevData} year={selectedYear} />
               <RevenueRegistryTable />
+            </div>
+          )}
+
+          {/* ── MIDSTREAM ── */}
+          {view === "midstream" && inScope("midstream") && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
+              {s("natural_gas_production").length
+                ? <SectorChart title="Natural Gas Production" subtitle={`Gas entering the midstream system · ${selectedYear}`} source="NUPRC / NGC" data={s("natural_gas_production")} series={[{ key: "value", label: "Gas (Bcf)", color: "#0369A1" }]} unit="Bcf" filename="natural-gas-production" />
+                : <EmptyChart seriesName="Natural Gas Production" />}
+              <AwaitingData
+                title="Pipeline Throughput & Tariff"
+                agencies={["NGC", "NMDPRA"]}
+                series={["Pipeline throughput", "Transmission tariff revenue", "Refinery throughput", "Depot receipts"]}
+              />
+            </div>
+          )}
+
+          {/* ── BIOENERGY ── */}
+          {view === "bioenergy" && inScope("bioenergy") && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+                {s("fuelwood_consumption").length
+                  ? <SectorChart title="Fuelwood Consumption" subtitle={`Household biomass use · ${selectedYear}`} source="ECN / NBS" data={s("fuelwood_consumption")} series={[{ key: "value", label: "Fuelwood (M m³)", color: "#78350F" }]} unit="M m³" filename="fuelwood-consumption" />
+                  : <EmptyChart seriesName="Fuelwood Consumption" />}
+                {s("charcoal_consumption").length
+                  ? <SectorChart title="Charcoal Consumption" subtitle={`Commercial charcoal · ${selectedYear}`} source="ECN / NBS" data={s("charcoal_consumption")} series={[{ key: "value", label: "Charcoal", color: "#57534E" }]} unit="" filename="charcoal-consumption" />
+                  : <EmptyChart seriesName="Charcoal Consumption" />}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+                {s("coal_consumption").length
+                  ? <SectorChart title="Coal Consumption" subtitle={`Domestic coal use · ${selectedYear}`} source="MMSD" data={s("coal_consumption")} series={[{ key: "value", label: "Coal", color: "#292524" }]} unit="" filename="coal-consumption" />
+                  : <EmptyChart seriesName="Coal Consumption" />}
+                {s("coal_export").length
+                  ? <SectorChart title="Coal Export" subtitle={`Export volumes · ${selectedYear}`} source="MMSD / Customs" data={s("coal_export")} series={[{ key: "value", label: "Coal export", color: "#78350F" }]} unit="" filename="coal-export" />
+                  : <EmptyChart seriesName="Coal Export" />}
+              </div>
+              <NigeriaMap stateData={stateMap["fuelwood_consumption"] ?? {}} id="fuelwood-state" title="Fuelwood Consumption by State" unit="M m³" colorLow="#F5F5F4" colorHigh="#78350F" higherIsBetter={false} source="ECN / NBS" />
+            </div>
+          )}
+
+          {/* ── FAAC ── */}
+          {view === "faac" && inScope("faac") && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
+              {s("faac_oil_revenue").length
+                ? <SectorChart title="Oil Revenue — FAAC Contribution" subtitle={`Energy sector share of the federation pool · ${selectedYear}`} source="RMAFC / CBN" data={s("faac_oil_revenue")} series={[{ key: "value", label: "FAAC Oil Revenue (₦B)", color: "#7C3AED" }]} unit="₦B" filename="faac-oil-revenue" />
+                : <EmptyChart seriesName="FAAC Oil Revenue" />}
+              <FiscalVarianceTable dashData={scopedData} prevDashData={scopedPrevData} year={selectedYear} />
+              <AwaitingData
+                title="FAAC Pool Share & Budget Benchmark"
+                agencies={["RMAFC", "DMO", "CBN"]}
+                series={["Total FAAC pool", "Federal budget oil projection", "Benchmark crude price", "Excess Crude Account movements"]}
+              />
             </div>
           )}
 
@@ -527,7 +593,7 @@ export default function Dashboard() {
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "1.25rem", alignItems: "start" }}>
                 {activeCustom.widgets.map((w, i) => (
-                  <DashboardWidget key={i} widget={{ kind: w.kind, title: w.title, config: w.config }} dashData={dashData} stateMap={stateMap} year={selectedYear} />
+                  <DashboardWidget key={i} widget={{ kind: w.kind, title: w.title, config: w.config }} dashData={scopedData} stateMap={stateMap} year={selectedYear} />
                 ))}
               </div>
             </div>
@@ -535,7 +601,7 @@ export default function Dashboard() {
 
           {/* ── ENERGY BRIEF (Presidency / Reporting profiles) ── */}
           {view === "brief" && (
-            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis.map((d) => computeKPI(d, dashData, prevDashData))} alerts={computeAnomalies(dashData)} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availYears={availYears} dataLoading={dataLoading} dashData={dashData} prevDashData={prevDashData} />
+            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis.map((d) => computeKPI(d, scopedData, scopedPrevData))} alerts={computeAnomalies(scopedData)} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availYears={availYears} dataLoading={dataLoading} dashData={scopedData} prevDashData={scopedPrevData} profile={profile} />
           )}
 
         </div>
@@ -544,7 +610,7 @@ export default function Dashboard() {
       <ApexAI
         currentView={view}
         profileLabel={profile.label}
-        screenContext={`Data Point dashboard — ${profile.label}. Section: ${viewLabel}. Year: ${selectedYear}. Visible KPIs: ${profile.kpis.map((d) => { const m = computeKPI(d, dashData, prevDashData); return `${m.label}: ${m.value}${m.unit && m.value !== "—" ? " " + m.unit : ""}${m.change ? ` (${m.change}, ${m.period})` : ""}`; }).join("; ")}`}
+        screenContext={`Data Point dashboard — ${profile.label}. Section: ${viewLabel}. Year: ${selectedYear}. Visible KPIs: ${profile.kpis.map((d) => { const m = computeKPI(d, scopedData, scopedPrevData); return `${m.label}: ${m.value}${m.unit && m.value !== "—" ? " " + m.unit : ""}${m.change ? ` (${m.change}, ${m.period})` : ""}`; }).join("; ")}`}
       />
     </div>
   );
@@ -552,10 +618,11 @@ export default function Dashboard() {
 
 // ── Presidency Energy Brief ────────────────────────────────────
 
-function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, selectedYear, setSelectedYear, availYears, dataLoading, dashData, prevDashData }: {
+function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, selectedYear, setSelectedYear, availYears, dataLoading, dashData, prevDashData, profile }: {
   staffName: string; profileLabel: string; roleTitle: string;
   kpis: KPI[]; alerts: Alert[]; selectedYear: number; setSelectedYear: (y: number) => void;
   availYears: number[]; dataLoading: boolean; dashData: DashData; prevDashData: DashData;
+  profile: ProfileDef;
 }) {
   // Fixed marking — a user-selectable classification is worse than none
   const classification = "FOR OFFICIAL USE ONLY";
@@ -609,7 +676,11 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
       { label: "Fuelwood Consumption",   series: "fuelwood_consumption",   unit: "M m³", higherIsBetter: false },
       { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
     ]},
-  ];
+  ]
+    // Scope the printed brief to the mandate too — a brief that lists sectors
+    // the recipient has no remit over is the same leak as the dashboard.
+    .map((sec) => ({ ...sec, items: sec.items.filter((it) => seriesInMandate(profile, it.series)) }))
+    .filter((sec) => sec.items.length > 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>

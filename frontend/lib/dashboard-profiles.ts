@@ -1,16 +1,68 @@
 // ── lib/dashboard-profiles.ts ───────────────────────────────────────────────
-// Single source of truth for the per-entity dashboard profiles. Consumed by
-// the live dashboard (app/data-point/dashboard) and the admin Dashboard
-// Directory (app/admin/dashboards). Persona lines are factual descriptions of
-// what the profile shows, not marketing copy.
+// Single source of truth for the per-entity dashboards.
+//
+// MANDATE SCOPING is the rule here: every profile declares the sectors it is
+// mandated over, and everything else is DERIVED from that — which sections
+// appear in the sidebar, which KPIs compute, which charts render, which
+// anomalies alert. A power-sector regulator has no business seeing petroleum
+// production on its dashboard, and the way to guarantee that is to stop
+// hand-listing navigation per profile (which drifts) and derive it instead.
+//
+// Cross-sector bodies (Presidency, ECN, NBS) declare every sector explicitly —
+// they are national co-ordinating or statistical bodies, so breadth is their
+// mandate, not an oversight.
+
+export type Sector = "petroleum" | "gas" | "electricity" | "renewable" | "biomass" | "fiscal";
+
+export const SECTORS: { id: Sector; label: string }[] = [
+  { id: "petroleum",   label: "Petroleum" },
+  { id: "gas",         label: "Natural Gas" },
+  { id: "electricity", label: "Electricity" },
+  { id: "renewable",   label: "Renewables" },
+  { id: "biomass",     label: "Biomass & Solid Fuels" },
+  { id: "fiscal",      label: "Fiscal & Revenue" },
+];
 
 export interface KPIDef { label: string; series: string; unit: string; higherIsBetter?: boolean }
 
 export interface ProfileDef {
-  label: string; roleTitle: string; color: string; accent: string;
-  persona: string; defaultView: string; navOrder: string[];
+  label: string;
+  roleTitle: string;
+  color: string;
+  accent: string;
+  persona: string;
+  /** Sectors this entity is mandated over. Drives nav, KPIs, charts, alerts. */
+  mandate: Sector[];
+  defaultView: string;
   kpis: KPIDef[];
+  /** Optional: shown on the profile header as the legal basis for the mandate. */
+  basis?: string;
 }
+
+// ── Series → sector map ─────────────────────────────────────────────────────
+// Every series belongs to exactly one sector. Scoping reads from this, so a
+// new series is scoped the moment it is registered here.
+export const SERIES_SECTOR: Record<string, Sector> = {
+  crude_oil_production:    "petroleum",
+  pms_sales:               "petroleum",
+  ago_sales:               "petroleum",
+  kerosine_sales:          "petroleum",
+  natural_gas_production:  "gas",
+  lpg_sales:               "gas",
+  electricity_generation:  "electricity",
+  electricity_sent_out:    "electricity",
+  electricity_consumption: "electricity",
+  renewable_energy:        "renewable",
+  fuelwood_consumption:    "biomass",
+  charcoal_consumption:    "biomass",
+  coal_consumption:        "biomass",
+  coal_export:             "biomass",
+  faac_oil_revenue:        "fiscal",
+  upstream_royalties:      "fiscal",
+  hydrocarbon_tax:         "fiscal",
+  cit_energy:              "fiscal",
+  gas_flare_penalties:     "fiscal",
+};
 
 export const SERIES_LABELS: Record<string, string> = {
   crude_oil_production:   "Crude oil production",
@@ -24,6 +76,9 @@ export const SERIES_LABELS: Record<string, string> = {
   electricity_consumption:"Electricity consumption",
   renewable_energy:       "Renewable energy capacity",
   fuelwood_consumption:   "Fuelwood consumption",
+  charcoal_consumption:   "Charcoal consumption",
+  coal_consumption:       "Coal consumption",
+  coal_export:            "Coal export",
   faac_oil_revenue:       "FAAC oil revenue",
   upstream_royalties:     "Upstream royalties",
   hydrocarbon_tax:        "Hydrocarbon tax receipts",
@@ -31,14 +86,66 @@ export const SERIES_LABELS: Record<string, string> = {
   gas_flare_penalties:    "Gas flaring penalties",
 };
 
-export const ALL_NAV = ["overview","downstream","upstream","midstream","power","renewable","bioenergy","revenue","faac"];
+// ── View → sector map ───────────────────────────────────────────────────────
+// A dashboard section appears only when the profile's mandate intersects the
+// sectors that section covers. Sections with an empty list are universal.
+export const VIEW_SECTORS: Record<string, Sector[]> = {
+  overview:   [],                          // always available
+  brief:      [],                          // always available
+  upstream:   ["petroleum", "gas"],
+  downstream: ["petroleum"],
+  midstream:  ["petroleum", "gas"],
+  power:      ["electricity"],
+  renewable:  ["renewable"],
+  bioenergy:  ["biomass"],
+  revenue:    ["fiscal"],
+  faac:       ["fiscal"],
+};
+
+/** Sections in their canonical running order. Profiles get a filtered slice. */
+const VIEW_ORDER = ["overview", "brief", "upstream", "midstream", "downstream", "power", "renewable", "bioenergy", "revenue", "faac"];
+
+/** Sections this profile may see, in canonical order. */
+export function allowedViews(profile: ProfileDef): string[] {
+  return VIEW_ORDER.filter((v) => {
+    const need = VIEW_SECTORS[v] ?? [];
+    if (need.length === 0) return true;
+    return need.some((s) => profile.mandate.includes(s));
+  });
+}
+
+/** True when this series falls inside the profile's mandate. */
+export function seriesInMandate(profile: ProfileDef, seriesId: string): boolean {
+  const sector = SERIES_SECTOR[seriesId];
+  if (!sector) return false;          // unmapped series stay out of scope by default
+  return profile.mandate.includes(sector);
+}
+
+/** Strip every out-of-mandate series from a dashboard data payload. */
+export function scopeData<T>(profile: ProfileDef, data: Record<string, T>): Record<string, T> {
+  const out: Record<string, T> = {};
+  for (const [id, rows] of Object.entries(data)) {
+    if (seriesInMandate(profile, id)) out[id] = rows;
+  }
+  return out;
+}
+
+/** Human-readable mandate line, e.g. "Electricity · Renewables". */
+export function mandateLabel(profile: ProfileDef): string {
+  return profile.mandate
+    .map((s) => SECTORS.find((x) => x.id === s)?.label ?? s)
+    .join(" · ");
+}
 
 export const PROFILE_MAP: Record<string, ProfileDef> = {
+  // ── National co-ordinating and statistical bodies: full mandate ──────────
   presidency: {
     label: "State House — Presidency", roleTitle: "National Energy Security Brief",
     color: "#1B2A4A", accent: "rgba(27,42,74,0.06)",
-    persona: "Cross-sector headline indicators prepared for the Presidency: crude production, FAAC oil revenue, electricity generation and gas output.",
-    defaultView: "overview", navOrder: ALL_NAV,
+    persona: "Cross-sector headline indicators prepared for the Presidency.",
+    basis: "National oversight — all energy sectors",
+    mandate: ["petroleum", "gas", "electricity", "renewable", "biomass", "fiscal"],
+    defaultView: "overview",
     kpis: [
       { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
       { label: "Oil Revenue (FAAC)",     series: "faac_oil_revenue",       unit: "₦ Billion" },
@@ -49,68 +156,110 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
   ecn: {
     label: "ECN — Energy Commission of Nigeria", roleTitle: "ECN National Energy Policy Dashboard",
     color: "#0E7A3C", accent: "rgba(14,122,60,0.06)",
-    persona: "All-sector indicators for ECN leadership across petroleum, electricity, gas, renewables and biomass.",
-    defaultView: "overview", navOrder: ALL_NAV,
+    persona: "All-sector indicators for ECN leadership across every energy carrier.",
+    basis: "ECN Act, CAP. E10 LFN 2004 — co-ordination across all energy carriers",
+    mandate: ["petroleum", "gas", "electricity", "renewable", "biomass", "fiscal"],
+    defaultView: "overview",
     kpis: [
-      { label: "Renewable Capacity",   series: "renewable_energy",       unit: "MW" },
-      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
-      { label: "Fuelwood Consumption", series: "fuelwood_consumption",   unit: "M m³",  higherIsBetter: false },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
+      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
+      { label: "Fuelwood Consumption",   series: "fuelwood_consumption",   unit: "M m³",  higherIsBetter: false },
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
     ],
   },
+  nbs: {
+    label: "NBS — National Bureau of Statistics", roleTitle: "NBS Energy Sector Statistical Dashboard",
+    color: "#0C4A6E", accent: "rgba(12,74,110,0.05)",
+    persona: "Energy statistics across all carriers for national accounts work.",
+    basis: "National statistical compilation — all energy sectors",
+    mandate: ["petroleum", "gas", "electricity", "renewable", "biomass", "fiscal"],
+    defaultView: "overview",
+    kpis: [
+      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
+    ],
+  },
+  nrs: {
+    label: "NRS — Natural Resources Statistics", roleTitle: "NRS Natural Resources Statistical Dashboard",
+    color: "#6B21A8", accent: "rgba(107,33,168,0.05)",
+    persona: "Production and consumption volumes across extractive and energy carriers.",
+    basis: "Natural resources statistical reporting",
+    mandate: ["petroleum", "gas", "electricity", "renewable", "biomass"],
+    defaultView: "overview",
+    kpis: [
+      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
+    ],
+  },
+
+  // ── Sector regulators: scoped to their statutory remit ──────────────────
   nerc: {
     label: "NERC — Electricity Regulatory Commission", roleTitle: "NERC Electricity Market Dashboard",
     color: "#1D4ED8", accent: "rgba(29,78,216,0.05)",
-    persona: "Electricity market indicators for NERC: generation, energy sent out, renewable capacity and settlement-related series.",
-    defaultView: "power", navOrder: ["power","downstream","midstream","overview","upstream","renewable","bioenergy","faac","revenue"],
+    persona: "Electricity market indicators: generation, energy sent out, consumption and grid-connected renewables.",
+    basis: "EPSRA 2005 — electricity generation, transmission and distribution",
+    mandate: ["electricity", "renewable"],
+    defaultView: "power",
     kpis: [
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
       { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
+      { label: "Electricity Consumed",   series: "electricity_consumption",unit: "GWh" },
       { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
-      { label: "Upstream Royalties",     series: "upstream_royalties",     unit: "₦ Billion" },
     ],
   },
   nuprc: {
     label: "NUPRC — Upstream Petroleum Regulator", roleTitle: "NUPRC Upstream Petroleum Dashboard",
     color: "#78350F", accent: "rgba(120,53,15,0.05)",
-    persona: "Upstream indicators for NUPRC: crude production, gas production, royalties and FAAC oil revenue.",
-    defaultView: "upstream", navOrder: ["upstream","revenue","overview","downstream","midstream","faac","power","renewable","bioenergy"],
+    persona: "Upstream indicators: crude and gas production, royalties and flaring penalties.",
+    basis: "PIA 2021 — upstream petroleum operations and royalties",
+    mandate: ["petroleum", "gas", "fiscal"],
+    defaultView: "upstream",
     kpis: [
       { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
       { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
       { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
-      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
+      { label: "Gas Flaring Penalties",series: "gas_flare_penalties",    unit: "₦ Billion", higherIsBetter: false },
     ],
   },
   nmdpra: {
     label: "NMDPRA — Midstream & Downstream Regulator", roleTitle: "NMDPRA Midstream & Downstream Dashboard",
     color: "#0369A1", accent: "rgba(3,105,161,0.05)",
-    persona: "Midstream and downstream indicators for NMDPRA: PMS, AGO, LPG and kerosene distribution volumes.",
-    defaultView: "downstream", navOrder: ["downstream","midstream","overview","upstream","revenue","power","renewable","bioenergy","faac"],
+    persona: "Midstream and downstream indicators: PMS, AGO, kerosene and LPG distribution volumes.",
+    basis: "PIA 2021 — midstream and downstream petroleum operations",
+    mandate: ["petroleum", "gas"],
+    defaultView: "downstream",
     kpis: [
-      { label: "PMS (Petrol) Sales",  series: "pms_sales",     unit: "M Litres" },
-      { label: "AGO (Diesel) Sales",  series: "ago_sales",     unit: "M Litres" },
-      { label: "LPG Sales",           series: "lpg_sales",     unit: "MT" },
-      { label: "Kerosene (DPK) Sales",series: "kerosine_sales",unit: "M Litres" },
+      { label: "PMS (Petrol) Sales",   series: "pms_sales",     unit: "M Litres" },
+      { label: "AGO (Diesel) Sales",   series: "ago_sales",     unit: "M Litres" },
+      { label: "LPG Sales",            series: "lpg_sales",     unit: "MT" },
+      { label: "Kerosene (DPK) Sales", series: "kerosine_sales",unit: "M Litres" },
     ],
   },
   nnpcl: {
     label: "NNPC Limited", roleTitle: "NNPC Limited Operations Dashboard",
     color: "#065F46", accent: "rgba(6,95,70,0.05)",
-    persona: "Operational indicators for NNPC Limited: production, product sales and revenue series.",
-    defaultView: "upstream", navOrder: ["upstream","downstream","midstream","revenue","overview","power","renewable","bioenergy","faac"],
+    persona: "Operational indicators for petroleum and gas: production and product sales.",
+    basis: "Petroleum and gas operations",
+    mandate: ["petroleum", "gas"],
+    defaultView: "upstream",
     kpis: [
       { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
       { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
       { label: "PMS (Petrol) Sales",   series: "pms_sales",              unit: "M Litres" },
-      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
+      { label: "AGO (Diesel) Sales",   series: "ago_sales",              unit: "M Litres" },
     ],
   },
   nemic: {
     label: "NEMIC — Energy Management & Infrastructure", roleTitle: "NEMIC Energy Management Dashboard",
     color: "#4338CA", accent: "rgba(67,56,202,0.05)",
-    persona: "Infrastructure indicators for NEMIC: generation, energy sent out, renewable capacity and biomass use.",
-    defaultView: "power", navOrder: ["power","midstream","renewable","overview","downstream","upstream","bioenergy","faac","revenue"],
+    persona: "Infrastructure indicators for grid capacity, renewables and household biomass use.",
+    basis: "Energy management and infrastructure",
+    mandate: ["electricity", "renewable", "biomass"],
+    defaultView: "power",
     kpis: [
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
       { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
@@ -118,40 +267,32 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
       { label: "Fuelwood Consumption",   series: "fuelwood_consumption",   unit: "M m³", higherIsBetter: false },
     ],
   },
-  nrs: {
-    label: "NRS — Natural Resources Statistics", roleTitle: "NRS Natural Resources Statistical Dashboard",
-    color: "#6B21A8", accent: "rgba(107,33,168,0.05)",
-    persona: "Statistical series for natural resources reporting: production and consumption volumes across sectors.",
-    defaultView: "overview", navOrder: ALL_NAV,
-    kpis: [
-      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
-      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
-      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
-    ],
-  },
   rea: {
     label: "REA — Rural Electrification Agency", roleTitle: "REA Rural Electrification & Off-Grid Dashboard",
     color: "#15803D", accent: "rgba(21,128,61,0.05)",
-    persona: "Rural electrification indicators for REA: renewable capacity, LPG uptake and fuelwood displacement.",
-    defaultView: "renewable", navOrder: ["renewable","bioenergy","power","overview","downstream","upstream","midstream","faac","revenue"],
+    persona: "Rural electrification indicators: renewable capacity, grid supply and fuelwood displacement.",
+    basis: "Rural electrification and off-grid access",
+    mandate: ["renewable", "electricity", "biomass"],
+    defaultView: "renewable",
     kpis: [
-      { label: "Renewable Capacity",   series: "renewable_energy",     unit: "MW" },
-      { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
-      { label: "Fuelwood Consumption", series: "fuelwood_consumption", unit: "M m³", higherIsBetter: false },
-      { label: "Electricity Generation",series: "electricity_generation",unit: "GWh" },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
+      { label: "Electricity Consumed",   series: "electricity_consumption",unit: "GWh" },
+      { label: "Fuelwood Consumption",   series: "fuelwood_consumption",   unit: "M m³", higherIsBetter: false },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
     ],
   },
   tcn: {
     label: "TCN — Transmission Company of Nigeria", roleTitle: "TCN Grid Transmission Dashboard",
     color: "#B45309", accent: "rgba(180,83,9,0.05)",
-    persona: "Grid indicators for TCN: energy sent out, generation, consumption and renewable capacity.",
-    defaultView: "power", navOrder: ["power","midstream","downstream","overview","upstream","renewable","bioenergy","faac","revenue"],
+    persona: "Grid indicators: energy sent out, generation, consumption and connected renewables.",
+    basis: "Grid transmission and system operation",
+    mandate: ["electricity", "renewable"],
+    defaultView: "power",
     kpis: [
-      { label: "Electricity Sent Out",  series: "electricity_sent_out",   unit: "GWh" },
-      { label: "Electricity Generation",series: "electricity_generation", unit: "GWh" },
-      { label: "Electricity Consumed",  series: "electricity_consumption",unit: "GWh" },
-      { label: "Renewable Capacity",    series: "renewable_energy",       unit: "MW" },
+      { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "Electricity Consumed",   series: "electricity_consumption",unit: "GWh" },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
     ],
   },
   // Key stays "firs" because it is stored on staff accounts; FIRS became the
@@ -159,32 +300,26 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
   firs: {
     label: "Nigeria Revenue Service (formerly FIRS)", roleTitle: "Energy Sector Tax & Revenue Dashboard",
     color: "#9F1239", accent: "rgba(159,18,57,0.05)",
-    persona: "Energy sector revenue series for the Nigeria Revenue Service: FAAC oil revenue, upstream royalties and the production volumes behind them.",
-    defaultView: "revenue", navOrder: ["revenue","faac","upstream","overview","downstream","midstream","power","renewable","bioenergy"],
+    persona: "Energy sector revenue: hydrocarbon tax, CIT, royalties and the production volumes that assessments are computed from.",
+    basis: "NRS (Establishment) Act 2025 — energy sector tax administration",
+    mandate: ["fiscal", "petroleum", "gas"],
+    defaultView: "revenue",
     kpis: [
-      { label: "FAAC Oil Revenue",   series: "faac_oil_revenue",       unit: "₦ Billion" },
-      { label: "Upstream Royalties", series: "upstream_royalties",     unit: "₦ Billion" },
-      { label: "Crude Oil Produced", series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Natural Gas",        series: "natural_gas_production", unit: "Bcf" },
+      { label: "Hydrocarbon Tax",    series: "hydrocarbon_tax",      unit: "₦ Billion" },
+      { label: "CIT — Energy",       series: "cit_energy",           unit: "₦ Billion" },
+      { label: "Upstream Royalties", series: "upstream_royalties",   unit: "₦ Billion" },
+      { label: "FAAC Oil Revenue",   series: "faac_oil_revenue",     unit: "₦ Billion" },
     ],
   },
-  nbs: {
-    label: "NBS — National Bureau of Statistics", roleTitle: "NBS Energy Sector Statistical Dashboard",
-    color: "#0C4A6E", accent: "rgba(12,74,110,0.05)",
-    persona: "Energy statistics for NBS: production, generation, gas and renewable capacity series for national accounts work.",
-    defaultView: "overview", navOrder: ALL_NAV,
-    kpis: [
-      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
-      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
-      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
-    ],
-  },
+
+  // ── Analyst personas ────────────────────────────────────────────────────
   executive: {
     label: "Executive Overview", roleTitle: "National Energy Dashboard",
     color: "#0E7A3C", accent: "rgba(14,122,60,0.06)",
     persona: "Cross-sector headline indicators for executive users.",
-    defaultView: "overview", navOrder: ["overview","downstream","revenue","upstream","power","midstream","renewable","bioenergy","faac"],
+    basis: "Cross-sector executive view",
+    mandate: ["petroleum", "gas", "electricity", "renewable", "biomass", "fiscal"],
+    defaultView: "overview",
     kpis: [
       { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
@@ -193,10 +328,12 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     ],
   },
   petroleum: {
-    label: "Petroleum & Gas Analyst", roleTitle: "Petroleum & Upstream Dashboard",
+    label: "Petroleum & Gas Analyst", roleTitle: "Petroleum & Gas Dashboard",
     color: "#92400E", accent: "rgba(146,64,14,0.05)",
-    persona: "Petroleum series: crude production and PMS, AGO and LPG sales.",
-    defaultView: "downstream", navOrder: ["downstream","upstream","revenue","overview","midstream","power","renewable","bioenergy","faac"],
+    persona: "Petroleum and gas series: production and product sales.",
+    basis: "Petroleum and gas analysis",
+    mandate: ["petroleum", "gas"],
+    defaultView: "upstream",
     kpis: [
       { label: "Crude Oil Production", series: "crude_oil_production", unit: "M Barrels" },
       { label: "PMS (Petrol) Sales",   series: "pms_sales",            unit: "M Litres" },
@@ -208,7 +345,9 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
     label: "Power & Grid Analyst", roleTitle: "Power Sector Dashboard",
     color: "#1D4ED8", accent: "rgba(29,78,216,0.05)",
     persona: "Power sector series: generation, energy sent out, consumption and renewable capacity.",
-    defaultView: "power", navOrder: ["power","downstream","midstream","overview","upstream","renewable","bioenergy","faac","revenue"],
+    basis: "Power sector analysis",
+    mandate: ["electricity", "renewable"],
+    defaultView: "power",
     kpis: [
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
       { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
@@ -219,11 +358,13 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
   renewables: {
     label: "Clean Energy Analyst", roleTitle: "Renewables & Clean Energy Dashboard",
     color: "#059669", accent: "rgba(5,150,105,0.05)",
-    persona: "Clean energy series: renewable capacity, gas production, LPG sales and fuelwood consumption.",
-    defaultView: "renewable", navOrder: ["renewable","bioenergy","overview","power","upstream","downstream","midstream","faac","revenue"],
+    persona: "Clean energy series: renewable capacity, LPG uptake and biomass displacement.",
+    basis: "Clean energy transition analysis",
+    mandate: ["renewable", "biomass", "gas", "electricity"],
+    defaultView: "renewable",
     kpis: [
-      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
       { label: "Renewable Capacity",   series: "renewable_energy",       unit: "MW" },
+      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
       { label: "Fuelwood Consumption", series: "fuelwood_consumption",   unit: "M m³", higherIsBetter: false },
       { label: "LPG Sales",            series: "lpg_sales",              unit: "MT" },
     ],
@@ -231,63 +372,76 @@ export const PROFILE_MAP: Record<string, ProfileDef> = {
   fiscal: {
     label: "Fiscal & Revenue Analyst", roleTitle: "Fiscal Revenue Dashboard",
     color: "#7C3AED", accent: "rgba(124,58,237,0.05)",
-    persona: "Fiscal series: FAAC oil revenue, upstream royalties and the producing companies registry.",
-    defaultView: "revenue", navOrder: ["revenue","faac","upstream","overview","downstream","midstream","power","renewable","bioenergy"],
+    persona: "Fiscal series: revenue lines and the production volumes behind them.",
+    basis: "Energy fiscal analysis",
+    mandate: ["fiscal", "petroleum", "gas"],
+    defaultView: "revenue",
     kpis: [
-      { label: "FAAC Oil Revenue",   series: "faac_oil_revenue",       unit: "₦ Billion" },
-      { label: "Upstream Royalties", series: "upstream_royalties",     unit: "₦ Billion" },
-      { label: "Crude Oil Produced", series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Natural Gas",        series: "natural_gas_production", unit: "Bcf" },
+      { label: "FAAC Oil Revenue",   series: "faac_oil_revenue",     unit: "₦ Billion" },
+      { label: "Upstream Royalties", series: "upstream_royalties",   unit: "₦ Billion" },
+      { label: "Hydrocarbon Tax",    series: "hydrocarbon_tax",      unit: "₦ Billion" },
+      { label: "CIT — Energy",       series: "cit_energy",           unit: "₦ Billion" },
     ],
   },
 
-  // ── Investor profiles ──────────────────────────────────────────
+  // ── Investor profiles ───────────────────────────────────────────────────
   investor_fdi: {
     label: "FDI Intelligence", roleTitle: "Foreign Direct Investment Dashboard",
     color: "#1B2A4A", accent: "rgba(27,42,74,0.06)",
-    persona: "Upstream and revenue series relevant to foreign direct investment appraisal.",
-    defaultView: "upstream", navOrder: ["upstream","revenue","overview","power","downstream","renewable","midstream","bioenergy","faac"],
+    persona: "Upstream and fiscal series relevant to direct investment appraisal.",
+    basis: "Investor access — upstream, gas and fiscal",
+    mandate: ["petroleum", "gas", "fiscal"],
+    defaultView: "upstream",
     kpis: [
       { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
-      { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
       { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
+      { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
+      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
     ],
   },
   investor_capital: {
     label: "Capital Markets", roleTitle: "Energy Sector Capital Markets Dashboard",
     color: "#0C4A6E", accent: "rgba(12,74,110,0.06)",
     persona: "Revenue and production series relevant to portfolio and fixed income analysis.",
-    defaultView: "revenue", navOrder: ["revenue","faac","overview","upstream","downstream","power","renewable","midstream","bioenergy"],
+    basis: "Investor access — fiscal, petroleum and power",
+    mandate: ["fiscal", "petroleum", "gas", "electricity"],
+    defaultView: "revenue",
     kpis: [
-      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
-      { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
-      { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Electricity Generation",series: "electricity_generation",unit: "GWh" },
+      { label: "FAAC Oil Revenue",      series: "faac_oil_revenue",       unit: "₦ Billion" },
+      { label: "Upstream Royalties",    series: "upstream_royalties",     unit: "₦ Billion" },
+      { label: "Crude Oil Production",  series: "crude_oil_production",   unit: "M Barrels" },
+      { label: "Electricity Generation",series: "electricity_generation", unit: "GWh" },
     ],
   },
   investor_infra: {
     label: "Infrastructure / Power", roleTitle: "Power & Infrastructure Investor Dashboard",
     color: "#B45309", accent: "rgba(180,83,9,0.06)",
     persona: "Power sector series relevant to generation and distribution asset appraisal.",
-    defaultView: "power", navOrder: ["power","revenue","downstream","overview","upstream","renewable","midstream","bioenergy","faac"],
+    basis: "Investor access — electricity and renewables",
+    mandate: ["electricity", "renewable"],
+    defaultView: "power",
     kpis: [
       { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
       { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
+      { label: "Electricity Consumed",   series: "electricity_consumption",unit: "GWh" },
       { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
-      { label: "FAAC Oil Revenue",       series: "faac_oil_revenue",       unit: "₦ Billion" },
     ],
   },
   investor_renewable: {
     label: "Renewable Investors", roleTitle: "Clean Energy Investment Dashboard",
     color: "#059669", accent: "rgba(5,150,105,0.06)",
     persona: "Renewable capacity and clean energy series relevant to project developers.",
-    defaultView: "renewable", navOrder: ["renewable","overview","power","revenue","upstream","downstream","midstream","bioenergy","faac"],
+    basis: "Investor access — renewables, power and biomass",
+    mandate: ["renewable", "electricity", "biomass"],
+    defaultView: "renewable",
     kpis: [
-      { label: "Renewable Capacity",   series: "renewable_energy",     unit: "MW" },
-      { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
-      { label: "Fuelwood Consumption", series: "fuelwood_consumption", unit: "M m³", higherIsBetter: false },
-      { label: "Electricity Generation",series: "electricity_generation",unit: "GWh" },
+      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
+      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
+      { label: "Electricity Consumed",   series: "electricity_consumption",unit: "GWh" },
+      { label: "Fuelwood Consumption",   series: "fuelwood_consumption",   unit: "M m³", higherIsBetter: false },
     ],
   },
 };
+
+/** Every profile key, for admin pickers. */
+export const PROFILE_KEYS = Object.keys(PROFILE_MAP);

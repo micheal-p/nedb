@@ -84,7 +84,7 @@ export default function Navbar({ active }: NavbarProps) {
           <Link href="/" className={`nav-link-main${active === "databank" ? " active" : ""}`}>Data Bank</Link>
           <Link href="/data-point" className={`nav-link-main${active === "datapoint" ? " active" : ""}`}>Data Point</Link>
 
-          {/* Explore ▾ — Knowledge Graph, PENA, Intelligence Portal, API */}
+          {/* Explore ▾ — Knowledge Graph, PENA, access requests, API */}
           {/* Hover-open is mouse-only: on touch, a tap fires synthetic
               mouseenter THEN click, which would open-then-toggle-closed */}
           <div ref={exploreRef} style={{ position: "relative" }}
@@ -106,7 +106,7 @@ export default function Navbar({ active }: NavbarProps) {
                 {[
                   { href: "/knowledge-graph", label: "Knowledge Graph",     sub: "Supply-chain network & SPOF analysis" },
                   { href: "/assessments",     label: "PENA Assessments",    sub: "Energy needs surveys — open data" },
-                  { href: "/portal",          label: "Intelligence Portal", sub: "Request analyst & investor access" },
+                  { href: "/portal",          label: "Dashboard Access",    sub: "Request a role-scoped dashboard" },
                   { href: "/api-docs",        label: "API",                 sub: "Programmatic access & docs" },
                 ].map((item) => (
                   <Link key={item.href} href={item.href} onClick={() => setExploreOpen(false)}
@@ -152,7 +152,7 @@ export default function Navbar({ active }: NavbarProps) {
           <div style={{ padding: "0.6rem 1rem 0.2rem", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)" }}>Explore</div>
           <Link href="/knowledge-graph" className={`mobile-link${active === "graph" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Knowledge Graph</Link>
           <Link href="/assessments" className={`mobile-link${active === "assessments" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>PENA Assessments</Link>
-          <Link href="/portal" className="mobile-link" onClick={() => setMenuOpen(false)}>Intelligence Portal</Link>
+          <Link href="/portal" className="mobile-link" onClick={() => setMenuOpen(false)}>Dashboard Access</Link>
           <Link href="/about" className={`mobile-link${active === "about" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>About NEDB</Link>
           <Link href="/api-docs" className="mobile-link" onClick={() => setMenuOpen(false)}>API Docs</Link>
           <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer" className="mobile-link" onClick={() => setMenuOpen(false)}>ECN Website</a>

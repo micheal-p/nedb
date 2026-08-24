@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { db } from "@/lib/supabase-server";
+import { authorizeApiCall, getPublished, publicColumns } from "@/lib/api-exposure";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await authorizeApiCall(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
   const { id } = await params;
+  const published = await getPublished(id);
+  if (!published) return NextResponse.json({ error: "Series not found or not published for public access." }, { status: 404 });
+
   const { searchParams } = new URL(req.url);
   const format = searchParams.get("format") ?? "csv"; // csv | xlsx
   const region = searchParams.get("region") ?? null;
@@ -24,7 +31,7 @@ export async function GET(
 
   let query = client
     .from("energy_records")
-    .select("period, period_date, region, value, unit, source, notes, created_at")
+    .select(publicColumns(published.public_fields).join(", "))
     .eq("series_type_id", id)
     .order("period_date", { ascending: true });
 
@@ -33,16 +40,18 @@ export async function GET(
 
   const { data: records } = await query;
 
-  const rows = (records ?? []).map((r) => ({
-    Period:      r.period,
-    "Date":      r.period_date,
-    Region:      r.region,
-    Value:       r.value,
-    Unit:        r.unit,
-    Source:      r.source ?? "",
-    Notes:       r.notes  ?? "",
-    "Uploaded At": r.created_at ? new Date(r.created_at).toISOString().slice(0, 10) : "",
-  }));
+  // Column headings follow whatever the administrator published for this
+  // series, so the export can never contain a field the API withholds.
+  const HEADINGS: Record<string, string> = {
+    period: "Period", period_date: "Date", region: "Region", value: "Value",
+    unit: "Unit", source: "Source", fuel_product: "Fuel / Product",
+  };
+  const cols = publicColumns(published.public_fields);
+  const rows = ((records ?? []) as unknown as Record<string, unknown>[]).map((r) => {
+    const out: Record<string, unknown> = {};
+    for (const c of cols) out[HEADINGS[c] ?? c] = r[c] ?? "";
+    return out;
+  });
 
   const filename = `NEDB_${id}_${year ?? "all"}${region ? `_${region}` : ""}`;
 

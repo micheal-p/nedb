@@ -2,11 +2,16 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok } from "@/lib/api-helpers";
 import { cacheGet, cacheSet } from "@/lib/redis";
+import { authorizeApiCall, getPublished } from "@/lib/api-exposure";
 
 const TTL = 3600; // 1 hour
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await authorizeApiCall(req);
+  if (!auth.ok) return ok({ error: auth.error }, auth.status);
+
   const { id } = await params;
+  if (!(await getPublished(id))) return ok({ error: "Series not found or not published for public access." }, 404);
   const cacheKey = `stats:${id}`;
 
   // Cache hit

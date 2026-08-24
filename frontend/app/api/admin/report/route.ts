@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
-import { ok, err, requireAuth } from "@/lib/api-helpers";
+import { ok, err, requireAdmin } from "@/lib/api-helpers";
 import { getCycleStatus, sendMonthlyReport } from "@/lib/monthly-report";
 
 // GET  /api/admin/report — cycle status + recipient counts
@@ -10,7 +10,7 @@ import { getCycleStatus, sendMonthlyReport } from "@/lib/monthly-report";
 //   anchor: the next automatic send still fires on the original timeline.
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireAdmin(req);
   if (!auth) return err("Unauthorized", 401);
 
   const [cycle, { count: subCount }, { count: staffCount }] = await Promise.all([
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireAdmin(req);
   if (!auth) return err("Unauthorized", 401);
   if (!["admin", "superadmin"].includes((auth as { role?: string }).role ?? "")) return err("Admin only", 403);
 

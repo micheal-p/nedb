@@ -1,50 +1,54 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { requireAuth, roleRank, ok, err } from "@/lib/api-helpers";
-import { cacheDel } from "@/lib/redis";
-import { detectAndFlag } from "@/lib/anomaly";
-import { logAudit } from "@/lib/audit";
+import { commitRecords, type IncomingRecord } from "@/lib/commit-records";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ sessionId: string }> }) {
   const claims = await requireAuth(req);
   if (!claims) return err("authentication required", 401);
 
   const { sessionId } = await params;
-
-  // Server-side enforcement of the maker-checker workflow: only admins and
-  // superadmins commit. An editor call is converted into a review submission
-  // instead — the UI already routes editors there; this closes the direct-API path.
-  if (roleRank((claims as { role?: string }).role) < roleRank("admin")) {
-    await db().from("upload_sessions").update({ status: "pending_review" }).eq("id", sessionId);
-    return ok({ pending_review: true, message: "Submitted for admin approval" });
-  }
   const client = db();
 
   const { data: session } = await client
     .from("upload_sessions")
-    .select("id, series_type_id, status, validated_rows")
+    .select("id, series_type_id, status, validated_rows, uploaded_by")
     .eq("id", sessionId)
     .single();
-
   if (!session) return err("session not found", 404);
+
+  // A terminal session must never be dragged back into the queue. Without
+  // this guard any authenticated caller who knew the id could flip a
+  // committed or rejected session back to pending_review.
   if (session.status === "committed") return err("session already committed", 409);
+  if (session.status === "rejected")  return err("session was rejected — validate the file again", 409);
+
+  // Maker-checker: only admins and superadmins commit. An editor's call is
+  // converted into a review submission — the UI routes editors there already;
+  // this closes the direct-API path.
+  if (roleRank((claims as { role?: string }).role) < roleRank("admin")) {
+    if (session.status !== "validated" && session.status !== "pending") {
+      return err(`session is ${session.status} and cannot be submitted for review`, 409);
+    }
+    await client.from("upload_sessions").update({ status: "pending_review" }).eq("id", sessionId);
+    return ok({ pending_review: true, message: "Submitted for admin approval" });
+  }
+
   if (!session.validated_rows?.length) return err("no valid rows to commit", 400);
 
-  const { error: insertErr } = await client.from("energy_records").insert(session.validated_rows);
-  if (insertErr) return err("failed to insert records: " + insertErr.message, 500);
-
-  await client.from("upload_sessions").update({ status: "committed", uploaded_by: claims.username }).eq("id", sessionId);
-  await logAudit({
-    action: "INSERT",
-    series_type_id: session.series_type_id,
-    performed_by: String(claims.username ?? claims.sub ?? "unknown"),
-    notes: `Committed upload session ${sessionId} — ${session.validated_rows.length} records`,
+  const result = await commitRecords(session.validated_rows as IncomingRecord[], {
+    performedBy: String(claims.username ?? claims.sub ?? "unknown"),
+    reason: `Upload session ${sessionId}`,
+    sessionId: Number(sessionId),
   });
-  await cacheDel(`stats:${session.series_type_id}`, "series:list");
 
-  // Anomaly detection — fetch the just-inserted records by session id
-  const { data: inserted } = await client.from("energy_records").select("id, series_type_id, period, region, value").eq("upload_session_id", Number(sessionId));
-  if (inserted?.length) detectAndFlag(inserted).catch(() => {});
+  if (!result.ok) return err(result.error, 409);
 
-  return ok({ committed_rows: session.validated_rows.length, series_type_id: session.series_type_id });
+  await client.from("upload_sessions").update({ status: "committed" }).eq("id", sessionId);
+
+  return ok({
+    committed_rows: result.inserted,
+    replaced_rows: result.replaced,
+    series_type_id: session.series_type_id,
+  });
 }

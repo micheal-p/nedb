@@ -39,6 +39,9 @@ async function getSeries(): Promise<SeriesRow[]> {
     const { data } = await db()
       .from("series_types")
       .select("id, name, sector, subsector, unit_default, frequency, viz_types, created_at, signal_rules, energy_records(count)")
+      // The public catalogue mirrors the published API surface — a series an
+      // administrator has withheld must not appear on the public site either.
+      .eq("is_public", true)
       .order("sector").order("name");
     return (data ?? []).map((s) => ({
       id: s.id as string, name: s.name as string, sector: s.sector as string,

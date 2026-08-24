@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
-import { ok, err, requireAuth } from "@/lib/api-helpers";
+import { ok, err, requireAdmin } from "@/lib/api-helpers";
 
 // Admin: list subscribers, toggle active state.
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireAdmin(req);
   if (!auth) return err("Unauthorized", 401);
   const { data, error } = await db()
     .from("subscribers")
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireAdmin(req);
   if (!auth) return err("Unauthorized", 401);
   const body = await req.json().catch(() => null);
   if (!body?.id) return err("id required", 400);

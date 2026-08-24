@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
-import { requireAuth, requireAdmin, ok, err } from "@/lib/api-helpers";
+import { requireRole, requireAdmin, ok, err } from "@/lib/api-helpers";
 
 // GET /api/upload/review — admin: list all pending_review sessions
 export async function GET(req: NextRequest) {
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/upload/review — staff: submit a validated session for review
 export async function POST(req: NextRequest) {
-  const claims = await requireAuth(req);
+  const claims = await requireRole(req, "editor");
   if (!claims) return err("authentication required", 401);
 
   const body = await req.json().catch(() => null);
