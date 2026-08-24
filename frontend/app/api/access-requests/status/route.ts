@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { publicStatus } from "@/lib/access-pipeline";
 
 function ok(data: unknown)         { return NextResponse.json(data); }
 function err(msg: string, s = 400) { return NextResponse.json({ error: msg }, { status: s }); }
@@ -21,15 +22,19 @@ export async function GET(req: NextRequest) {
 
   const { data } = await db()
     .from("access_requests")
-    .select("id, email, status, created_at, reviewed_at")
+    .select("id, email, status, stage, created_at, reviewed_at")
     .eq("id", Number(m[1]))
     .single();
 
   if (!data || data.email !== email) return err("No request found for that reference and email.", 404);
 
+  const pub = publicStatus(String(data.stage ?? data.status ?? "submitted"));
   return ok({
     reference: ref,
     status: data.status,
+    stage: data.stage ?? null,
+    stage_label: pub.label,
+    stage_note: pub.note,
     submitted_at: data.created_at,
     reviewed_at: data.reviewed_at ?? null,
   });

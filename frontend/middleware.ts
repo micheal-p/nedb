@@ -18,6 +18,7 @@ const RANK: Record<string, number> = { viewer: 0, staff: 1, editor: 1, admin: 2,
 const GUARDS: { prefix: string; min: number }[] = [
   { prefix: "/admin",               min: RANK.admin },
   { prefix: "/upload",              min: RANK.editor },
+  { prefix: "/terminal",            min: RANK.editor },
   { prefix: "/data-point/dashboard",min: RANK.viewer },
   { prefix: "/data-point/scenario", min: RANK.viewer },
   { prefix: "/data-point/pena",     min: RANK.viewer },
@@ -62,5 +63,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/upload/:path*", "/data-point/dashboard/:path*", "/data-point/scenario/:path*", "/data-point/pena/:path*"],
+  matcher: ["/admin/:path*", "/upload/:path*", "/terminal/:path*", "/data-point/dashboard/:path*", "/data-point/scenario/:path*", "/data-point/pena/:path*"],
 };

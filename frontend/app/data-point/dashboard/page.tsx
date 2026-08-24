@@ -18,6 +18,7 @@ const DashboardWidget = dynamic(() => import("@/components/datapoint/DashboardWi
 const FiscalVarianceTable = dynamic(() => import("@/components/datapoint/FiscalVarianceTable"), { ssr: false });
 const NrsCompliance = dynamic(() => import("@/components/datapoint/NrsCompliance"), { ssr: false });
 const DealPipeline  = dynamic(() => import("@/components/datapoint/DealPipeline"),  { ssr: false });
+const RaiseTicket   = dynamic(() => import("@/components/datapoint/RaiseTicket"),   { ssr: false });
 
 // ── Real data types ────────────────────────────────────────────
 type SeriesRow = { period: string; value: number; unit?: string };
@@ -344,6 +345,7 @@ export default function Dashboard() {
             <span style={{ fontSize: "0.75rem", color: "var(--ink-4)" }}>{staffName}</span>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem", color: "var(--ink-3)" }}>{clock}</span>
             <span className="tag tag-green"><span className="live-dot" />Live</span>
+            <RaiseTicket compact />
           </div>
         </div>
 

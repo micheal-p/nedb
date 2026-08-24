@@ -19,6 +19,7 @@ export const ADMIN_NAV: AdminGroup[] = [
     items: [
       { href: "/admin", label: "Administration", exact: true, icon: "grid" },
       { href: "/admin/records", label: "Data & Records", icon: "table" },
+      { href: "/terminal", label: "Data Terminal", icon: "pulse" },
       { href: "/admin/databank", label: "Storage Bank", icon: "database" },
       { href: "/admin/custom-tables", label: "Custom Tables", icon: "table" },
       { href: "/upload", label: "Upload Data", icon: "upload" },
@@ -58,6 +59,8 @@ export const ADMIN_NAV: AdminGroup[] = [
     group: "Outreach",
     items: [
       { href: "/admin/subscribers", label: "Report & Subscribers", icon: "mail" },
+      { href: "/admin/access", label: "Access Pipeline", icon: "clipboard" },
+      { href: "/admin/tickets", label: "Support Tickets", icon: "pulse" },
     ],
   },
 ];
