@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok, err, requireAuth, requireAdmin } from "@/lib/api-helpers";
 import { cacheDel } from "@/lib/redis";
+import { logAudit } from "@/lib/audit";
 
 // GET /api/pena/forms/:id/responses — filterable response list.
 // Filters: ?state=Lagos&lga=Ikeja&tier=D&income_min=0&income_max=50000
@@ -24,7 +25,7 @@ type Row = {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req);
   if (!auth) return err("Unauthorized", 401);
-  const isAdmin = (auth as { role?: string }).role === "admin";
+  const isAdmin = ["admin", "superadmin"].includes((auth as { role?: string }).role ?? "");
   const { id } = await params;
 
   const sp = new URL(req.url).searchParams;
@@ -134,6 +135,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const { data: form } = await db().from("pena_forms").select("slug").eq("id", id).single();
   if (form?.slug) await cacheDel(`pena:pub:${form.slug}`);
+
+  // NDPA deletions must be evidenced: who removed what, when. No personal
+  // data goes into the log — only the row id.
+  await logAudit({
+    action: "NDPA_DELETE",
+    performed_by: String(auth.username ?? auth.sub ?? "unknown"),
+    notes: `Deleted PENA response #${gone.id} from form ${id} (NDPA removal)`,
+  });
 
   return ok({ success: true, deleted: gone.id });
 }

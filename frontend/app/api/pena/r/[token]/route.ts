@@ -137,7 +137,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
   const ipHash = createHash("sha256").update(ip).digest("hex");
-  const rl = await checkRateLimitDurable(`pena-submit:${ip}`, 5, 3600);
+
+  // Enumerator mode: a signed-in staff member collects many responses door to
+  // door on one phone and one connection. Their submissions are attributed
+  // (collected_by) and get a wider rate limit; the per-IP duplicate cap does
+  // not apply to them. Anonymous respondents keep the strict limits.
+  const enumerator = await requireAuth(req);
+  const rl = enumerator
+    ? await checkRateLimitDurable(`pena-submit-enum:${enumerator.username ?? enumerator.sub}`, 100, 3600)
+    : await checkRateLimitDurable(`pena-submit:${ip}`, 5, 3600);
   if (!rl.allowed) return err(`Too many submissions. Try again in ${Math.ceil(rl.resetIn / 60)} min.`, 429);
 
   const body = await req.json().catch(() => null);
@@ -152,7 +160,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   // One per IP per form — holds across sign-in/sign-out on the same connection.
   // Expired pending rows don't count: their owners were told to fill again.
   const expiryCutoff = new Date(Date.now() - VERIFY_TTL_HOURS * 3_600_000).toISOString();
-  if (ip !== "anon") {
+  if (ip !== "anon" && !enumerator) {
     const { count } = await db()
       .from("pena_responses")
       .select("id", { count: "exact", head: true })
@@ -271,7 +279,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
   // Magic-link verification: pending unless Google already proved the inbox.
   // No email answer → nothing to verify against, so it counts directly.
-  const needsLink = !!form.require_verification && !!email && !googleEmail;
+  // Enumerator-collected responses are trusted on the enumerator's identity —
+  // households in the field cannot be expected to confirm an email link.
+  const needsLink = !!form.require_verification && !!email && !googleEmail && !enumerator;
   const verifyToken = needsLink ? randomBytes(24).toString("hex") : null;
 
   const { error } = await db().from("pena_responses").insert({
@@ -294,6 +304,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     energy_expense: energyExpense,
     tier: computeTier(income, lightHours, energyExpense, form.tier_config as Partial<TierConfig> | null),
     ip_hash: ipHash,
+    // Key only present for enumerator submissions so public submissions keep
+    // working even before migration 041 adds the column.
+    ...(enumerator ? { collected_by: String(enumerator.username ?? enumerator.sub) } : {}),
   });
 
   if (error) {

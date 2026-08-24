@@ -169,7 +169,7 @@ export default function KnowledgeGraphPage() {
           <div style={{ maxWidth: 620 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.5rem" }}>
               <span className="tag tag-green">Beta</span>
-              <span className="tag tag-muted">Graph Intelligence</span>
+              <span className="tag tag-muted">Network Analysis</span>
             </div>
             <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.625rem", fontWeight: 400, color: "var(--ink)", lineHeight: 1.15 }}>
               National Energy Knowledge Graph

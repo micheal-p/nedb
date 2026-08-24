@@ -182,7 +182,7 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
           ...(pos ? { left: pos.x, top: pos.y } : { bottom: 24, right: 24 }),
           touchAction: "none",
           width: 52, height: 52, borderRadius: "50%",
-          background: "linear-gradient(135deg, #0E7A3C 0%, #065F46 100%)",
+          background: "#0E7A3C",
           border: "2px solid rgba(255,255,255,0.2)",
           boxShadow: "0 4px 20px rgba(14,122,60,0.4)",
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
@@ -216,8 +216,8 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
       {open && (
         <div ref={panelRef} style={panelStyle()}>
           {/* Header */}
-          <div style={{ background: "linear-gradient(135deg, #0A0A0A 0%, #1a1a1a 100%)", padding: "14px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg, #0E7A3C, #065F46)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#171717", padding: "14px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#0E7A3C", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                 <path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10 10 10 0 0 1-10-10A10 10 0 0 1 12 2z"/>
                 <path d="M12 8v4M12 16h.01" strokeLinecap="round"/>
@@ -241,7 +241,7 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
             {messages.map((msg, i) => (
               <div key={i} style={{ display: "flex", flexDirection: msg.role === "user" ? "row-reverse" : "row", gap: 8, alignItems: "flex-end" }}>
                 {msg.role === "assistant" && (
-                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: "linear-gradient(135deg, #0E7A3C, #065F46)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0E7A3C", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10 10 10 0 0 1-10-10A10 10 0 0 1 12 2z"/><path d="M12 8v4M12 16h.01" strokeLinecap="round"/></svg>
                   </div>
                 )}
@@ -268,7 +268,7 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
             ))}
             {thinking && (
               <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "linear-gradient(135deg, #0E7A3C, #065F46)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0E7A3C", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10 10 10 0 0 1-10-10A10 10 0 0 1 12 2z"/><path d="M12 8v4M12 16h.01" strokeLinecap="round"/></svg>
                 </div>
                 <div style={{ padding: "10px 14px", background: "#fff", border: "1px solid var(--border)", borderRadius: "12px 12px 12px 2px", display: "flex", gap: 4, alignItems: "center" }}>

@@ -18,15 +18,26 @@ export async function POST(req: NextRequest) {
   if (!full_name?.trim() || !email?.trim() || !organisation?.trim() || !profile_key?.trim())
     return err("full_name, email, organisation, profile_key are required");
 
-  const { error } = await db()
+  const { data: inserted, error } = await db()
     .from("access_requests")
-    .insert({ full_name: full_name.trim(), email: email.trim().toLowerCase(), organisation: organisation.trim(), position: position?.trim() ?? null, profile_key, justification: justification?.trim() ?? null });
+    .insert({ full_name: full_name.trim(), email: email.trim().toLowerCase(), organisation: organisation.trim(), position: position?.trim() ?? null, profile_key, justification: justification?.trim() ?? null })
+    .select("id, created_at")
+    .single();
 
   if (error) {
     if (error.code === "23505") return err("An access request from this email address already exists.");
     return err("Failed to submit request. Please try again.");
   }
-  return ok({ success: true, message: "Access request submitted. The NEDB administrator will review and contact you." });
+
+  // Reference number is derived from the row id — stable, sequential, no
+  // schema change. Applicants quote it to check status.
+  const year = new Date(inserted.created_at as string).getFullYear();
+  const reference = `NEDB/AR/${year}/${String(inserted.id).padStart(5, "0")}`;
+  return ok({
+    success: true,
+    reference,
+    message: `Access request submitted. Your reference is ${reference}. Requests are reviewed within 5 working days.`,
+  });
 }
 
 // Admin-only GET — list all requests

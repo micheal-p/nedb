@@ -153,7 +153,7 @@ export default function SeriesChartPanel({ title, subtitle, source, vizTypes, da
       default:
         return (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "var(--ink-4)" }}>
-            <p style={{ fontSize: "0.82rem" }}>{VIZ_LABELS[active] ?? active} — visualisation coming soon</p>
+            <p style={{ fontSize: "0.82rem" }}>{VIZ_LABELS[active] ?? active} view is not available for this series — the line view and data table carry the same figures</p>
           </div>
         );
     }

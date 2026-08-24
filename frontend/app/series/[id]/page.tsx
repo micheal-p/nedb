@@ -273,7 +273,7 @@ export default async function SeriesDetail({ params }: Props) {
           {/* ── DATA INTELLIGENCE PANEL ── */}
           {(series.what_is || series.how_to_read || series.why_it_matters || currentSignal) && (
             <div style={{ marginBottom: "1.75rem" }}>
-              <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-4)", marginBottom: "0.875rem" }}>Data Intelligence</div>
+              <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-4)", marginBottom: "0.875rem" }}>Statistical Analysis</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
 
                 {series.what_is && (

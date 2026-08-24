@@ -39,7 +39,7 @@ const PROFILES = [
   { value: "investor_renewable", label: "Investor — Renewable Energy (solar, wind, mini-grid developers)" },
 ];
 
-const EMPTY_USER = { username: "", full_name: "", email: "", role: "staff", agency: "", password: "", dashboard_profile: "executive" };
+const EMPTY_USER = { username: "", full_name: "", email: "", role: "editor", agency: "", password: "", dashboard_profile: "executive" };
 const EMPTY_CO   = { company: "", oml_blocks: "", operator_type: "IOC JV", sector: "Upstream", status: "Active" };
 
 // ── Nigeria geopolitical zones ────────────────────────────────
@@ -597,9 +597,10 @@ export default function AdminPage() {
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label className="form-label">Landing Portal</label>
                         <select className="form-input form-select" value={userForm.role} onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}>
-                          <option value="staff">Staff Upload Portal — uploads energy datasets</option>
-                          <option value="viewer">Data Point Dashboard — analytics & intelligence</option>
-                          <option value="admin">Administrator — full access to all areas</option>
+                          <option value="viewer">Viewer — read-only Data Point dashboard</option>
+                          <option value="editor">Editor — uploads and drafts data for approval</option>
+                          <option value="admin">Administrator — reviews, commits and publishes</option>
+                          <option value="superadmin">Super Administrator — accounts, roles and settings</option>
                         </select>
                       </div>
                       {userForm.role === "viewer" && (
@@ -671,9 +672,10 @@ export default function AdminPage() {
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label">Role / Landing Portal</label>
                           <select className="form-input form-select" value={editUserForm.role} onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}>
-                            <option value="staff">Staff — Upload Portal</option>
-                            <option value="viewer">Viewer — Data Point Dashboard</option>
-                            <option value="admin">Administrator</option>
+                            <option value="viewer">Viewer — read-only dashboard</option>
+                            <option value="editor">Editor — uploads for approval</option>
+                            <option value="admin">Administrator — commits and publishes</option>
+                            <option value="superadmin">Super Administrator</option>
                           </select>
                         </div>
                         <div className="form-group" style={{ marginBottom: 0, gridColumn: "1 / -1" }}>
@@ -710,8 +712,8 @@ export default function AdminPage() {
                           <td className="td-mono" style={{ fontSize: "0.75rem" }}>{u.username}</td>
                           <td style={{ fontSize: "0.78rem" }}>{u.agency || "—"}</td>
                           <td>
-                            <span className={`tag ${u.role === "admin" ? "tag-ink" : u.role === "viewer" ? "tag-muted" : "tag-green"}`}>
-                              {u.role === "admin" ? "Admin" : u.role === "viewer" ? "Viewer" : "Staff"}
+                            <span className={`tag ${u.role === "superadmin" || u.role === "admin" ? "tag-ink" : u.role === "viewer" ? "tag-muted" : "tag-green"}`}>
+                              {u.role === "superadmin" ? "Superadmin" : u.role === "admin" ? "Admin" : u.role === "viewer" ? "Viewer" : "Editor"}
                             </span>
                           </td>
                           <td style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>{u.dashboard_profile ?? "—"}</td>
@@ -1519,6 +1521,8 @@ Content-Type: application/json
                           <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--ink)" }}>{req.full_name}</span>
                           <span style={{ fontSize: "0.7rem", color: "var(--ink-5)", fontFamily: "var(--font-mono)" }}>{req.email}</span>
                           <span className={`tag ${req.status === "pending" ? "tag-amber" : req.status === "approved" ? "tag-green" : ""}`} style={{ fontSize: "0.62rem" }}>{req.status.toUpperCase()}</span>
+                          {req.email.endsWith(".gov.ng") && <span className="tag tag-green" style={{ fontSize: "0.62rem" }}>OFFICIAL .GOV.NG</span>}
+                          <span style={{ fontSize: "0.65rem", color: "var(--ink-5)", fontFamily: "var(--font-mono)" }}>NEDB/AR/{new Date(req.created_at).getFullYear()}/{String(req.id).padStart(5, "0")}</span>
                         </div>
                         <div style={{ fontSize: "0.78rem", color: "var(--ink-4)", marginTop: 4 }}>{req.organisation}{req.position ? ` · ${req.position}` : ""}</div>
                         <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>

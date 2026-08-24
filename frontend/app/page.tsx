@@ -178,7 +178,7 @@ export default async function Home() {
       <div className="inst-hero">
         <div className="container">
           <div className="mandate-tag"><span className="dot" />ECN / NEDB · National Energy Data Bank</div>
-          <h1>Nigeria&apos;s authoritative<br /><em>energy statistics platform.</em></h1>
+          <h1>Nigeria&apos;s official<br />energy statistics.</h1>
           <p className="lead">
             The National Energy Data Bank (NEDB) is an initiative of the Energy Commission of Nigeria (ECN),
             established as the nation&apos;s primary repository and dissemination platform for comprehensive,
@@ -200,7 +200,7 @@ export default async function Home() {
             <span style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-5)", flexShrink: 0 }}>Current signals</span>
             {signals.map((sig) => (
               <Link key={sig.id} href={`/series/${sig.id}`}
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 20, border: "1px solid var(--border)", background: "var(--surface)", fontSize: "0.7rem", fontWeight: 600, color: "var(--ink-3)", whiteSpace: "nowrap", textDecoration: "none", flexShrink: 0 }}>
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 2, border: "1px solid var(--border)", background: "var(--surface-muted)", fontSize: "0.7rem", fontWeight: 600, color: "var(--ink-3)", whiteSpace: "nowrap", textDecoration: "none", flexShrink: 0 }}>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: LEVEL_DOT[sig.level], flexShrink: 0 }} />
                 {sig.name}
                 <span style={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", color: LEVEL_DOT[sig.level] }}>{sig.level}</span>
@@ -241,7 +241,7 @@ export default async function Home() {
                 {meta.label}<span className="count">{(bySector[sec] ?? []).length}</span>
               </a>
             ))}
-            <Link href="/bulletin" className="sub-nav-link">Intelligence Bulletin</Link>
+            <Link href="/bulletin" className="sub-nav-link">Energy Bulletin</Link>
             <Link href="/compare" className="sub-nav-link">Compare Series</Link>
             <Link href="/africa" className="sub-nav-link">Nigeria in Africa</Link>
             <Link href="/request-data" className="sub-nav-link">Request Data</Link>

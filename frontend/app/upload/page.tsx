@@ -489,7 +489,7 @@ export default function UploadPage() {
                       </span>
                     )}
                     {(state === "validated" || state === "committing" || state === "submitting") && !hasErrors && (
-                      role === "admin" ? (
+                      role === "admin" || role === "superadmin" ? (
                         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                           <button className="btn btn-dark" onClick={commit} disabled={state === "committing"}>
                             {state === "committing" ? "Committing…" : "Commit to Database"}

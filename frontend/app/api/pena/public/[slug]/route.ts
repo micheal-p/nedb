@@ -24,6 +24,15 @@ const avg = (xs: (number | null)[]) => {
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
 };
 
+// Median: the honest headline for skewed data like income — a few very high
+// earners cannot distort it.
+const median = (xs: (number | null)[]) => {
+  const v = xs.filter((x): x is number => x != null && isFinite(x)).sort((a, b) => a - b);
+  if (!v.length) return null;
+  const mid = Math.floor(v.length / 2);
+  return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+};
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
@@ -130,6 +139,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     total_responses: rows.length,
     stats: {
       avg_income: avg(rows.map((r) => r.income)),
+      median_income: median(rows.map((r) => r.income)),
       avg_light_hours: avg(rows.map((r) => r.light_hours)),
       avg_energy_expense: avg(rows.map((r) => r.energy_expense)),
     },

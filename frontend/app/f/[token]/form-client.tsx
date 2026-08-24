@@ -13,11 +13,14 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { PENA_LANGS, PENA_STRINGS, type PenaLang } from "@/lib/pena-i18n";
+import { isLoggedIn, getFullName, getTokenFresh } from "@/lib/auth";
+import { ErrorSummary } from "@/components/ui/gov";
 
 type Question = {
   id: number; label: string; slug: string; qtype: string; unit: string | null;
   is_required: boolean; analytics_key: string | null;
-  config: { options?: string[]; min?: number; max?: number } | null; display_order: number;
+  config: { options?: string[]; min?: number; max?: number; translations?: Record<string, string> } | null;
+  display_order: number;
 };
 
 type FormDef = {
@@ -80,20 +83,40 @@ export default function PenaPublicForm() {
   const [googleEmail, setGoogleEmail] = useState<string | null>(null);
   const geoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gsiRef = useRef<HTMLDivElement>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ anchor?: string; message: string }[]>([]);
+  const [enumerator, setEnumerator] = useState(false);
+  const [enumName, setEnumName]     = useState("");
 
   const t = PENA_STRINGS[lang];
-  const doneKey = `pena_done_${token}`;
+  // Question label in the respondent's chosen language, set per question in
+  // the admin builder; blank translations fall back to the English label.
+  const qLabel = (q: Question) => (lang !== "en" && q.config?.translations?.[lang]?.trim()) || q.label;
+  const doneKey  = `pena_done_${token}`;
   const queueKey = `pena_queue_${token}`;
+  const draftKey = `pena_draft_${token}`;
 
   // ── Load form definition + reference data ─────────────────────────────────
   useEffect(() => {
     const isPreview = typeof window !== "undefined" && window.location.search.includes("preview=1");
     setPreview(isPreview);
+    // Enumerator mode: signed-in staff record many responses on one device,
+    // so the one-per-device lock does not apply to them.
+    const isEnum = isLoggedIn();
+    setEnumerator(isEnum);
+    if (isEnum) setEnumName(getFullName());
     try {
-      if (!isPreview && localStorage.getItem(doneKey)) setAlready(true);
+      if (!isPreview && !isEnum && localStorage.getItem(doneKey)) setAlready(true);
       if (localStorage.getItem(queueKey)) setOfflineQueued(true);
       const savedLang = localStorage.getItem("pena_lang") as PenaLang | null;
       if (savedLang && PENA_STRINGS[savedLang]) setLang(savedLang);
+      // Restore an unfinished draft — a reload in the field must never cost
+      // the enumerator or respondent their typed answers.
+      const draft = localStorage.getItem(draftKey);
+      if (draft) {
+        const d = JSON.parse(draft) as { answers?: Record<string, AnswerVal>; lgaId?: number | null };
+        if (d.answers && Object.keys(d.answers).length) setAnswers(d.answers);
+        if (d.lgaId != null) setLgaId(d.lgaId);
+      }
     } catch { /* private mode */ }
 
     fetch(`/api/pena/r/${token}${isPreview ? "?preview=1" : ""}`, { credentials: "include" })
@@ -101,7 +124,18 @@ export default function PenaPublicForm() {
       .then(setDef)
       .catch(() => setLoadFailed(true));
     fetch("/api/lgas").then((r) => (r.ok ? r.json() : [])).then(setLgas).catch(() => {});
-  }, [token, doneKey, queueKey]);
+  }, [token, doneKey, queueKey, draftKey]);
+
+  // Autosave the draft on every change — cheap, and losing field answers to a
+  // reload is the single worst failure this form can have.
+  useEffect(() => {
+    if (done || already) return;
+    try {
+      if (Object.keys(answers).length || lgaId != null) {
+        localStorage.setItem(draftKey, JSON.stringify({ answers, lgaId }));
+      }
+    } catch { /* private mode */ }
+  }, [answers, lgaId, draftKey, done, already]);
 
   // ── Google Sign-In button ─────────────────────────────────────────────────
   useEffect(() => {
@@ -163,19 +197,35 @@ export default function PenaPublicForm() {
 
   // ── Submit + offline queue ────────────────────────────────────────────────
   const postPayload = useCallback(async (payload: object): Promise<{ ok: boolean; status: number; body: { error?: string; message?: string } }> => {
+    // Enumerator submissions carry the staff token so the server can lift the
+    // per-device limits and attribute the response.
+    const staffToken = enumerator ? await getTokenFresh() : null;
     const res = await fetch(`/api/pena/r/${token}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      credentials: enumerator ? "include" : "same-origin",
+      headers: { "Content-Type": "application/json", ...(staffToken ? { Authorization: `Bearer ${staffToken}` } : {}) },
       body: JSON.stringify(payload),
     });
     return { ok: res.ok, status: res.status, body: await res.json().catch(() => ({})) };
-  }, [token]);
+  }, [token, enumerator]);
 
   const markDone = useCallback((message: string) => {
     setDone(message);
     setOfflineQueued(false);
-    try { localStorage.setItem(doneKey, "1"); localStorage.removeItem(queueKey); } catch { /* private mode */ }
-  }, [doneKey, queueKey]);
+    try {
+      if (!enumerator) localStorage.setItem(doneKey, "1");
+      localStorage.removeItem(queueKey);
+      localStorage.removeItem(draftKey);
+    } catch { /* private mode */ }
+  }, [doneKey, queueKey, draftKey, enumerator]);
+
+  // Enumerator: clear everything and record the next household
+  const recordAnother = useCallback(() => {
+    setAnswers({}); setLgaId(null); setGeo(null); setConsent(false);
+    setDone(null); setError(""); setFieldErrors([]);
+    try { localStorage.removeItem(draftKey); } catch { /* private mode */ }
+    window.scrollTo({ top: 0 });
+  }, [draftKey]);
 
   const trySyncQueue = useCallback(async () => {
     let raw: string | null = null;
@@ -214,15 +264,24 @@ export default function PenaPublicForm() {
 
   async function submit() {
     setError("");
+    setFieldErrors([]);
     if (preview) return;
     if (!def?.questions) return;
+    // Collect ALL missing required fields at once — the GOV.UK error summary
+    // pattern: one list at the top, each entry linking to its field.
+    const missing: { anchor?: string; message: string }[] = [];
     for (const q of def.questions) {
       if (q.qtype === "email" && googleToken) continue; // auto-filled server-side
       const v = q.qtype === "lga_ref" ? (lgaId != null ? "x" : "") : (answers[q.slug] ?? "");
       const empty = Array.isArray(v) ? v.length === 0 : String(v).trim() === "";
-      if (q.is_required && empty) { setError(`"${q.label}" — ${t.requiredNote.replace("* ", "")}`); return; }
+      if (q.is_required && empty) missing.push({ anchor: `q-${q.slug}`, message: `"${qLabel(q)}" — ${t.requiredNote.replace("* ", "")}` });
     }
-    if (!consent) { setError(t.consentRequired); return; }
+    if (!consent) missing.push({ anchor: "consent-box", message: t.consentRequired });
+    if (missing.length) {
+      setFieldErrors(missing);
+      document.getElementById("error-summary-anchor")?.scrollIntoView({ block: "center" });
+      return;
+    }
 
     // Include the Google email in answers too: if the queued id_token expires
     // before an offline retry, the server falls back to the typed-email path
@@ -247,7 +306,10 @@ export default function PenaPublicForm() {
     try {
       const r = await postPayload(payload);
       if (r.ok) { markDone(r.body.message ?? t.thanksBody); return; }
-      if (r.status === 409) { setAlready(true); try { localStorage.setItem(doneKey, "1"); } catch { /* ignore */ } return; }
+      if (r.status === 409) {
+        if (enumerator) { setError(r.body.error ?? "Duplicate response — this email has already been recorded on this assessment."); return; }
+        setAlready(true); try { localStorage.setItem(doneKey, "1"); } catch { /* ignore */ } return;
+      }
       setError(r.body.error ?? "Submission failed. Please try again.");
     } catch {
       // Network unreachable — save on-device and retry automatically later
@@ -315,7 +377,19 @@ export default function PenaPublicForm() {
     <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--green-tint)", border: "2px solid var(--green)", color: "var(--green)", fontSize: "1.4rem", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>✓</div>
     <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>{t.thanksTitle}</div>
     <div style={{ fontSize: "0.82rem", color: "var(--ink-4)", lineHeight: 1.6 }}>{done || t.thanksBody}</div>
+    {enumerator && (
+      <button onClick={recordAnother} style={{ marginTop: "1.25rem", padding: "0.7rem 1.75rem", background: "var(--green)", color: "#fff", border: "none", borderRadius: 2, fontSize: "0.88rem", fontWeight: 700, cursor: "pointer" }}>
+        Record Another Response
+      </button>
+    )}
   </>));
+
+  const totalQs = (def.questions ?? []).length;
+  const answeredQs = (def.questions ?? []).filter((q) => {
+    if (q.qtype === "email" && googleToken) return true;
+    const v = q.qtype === "lga_ref" ? (lgaId != null ? "x" : "") : (answers[q.slug] ?? "");
+    return Array.isArray(v) ? v.length > 0 : String(v).trim() !== "";
+  }).length;
 
   return shell(
     <>
@@ -324,19 +398,38 @@ export default function PenaPublicForm() {
           {t.previewBanner}
         </div>
       )}
+      {enumerator && (
+        <div style={{ background: "var(--green-tint)", border: "1px solid var(--green-line)", borderRadius: "var(--r-md)", padding: "0.625rem 1rem", fontSize: "0.75rem", fontWeight: 600, marginBottom: "0.875rem", color: "var(--green-deep)" }}>
+          Enumerator mode — signed in as {enumName || "staff"}. You can record multiple responses on this device; each is attributed to you.
+        </div>
+      )}
+
+      <div id="error-summary-anchor"><ErrorSummary errors={fieldErrors} /></div>
 
       {/* Title card */}
       <div style={{ background: "#fff", border: "1px solid var(--border)", borderTop: "4px solid var(--green)", borderRadius: "var(--r-lg)", padding: "1.75rem 1.75rem 1.5rem", marginBottom: "0.875rem" }}>
-        <h1 style={{ fontSize: "1.45rem", fontFamily: "var(--font-serif)", fontWeight: 400, color: "var(--ink)", margin: 0, lineHeight: 1.25 }}>{def.title}</h1>
+        <h1 style={{ fontSize: "1.45rem", fontWeight: 700, color: "var(--ink)", margin: 0, lineHeight: 1.25 }}>{def.title}</h1>
         {def.description && <p style={{ fontSize: "0.85rem", color: "var(--ink-3)", marginTop: "0.625rem", lineHeight: 1.6 }}>{def.description}</p>}
         <p style={{ fontSize: "0.72rem", color: "var(--ink-5)", marginTop: "0.75rem", marginBottom: 0 }}>{t.requiredNote}</p>
+        {/* Progress — answered count and a slim bar */}
+        {totalQs > 0 && (
+          <div style={{ marginTop: "0.875rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.68rem", color: "var(--ink-4)", marginBottom: 4 }}>
+              <span>Progress</span>
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>{answeredQs} of {totalQs} answered</span>
+            </div>
+            <div style={{ height: 6, background: "var(--surface-muted)", border: "1px solid var(--border-soft)", overflow: "hidden" }}>
+              <div style={{ width: `${Math.round((answeredQs / totalQs) * 100)}%`, height: "100%", background: "var(--green)" }} />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Questions */}
       {(def.questions ?? []).map((q) => (
-        <div key={q.id} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem 1.75rem", marginBottom: "0.875rem", position: "relative" }}>
+        <div key={q.id} id={`q-${q.slug}`} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem 1.75rem", marginBottom: "0.875rem", position: "relative" }}>
           <label style={{ display: "block", fontSize: "0.88rem", fontWeight: 600, color: "var(--ink)", marginBottom: "0.7rem" }}>
-            {q.label} {q.is_required && <span style={{ color: "var(--red)" }}>*</span>}
+            {qLabel(q)} {q.is_required && <span style={{ color: "var(--red)" }}>*</span>}
             {q.unit && <span style={{ fontSize: "0.72rem", fontWeight: 400, color: "var(--ink-5)", marginLeft: 6 }}>({q.unit})</span>}
           </label>
 
@@ -457,7 +550,7 @@ export default function PenaPublicForm() {
       ))}
 
       {/* Consent + submit */}
-      <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem 1.75rem" }}>
+      <div id="consent-box" style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem 1.75rem" }}>
         <label style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", cursor: "pointer" }}>
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 3, width: 16, height: 16, accentColor: "var(--green)" }} />
           <span style={{ fontSize: "0.76rem", color: "var(--ink-3)", lineHeight: 1.6 }}>{def.consent_text}</span>

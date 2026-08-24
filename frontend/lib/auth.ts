@@ -85,3 +85,22 @@ export async function getTokenFresh(): Promise<string | null> {
   if (!refreshed) return null;
   return getToken();
 }
+
+// ── Role helpers ────────────────────────────────────────────────────────────
+// Hierarchy: viewer < editor (maker) < admin (checker) < superadmin.
+// "staff" is the legacy name for editor and stays accepted.
+export const ROLE_LABELS: Record<string, string> = {
+  superadmin: "Super Administrator",
+  admin: "Administrator",
+  editor: "Editor",
+  staff: "Editor",
+  viewer: "Viewer",
+};
+
+export function isAdminRole(role?: string | null): boolean {
+  return role === "admin" || role === "superadmin";
+}
+
+export function isEditorRole(role?: string | null): boolean {
+  return role === "editor" || role === "staff" || isAdminRole(role);
+}

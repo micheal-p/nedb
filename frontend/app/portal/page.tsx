@@ -117,6 +117,7 @@ export default function PortalPage() {
   const [modalOpen, setModalOpen]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted]   = useState(false);
+  const [reference, setReference]   = useState<string | null>(null);
   const [error, setError]           = useState("");
 
   function openRequest(profileKey: string) {
@@ -132,6 +133,7 @@ export default function PortalPage() {
       const res  = await fetch("/api/access-requests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Submission failed"); setSubmitting(false); return; }
+      setReference(data.reference ?? null);
       setSubmitted(true);
     } catch {
       setError("Network error. Please try again.");
@@ -144,8 +146,7 @@ export default function PortalPage() {
     <div style={{ fontFamily: "var(--font-sans)", background: "var(--surface)", minHeight: "100vh" }}>
 
       {/* ── HERO ── */}
-      <div style={{ background: "linear-gradient(160deg, #0A1628 0%, #0F2A18 60%, #0A3D22 100%)", color: "#fff", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0)", backgroundSize: "32px 32px", pointerEvents: "none" }} />
+      <div style={{ background: "var(--ink)", borderBottom: "3px solid var(--green)", color: "#fff", position: "relative", overflow: "hidden" }}>
 
         {/* Nav */}
         <div style={{ maxWidth: 1140, margin: "0 auto", padding: "0 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, position: "relative", zIndex: 2 }}>
@@ -171,7 +172,7 @@ export default function PortalPage() {
           <p style={{ fontSize: "1.05rem", color: "rgba(255,255,255,0.55)", maxWidth: 560, margin: "0 auto 2.5rem", lineHeight: 1.7 }}>
             The authoritative intelligence platform for Nigeria&apos;s energy sector. Profile-specific dashboards for government agencies, regulators, investors and researchers.
           </p>
-          <a href="#access" style={{ padding: "12px 32px", background: "#0E7A3C", color: "#fff", borderRadius: 8, fontSize: "0.9rem", fontWeight: 700, textDecoration: "none", display: "inline-block" }}>
+          <a href="#access" style={{ padding: "12px 32px", background: "#0E7A3C", color: "#fff", borderRadius: 2, fontSize: "0.9rem", fontWeight: 700, textDecoration: "none", display: "inline-block" }}>
             Request Dashboard Access
           </a>
 
@@ -294,9 +295,9 @@ export default function PortalPage() {
       {/* ── REQUEST MODAL ── */}
       {modalOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(10,22,40,0.75)", backdropFilter: "blur(4px)" }} onClick={() => !submitting && setModalOpen(false)} />
-          <div style={{ position: "relative", background: "#fff", borderRadius: 16, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.3)" }}>
-            <div style={{ background: "linear-gradient(135deg, #0A1628, #0F2A18)", padding: "1.5rem", borderRadius: "16px 16px 0 0" }}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)" }} onClick={() => !submitting && setModalOpen(false)} />
+          <div style={{ position: "relative", background: "#fff", borderRadius: 2, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--shadow-3)" }}>
+            <div style={{ background: "var(--ink)", padding: "1.5rem", borderBottom: "3px solid var(--green)" }}>
               <div style={{ fontSize: "0.62rem", color: "rgba(255,255,255,0.4)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.4rem" }}>NEDB — Access Request</div>
               <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "#fff" }}>{PROFILE_LABELS[form.profile_key] ?? "Dashboard Access"}</div>
               <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.45)", marginTop: 4 }}>Complete this form to request access to your profile-specific intelligence dashboard.</div>
@@ -308,10 +309,17 @@ export default function PortalPage() {
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
                 <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.5rem" }}>Request Submitted</h3>
-                <p style={{ fontSize: "0.85rem", color: "var(--ink-4)", lineHeight: 1.6, marginBottom: "1.5rem" }}>
-                  Your access request has been received. The NEDB Administrator will review your request and contact you at <strong>{form.email}</strong> with your login credentials.
+                {reference && (
+                  <div style={{ display: "inline-block", fontFamily: "var(--font-mono)", fontSize: "0.9rem", fontWeight: 700, color: "var(--ink)", background: "var(--surface-muted)", border: "1px solid var(--border)", padding: "6px 14px", marginBottom: "1rem" }}>
+                    {reference}
+                  </div>
+                )}
+                <p style={{ fontSize: "0.85rem", color: "var(--ink-4)", lineHeight: 1.6, marginBottom: "1rem" }}>
+                  Your access request has been received{reference ? ", quote the reference above in any correspondence" : ""}. The NEDB Administrator will review your request and contact you at <strong>{form.email}</strong> with your login credentials.
                 </p>
-                <p style={{ fontSize: "0.75rem", color: "var(--ink-5)", marginBottom: "2rem" }}>Typical review time: 1–2 business days.</p>
+                <p style={{ fontSize: "0.75rem", color: "var(--ink-5)", marginBottom: "2rem" }}>
+                  Service standard: requests are reviewed within 5 working days.{reference ? " You can check progress any time at nedb.vercel.app/portal/status." : ""}
+                </p>
                 <button onClick={() => setModalOpen(false)} style={{ padding: "10px 24px", background: "var(--ink)", color: "#fff", border: "none", borderRadius: 8, fontSize: "0.85rem", fontWeight: 700, cursor: "pointer" }}>Close</button>
               </div>
             ) : (

@@ -1,15 +1,17 @@
 "use client";
 
-// ── /admin/dashboards — Dashboard Builder (directory) ───────────────────────
-// The home for the per-entity dashboard fleet. This first release is the
-// read-only directory: every profile, who it's for, and where it lands. The
-// no-code tab/widget composer plugs in from here next. Auth is enforced by
-// the admin console shell (app/admin/layout.tsx).
+// ── /admin/dashboards — Dashboard Directory ─────────────────────────────────
+// Directory of the per-entity dashboard fleet: every profile, who it is for,
+// where it lands, and — honestly — how much of its headline data is live.
+// Each card proves itself with a real coverage count from committed records
+// and a Preview button that opens the actual dashboard in that profile.
+// The no-code tab/widget composer (DashboardTabBuilder) sits above the list.
+// Auth is enforced by the admin console shell (app/admin/layout.tsx).
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import DashboardTabBuilder from "@/components/admin/DashboardTabBuilder";
-
-type Profile = { key: string; label: string; role: string; view: string };
+import { PROFILE_MAP } from "@/lib/dashboard-profiles";
 
 const VIEW_LABEL: Record<string, string> = {
   overview: "Overview", upstream: "Upstream", downstream: "Downstream",
@@ -22,40 +24,36 @@ const GROUPS: { title: string; sub: string; keys: string[] }[] = [
   { title: "Investor Personas", sub: "External / institutional audiences", keys: ["investor_fdi","investor_capital","investor_infra","investor_renewable"] },
 ];
 
-const PROFILES: Record<string, Profile> = Object.fromEntries(([
-  {key:"presidency",label:"State House — Presidency",role:"National Energy Security Intelligence Brief",view:"overview"},
-  {key:"ecn",label:"ECN — Energy Commission of Nigeria",role:"ECN National Energy Policy Intelligence",view:"overview"},
-  {key:"nerc",label:"NERC — Electricity Regulatory Commission",role:"NERC Electricity Market Regulatory Dashboard",view:"downstream"},
-  {key:"nuprc",label:"NUPRC — Upstream Petroleum Regulator",role:"NUPRC Upstream Petroleum Regulatory Dashboard",view:"upstream"},
-  {key:"nmdpra",label:"NMDPRA — Midstream & Downstream Regulator",role:"NMDPRA Midstream & Downstream Regulatory Dashboard",view:"downstream"},
-  {key:"nnpcl",label:"NNPC Limited",role:"NNPC Limited Operational Intelligence Dashboard",view:"upstream"},
-  {key:"nemic",label:"NEMIC — Energy Management & Infrastructure",role:"NEMIC National Energy Management Intelligence",view:"power"},
-  {key:"nrs",label:"NRS — Natural Resources Statistics",role:"NRS Natural Resources Statistical Dashboard",view:"overview"},
-  {key:"rea",label:"REA — Rural Electrification Agency",role:"REA Rural Electrification & Off-Grid Dashboard",view:"renewable"},
-  {key:"tcn",label:"TCN — Transmission Company of Nigeria",role:"TCN Grid Transmission Intelligence Dashboard",view:"power"},
-  {key:"firs",label:"FIRS — Federal Inland Revenue Service",role:"FIRS Energy Sector Tax & Revenue Dashboard",view:"revenue"},
-  {key:"nbs",label:"NBS — National Bureau of Statistics",role:"NBS Energy Sector Statistical Dashboard",view:"overview"},
-  {key:"executive",label:"Executive Overview",role:"National Energy Intelligence Dashboard",view:"overview"},
-  {key:"petroleum",label:"Petroleum & Gas Analyst",role:"Petroleum & Upstream Intelligence Dashboard",view:"downstream"},
-  {key:"electricity",label:"Power & Grid Analyst",role:"Power Sector Intelligence Dashboard",view:"power"},
-  {key:"renewables",label:"Clean Energy Analyst",role:"Renewables & Clean Energy Intelligence Dashboard",view:"renewable"},
-  {key:"fiscal",label:"Fiscal & Revenue Analyst",role:"Fiscal Revenue Intelligence Dashboard",view:"revenue"},
-  {key:"investor_fdi",label:"FDI Intelligence",role:"Foreign Direct Investment Intelligence Dashboard",view:"upstream"},
-  {key:"investor_capital",label:"Capital Markets",role:"Energy Sector Capital Markets Intelligence Dashboard",view:"revenue"},
-  {key:"investor_infra",label:"Infrastructure / Power",role:"Power & Infrastructure Investor Intelligence Dashboard",view:"power"},
-  {key:"investor_renewable",label:"Renewable Investors",role:"Clean Energy Investment Intelligence Dashboard",view:"renewable"},
-] as Profile[]).map((p) => [p.key, p]));
+export default function DashboardDirectoryPage() {
+  // Which series have committed records — the basis of each card's coverage
+  const [liveSeries, setLiveSeries] = useState<Set<string> | null>(null);
 
-export default function DashboardBuilderPage() {
+  useEffect(() => {
+    // The route is per-year; coverage means "any committed data in the most
+    // recent year that has records", so resolve the latest year first.
+    (async () => {
+      try {
+        const first = await fetch("/api/dashboard-data").then((r) => r.json());
+        const years: number[] = first.years ?? [];
+        const latest = years.length ? Math.max(...years) : null;
+        const payload = latest && latest !== first.year ? await fetch(`/api/dashboard-data?year=${latest}`).then((r) => r.json()) : first;
+        const series = (payload.series ?? {}) as Record<string, unknown[]>;
+        setLiveSeries(new Set(Object.keys(series).filter((k) => (series[k] ?? []).length > 0)));
+      } catch {
+        setLiveSeries(new Set());
+      }
+    })();
+  }, []);
+
   return (
     <div style={{ background: "var(--surface)", minHeight: "100%", padding: "2rem" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <div style={{ marginBottom: "1.5rem" }}>
-          <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.25rem" }}>Dashboards</div>
-          <h1 style={{ fontSize: "1.5rem", fontFamily: "var(--font-serif)", fontWeight: 400, color: "var(--ink)", margin: 0 }}>Dashboard Builder</h1>
+          <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-4)", marginBottom: "0.25rem" }}>Dashboards</div>
+          <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>Dashboard Directory</h1>
           <p style={{ fontSize: "0.82rem", color: "var(--ink-4)", marginTop: "0.35rem", maxWidth: 640, lineHeight: 1.6 }}>
-            One engine, {Object.keys(PROFILES).length} tailored dashboards. Each entity lands on its own view with its own headline
-            indicators. Assign a profile to any staff account under <Link href="/admin" style={{ color: "var(--green)" }}>Administration → Users</Link>.
+            One engine, {Object.keys(PROFILE_MAP).length} tailored dashboards. Each entity lands on its own view with its own headline
+            indicators; coverage counts below come from committed records. Assign a profile to any staff account under <Link href="/admin" style={{ color: "var(--green)" }}>Administration → Users</Link>.
           </p>
         </div>
 
@@ -63,7 +61,7 @@ export default function DashboardBuilderPage() {
 
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, margin: "0.5rem 0 0.75rem" }}>
           <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>Built-in Profiles</h2>
-          <span style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>The {Object.keys(PROFILES).length} standard dashboards custom tabs attach to</span>
+          <span style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>The {Object.keys(PROFILE_MAP).length} standard dashboards custom tabs attach to</span>
         </div>
 
         {GROUPS.map((g) => (
@@ -74,16 +72,28 @@ export default function DashboardBuilderPage() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "0.75rem" }}>
               {g.keys.map((k) => {
-                const p = PROFILES[k];
+                const p = PROFILE_MAP[k];
                 if (!p) return null;
+                const live = liveSeries ? p.kpis.filter((d) => liveSeries.has(d.series)).length : null;
+                const total = p.kpis.length;
                 return (
-                  <div key={k} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1rem 1.1rem", minWidth: 0, boxShadow: "0 1px 3px rgba(16,24,16,0.05)" }}>
-                    <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>{p.label}</div>
-                    <div style={{ fontSize: "0.72rem", color: "var(--ink-4)", lineHeight: 1.5, marginBottom: "0.6rem", overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{p.role}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div key={k} style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1rem 1.1rem", minWidth: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    <div>
+                      <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>{p.label}</div>
+                      <div style={{ fontSize: "0.72rem", color: "var(--ink-4)", lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{p.persona}</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                       <span style={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--ink-5)" }}>Lands on</span>
-                      <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--green)", background: "var(--green-tint)", border: "1px solid var(--green-line)", borderRadius: 3, padding: "1px 7px" }}>{VIEW_LABEL[p.view] ?? p.view}</span>
-                      <code style={{ fontSize: "0.62rem", color: "var(--ink-5)", fontFamily: "var(--font-mono)", marginLeft: "auto" }}>{p.key}</code>
+                      <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--green)", background: "var(--green-tint)", border: "1px solid var(--green-line)", borderRadius: 2, padding: "1px 7px" }}>{VIEW_LABEL[p.defaultView] ?? p.defaultView}</span>
+                      <code style={{ fontSize: "0.62rem", color: "var(--ink-5)", fontFamily: "var(--font-mono)", marginLeft: "auto" }}>{k}</code>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, borderTop: "1px solid var(--border-soft)", paddingTop: "0.55rem", marginTop: "auto" }}>
+                      <span style={{ fontSize: "0.7rem", fontWeight: 600, color: live == null ? "var(--ink-5)" : live === total ? "var(--green)" : live > 0 ? "var(--amber)" : "var(--red)" }}>
+                        {live == null ? "Checking coverage…" : `${live} of ${total} indicators have data`}
+                      </span>
+                      <Link href={`/data-point/dashboard?profile=${k}`} style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--green)", textDecoration: "underline", textUnderlineOffset: 2, whiteSpace: "nowrap" }}>
+                        Preview
+                      </Link>
                     </div>
                   </div>
                 );

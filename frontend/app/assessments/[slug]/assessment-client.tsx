@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 import LgaMap from "@/components/datapoint/LgaMap";
 import { TIERS, TIER_ORDER, K_ANON_MIN, type PenaTier } from "@/lib/pena";
 
@@ -22,7 +23,7 @@ type PubData = {
   total_responses: number;
   collecting?: boolean;
   needed?: number;
-  stats?: { avg_income: number | null; avg_light_hours: number | null; avg_energy_expense: number | null };
+  stats?: { avg_income: number | null; median_income?: number | null; avg_light_hours: number | null; avg_energy_expense: number | null };
   tier_distribution?: { tier: PenaTier; count: number }[];
   by_state?: Group[];
   by_lga?: Group[];
@@ -71,6 +72,22 @@ export default function PublicAssessmentPage() {
     URL.revokeObjectURL(url);
   }
 
+  // CSV of the state summary — what a spreadsheet user actually wants
+  function downloadCSV() {
+    if (!data) return;
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const header = ["State", "Responses", "Avg Income (NGN/month)", "Avg Light Hours/day", "Avg Energy Spend (NGN/month)", ...TIER_ORDER.map((t) => `Tier ${t}`)];
+    const lines = (data.by_state ?? []).map((s) =>
+      [s.name, s.count, s.avg_income == null ? "" : Math.round(s.avg_income), s.avg_light_hours == null ? "" : s.avg_light_hours.toFixed(1), s.avg_energy_expense == null ? "" : Math.round(s.avg_energy_expense), ...s.tiers].map(esc).join(",")
+    );
+    const csv = [header.map(esc).join(","), ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${data.assessment.slug}-state-summary.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (failed) return <div style={{ minHeight: "100vh", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-4)", fontSize: "0.85rem" }}>Assessment not found.</div>;
   if (!data) return <div style={{ minHeight: "100vh", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-5)", fontSize: "0.85rem" }}>Loading…</div>;
 
@@ -107,6 +124,9 @@ export default function PublicAssessmentPage() {
             <button onClick={() => window.print()} style={{ padding: "0.6rem 1.25rem", background: "#fff", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
               Download PDF
             </button>
+            <button onClick={downloadCSV} style={{ padding: "0.6rem 1.25rem", background: "#fff", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
+              Download CSV
+            </button>
             <button onClick={downloadJSON} style={{ padding: "0.6rem 1.25rem", background: "#fff", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
               Download JSON
             </button>
@@ -142,6 +162,7 @@ export default function PublicAssessmentPage() {
             <Kicker>Headline Figures</Kicker>
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
               <Tile label="Responses" value={data.total_responses.toLocaleString()} sub="verified submissions counted" />
+              <Tile label="Median Monthly Income" value={naira(data.stats?.median_income)} sub="half earn less, half earn more — the honest headline for skewed incomes" />
               <Tile label="Avg Monthly Income" value={naira(data.stats?.avg_income)} sub="mean of reported incomes" />
               <Tile label="Avg Light Hours / Day" value={data.stats?.avg_light_hours == null ? "—" : data.stats.avg_light_hours.toFixed(1)} sub="of electricity supply, out of 24" />
               <Tile label="Avg Monthly Energy Spend" value={naira(data.stats?.avg_energy_expense)} sub="bills + fuel + solar, combined" />
@@ -232,10 +253,35 @@ export default function PublicAssessmentPage() {
               </div>
               <div className="chart-source">Data source: PENA field assessment / NEDB · Personal data withheld under NDPA 2023</div>
             </div>
+
+            {/* About this data — the methodology block that separates a
+                statistical publication from a dashboard demo */}
+            <Kicker>About This Data</Kicker>
+            <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.5rem 1.75rem", marginTop: "0.25rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.25rem", fontSize: "0.8rem", color: "var(--ink-3)", lineHeight: 1.65 }}>
+                <div>
+                  <div style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--ink-4)", marginBottom: 4 }}>How the data is collected</div>
+                  Responses are collected through the PENA field assessment form, filled by respondents directly or recorded by NEDB enumerators. Only responses with a confirmed identity are counted. The sample is field collected and self selected — it describes the respondents assessed, not a nationally representative survey.
+                </div>
+                <div>
+                  <div style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--ink-4)", marginBottom: 4 }}>How tiers are computed</div>
+                  Each response is placed on the A to E scale from two facts: hours of electricity supply per day, and energy burden — the share of monthly income spent on energy. A is energy secure; E is energy critical. Classification happens at submission and is recomputed if the method changes.
+                </div>
+                <div>
+                  <div style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--ink-4)", marginBottom: 4 }}>Privacy</div>
+                  Published figures are aggregates only. Any state or LGA with fewer than {needed} responses is withheld entirely (the k-anonymity floor), and no name, contact detail, address or coordinate is ever published, in line with the Nigeria Data Protection Act 2023.
+                </div>
+                <div>
+                  <div style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--ink-4)", marginBottom: 4 }}>Reuse and citation</div>
+                  The aggregates on this page are open data: reuse them with attribution. Cite as: PENA — {data.assessment.title}, National Energy Data Bank, Energy Commission of Nigeria, accessed {new Date().toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}.
+                </div>
+              </div>
+            </div>
           </>
         )}
       </div>
     </div>
+    <div className="no-print"><Footer /></div>
     </>
   );
 }

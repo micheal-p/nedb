@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { clearTokens, isLoggedIn, getFullName, getRole, getDashboardProfile, getTokenFresh } from "@/lib/auth";
+import { clearTokens, isLoggedIn, getFullName, getRole, getDashboardProfile, getTokenFresh, isAdminRole, ROLE_LABELS } from "@/lib/auth";
 import type { BuilderTab } from "@/lib/dashboard-builder";
+import { PROFILE_MAP, SERIES_LABELS, type KPIDef, type ProfileDef } from "@/lib/dashboard-profiles";
+import { AwaitingData } from "@/components/ui/gov";
 import dynamic from "next/dynamic";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 
@@ -13,6 +15,7 @@ const NigeriaMap  = dynamic(() => import("@/components/datapoint/NigeriaMap"),  
 const PenaPanel   = dynamic(() => import("@/components/datapoint/panels/PenaPanel"), { ssr: false });
 const ApexAI      = dynamic(() => import("@/components/datapoint/ApexAI"),      { ssr: false });
 const DashboardWidget = dynamic(() => import("@/components/datapoint/DashboardWidget"), { ssr: false });
+const FiscalVarianceTable = dynamic(() => import("@/components/datapoint/FiscalVarianceTable"), { ssr: false });
 
 // ── Real data types ────────────────────────────────────────────
 type SeriesRow = { period: string; value: number; unit?: string };
@@ -39,32 +42,9 @@ function EmptyChart({ seriesName }: { seriesName: string }) {
   );
 }
 
-// ── Profile definitions ────────────────────────────────────────
-interface KPIDef { label: string; series: string; unit: string; higherIsBetter?: boolean }
+// ── Profile definitions live in lib/dashboard-profiles ─────────
 interface KPI    { label: string; value: string; unit: string; change: string; up: boolean; period: string }
 interface Alert  { level: string; msg: string; time: string }
-
-interface ProfileDef {
-  label: string; roleTitle: string; color: string; accent: string;
-  persona: string; defaultView: string; navOrder: string[];
-  kpis: KPIDef[];
-}
-
-const SERIES_LABELS: Record<string, string> = {
-  crude_oil_production:   "Crude oil production",
-  natural_gas_production: "Natural gas production",
-  pms_sales:              "PMS sales volume",
-  ago_sales:              "AGO (diesel) sales",
-  kerosine_sales:         "Kerosene (DPK) sales",
-  lpg_sales:              "LPG sales",
-  electricity_generation: "Electricity generation",
-  electricity_sent_out:   "Electricity sent out",
-  electricity_consumption:"Electricity consumption",
-  renewable_energy:       "Renewable energy capacity",
-  fuelwood_consumption:   "Fuelwood consumption",
-  faac_oil_revenue:       "FAAC oil revenue",
-  upstream_royalties:     "Upstream royalties",
-};
 
 function computeAnomalies(data: DashData): Alert[] {
   const alerts: Alert[] = [];
@@ -108,284 +88,32 @@ function computeAnomalies(data: DashData): Alert[] {
 }
 
 function fmtKpiValue(v: number): string {
-  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + "T";
-  if (v >= 1_000)     return (v / 1_000).toFixed(1) + "K";
-  if (v < 10)         return v.toFixed(2);
+  // Full figures with thousands separators — no K/T suffix compression, which
+  // mislabels magnitudes across mixed units.
+  if (Math.abs(v) >= 1000) return Math.round(v).toLocaleString("en-NG");
+  if (Math.abs(v) < 10)    return v.toFixed(2);
   return v.toFixed(1);
 }
 
-function computeKPI(def: KPIDef, data: DashData): KPI {
+// Change is year on year (same period position last year) to match the public
+// Bulletin, falling back to previous period when last year has no data. The
+// signed arrow text is embedded in `change` — callers render it verbatim.
+function computeKPI(def: KPIDef, data: DashData, prevYear?: DashData): KPI {
   const rows = data[def.series] ?? [];
   if (!rows.length) return { label: def.label, value: "—", unit: def.unit, change: "", up: true, period: "No data yet" };
   const latest = rows[rows.length - 1];
+  const yoyRow = (prevYear?.[def.series] ?? [])[rows.length - 1] ?? null;
   const prev   = rows.length >= 2 ? rows[rows.length - 2] : null;
+  const base   = yoyRow ?? prev;
   let change = ""; let up = true;
-  if (prev && prev.value !== 0) {
-    const pct = ((latest.value - prev.value) / Math.abs(prev.value)) * 100;
-    change = Math.abs(pct).toFixed(1) + "%";
+  if (base && base.value !== 0) {
+    const pct = ((latest.value - base.value) / Math.abs(base.value)) * 100;
+    change = `${pct >= 0 ? "▲ +" : "▼ −"}${Math.abs(pct).toFixed(1)}% ${yoyRow ? "year on year" : "vs previous period"}`;
     up = def.higherIsBetter !== false ? pct >= 0 : pct <= 0;
   }
   return { label: def.label, value: fmtKpiValue(latest.value), unit: def.unit, change, up, period: latest.period };
 }
 
-const ALL_NAV = ["overview","downstream","upstream","midstream","power","renewable","bioenergy","revenue","faac"];
-
-const PROFILE_MAP: Record<string, ProfileDef> = {
-  presidency: {
-    label: "State House — Presidency", roleTitle: "National Energy Security Intelligence Brief",
-    color: "#1B2A4A", accent: "rgba(27,42,74,0.06)",
-    persona: "Strategic energy intelligence for the Presidency. Cross-sector overview covering national energy security, production benchmarks and fiscal performance.",
-    defaultView: "overview", navOrder: ALL_NAV,
-    kpis: [
-      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Oil Revenue (FAAC)",     series: "faac_oil_revenue",       unit: "₦ Billion" },
-      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
-      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
-    ],
-  },
-  ecn: {
-    label: "ECN — Energy Commission of Nigeria", roleTitle: "ECN National Energy Policy Intelligence",
-    color: "#0E7A3C", accent: "rgba(14,122,60,0.06)",
-    persona: "All-sector energy intelligence for ECN leadership. Policy monitoring across petroleum, electricity, gas, renewables and biomass sectors.",
-    defaultView: "overview", navOrder: ALL_NAV,
-    kpis: [
-      { label: "Renewable Capacity",   series: "renewable_energy",       unit: "MW" },
-      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
-      { label: "Fuelwood Consumption", series: "fuelwood_consumption",   unit: "M m³",  higherIsBetter: false },
-      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
-    ],
-  },
-  nerc: {
-    label: "NERC — Electricity Regulatory Commission", roleTitle: "NERC Electricity Market Regulatory Dashboard",
-    color: "#1D4ED8", accent: "rgba(29,78,216,0.05)",
-    persona: "Regulatory intelligence for NERC. DisCo compliance, market settlement, tariff performance and grid reliability monitoring.",
-    defaultView: "power", navOrder: ["power","downstream","midstream","overview","upstream","renewable","bioenergy","faac","revenue"],
-    kpis: [
-      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
-      { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
-      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
-      { label: "Upstream Royalties",     series: "upstream_royalties",     unit: "₦ Billion" },
-    ],
-  },
-  nuprc: {
-    label: "NUPRC — Upstream Petroleum Regulator", roleTitle: "NUPRC Upstream Petroleum Regulatory Dashboard",
-    color: "#78350F", accent: "rgba(120,53,15,0.05)",
-    persona: "Upstream regulatory intelligence for NUPRC. Crude oil production, OML block performance, licensing, royalty compliance and flare reduction monitoring.",
-    defaultView: "upstream", navOrder: ["upstream","revenue","overview","downstream","midstream","faac","power","renewable","bioenergy"],
-    kpis: [
-      { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
-      { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
-      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
-    ],
-  },
-  nmdpra: {
-    label: "NMDPRA — Midstream & Downstream Regulator", roleTitle: "NMDPRA Midstream & Downstream Regulatory Dashboard",
-    color: "#0369A1", accent: "rgba(3,105,161,0.05)",
-    persona: "Midstream and downstream regulatory intelligence. Refinery throughput, product distribution, pipeline performance and retail compliance.",
-    defaultView: "downstream", navOrder: ["downstream","midstream","overview","upstream","revenue","power","renewable","bioenergy","faac"],
-    kpis: [
-      { label: "PMS (Petrol) Sales",  series: "pms_sales",     unit: "M Litres" },
-      { label: "AGO (Diesel) Sales",  series: "ago_sales",     unit: "M Litres" },
-      { label: "LPG Sales",           series: "lpg_sales",     unit: "MT" },
-      { label: "Kerosene (DPK) Sales",series: "kerosine_sales",unit: "M Litres" },
-    ],
-  },
-  nnpcl: {
-    label: "NNPC Limited", roleTitle: "NNPC Limited Operational Intelligence Dashboard",
-    color: "#065F46", accent: "rgba(6,95,70,0.05)",
-    persona: "Operational and commercial intelligence for NNPC Limited. Production performance, equity crude, gas monetisation and downstream operations.",
-    defaultView: "upstream", navOrder: ["upstream","downstream","midstream","revenue","overview","power","renewable","bioenergy","faac"],
-    kpis: [
-      { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
-      { label: "PMS (Petrol) Sales",   series: "pms_sales",              unit: "M Litres" },
-      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
-    ],
-  },
-  nemic: {
-    label: "NEMIC — Energy Management & Infrastructure", roleTitle: "NEMIC National Energy Management Intelligence",
-    color: "#4338CA", accent: "rgba(67,56,202,0.05)",
-    persona: "Infrastructure and management intelligence. Energy infrastructure investment, grid capacity, emergency response and critical asset monitoring.",
-    defaultView: "power", navOrder: ["power","midstream","renewable","overview","downstream","upstream","bioenergy","faac","revenue"],
-    kpis: [
-      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
-      { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
-      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
-      { label: "Fuelwood Consumption",   series: "fuelwood_consumption",   unit: "M m³", higherIsBetter: false },
-    ],
-  },
-  nrs: {
-    label: "NRS — Natural Resources Statistics", roleTitle: "NRS Natural Resources Statistical Dashboard",
-    color: "#6B21A8", accent: "rgba(107,33,168,0.05)",
-    persona: "Statistical intelligence for natural resources reporting. Production volumes, consumption trends, cross-sector comparisons and data quality monitoring.",
-    defaultView: "overview", navOrder: ALL_NAV,
-    kpis: [
-      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
-      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
-      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
-    ],
-  },
-  rea: {
-    label: "REA — Rural Electrification Agency", roleTitle: "REA Rural Electrification & Off-Grid Dashboard",
-    color: "#15803D", accent: "rgba(21,128,61,0.05)",
-    persona: "Rural electrification and off-grid intelligence. Mini-grid rollout, solar penetration, off-grid connections and clean energy access by state.",
-    defaultView: "renewable", navOrder: ["renewable","bioenergy","power","overview","downstream","upstream","midstream","faac","revenue"],
-    kpis: [
-      { label: "Renewable Capacity",   series: "renewable_energy",     unit: "MW" },
-      { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
-      { label: "Fuelwood Consumption", series: "fuelwood_consumption", unit: "M m³", higherIsBetter: false },
-      { label: "Electricity Generation",series: "electricity_generation",unit: "GWh" },
-    ],
-  },
-  tcn: {
-    label: "TCN — Transmission Company of Nigeria", roleTitle: "TCN Grid Transmission Intelligence Dashboard",
-    color: "#B45309", accent: "rgba(180,83,9,0.05)",
-    persona: "Transmission grid intelligence for TCN management. Grid capacity, wheeling capacity, system stability, constraint management and capital projects.",
-    defaultView: "power", navOrder: ["power","midstream","downstream","overview","upstream","renewable","bioenergy","faac","revenue"],
-    kpis: [
-      { label: "Electricity Sent Out",  series: "electricity_sent_out",   unit: "GWh" },
-      { label: "Electricity Generation",series: "electricity_generation", unit: "GWh" },
-      { label: "Electricity Consumed",  series: "electricity_consumption",unit: "GWh" },
-      { label: "Renewable Capacity",    series: "renewable_energy",       unit: "MW" },
-    ],
-  },
-  firs: {
-    label: "FIRS — Federal Inland Revenue Service", roleTitle: "FIRS Energy Sector Tax & Revenue Dashboard",
-    color: "#9F1239", accent: "rgba(159,18,57,0.05)",
-    persona: "Energy sector tax and revenue intelligence. Petroleum Profit Tax, royalties, CITA from energy companies and FAAC energy contribution tracking.",
-    defaultView: "revenue", navOrder: ["revenue","faac","upstream","overview","downstream","midstream","power","renewable","bioenergy"],
-    kpis: [
-      { label: "FAAC Oil Revenue",   series: "faac_oil_revenue",       unit: "₦ Billion" },
-      { label: "Upstream Royalties", series: "upstream_royalties",     unit: "₦ Billion" },
-      { label: "Crude Oil Produced", series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Natural Gas",        series: "natural_gas_production", unit: "Bcf" },
-    ],
-  },
-  nbs: {
-    label: "NBS — National Bureau of Statistics", roleTitle: "NBS Energy Sector Statistical Dashboard",
-    color: "#0C4A6E", accent: "rgba(12,74,110,0.05)",
-    persona: "Energy sector statistical intelligence for NBS. Cross-sector data validation, trend analysis and national accounts reconciliation.",
-    defaultView: "overview", navOrder: ALL_NAV,
-    kpis: [
-      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
-      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
-      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
-    ],
-  },
-  executive: {
-    label: "Executive Overview", roleTitle: "National Energy Intelligence Dashboard",
-    color: "#0E7A3C", accent: "rgba(14,122,60,0.06)",
-    persona: "Cross-sector overview for executive leadership and national policy decision-makers.",
-    defaultView: "overview", navOrder: ["overview","downstream","revenue","upstream","power","midstream","renewable","bioenergy","faac"],
-    kpis: [
-      { label: "Crude Oil Production",   series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
-      { label: "PMS (Petrol) Sales",     series: "pms_sales",              unit: "M Litres" },
-      { label: "Natural Gas Produced",   series: "natural_gas_production", unit: "Bcf" },
-    ],
-  },
-  petroleum: {
-    label: "Petroleum & Gas Analyst", roleTitle: "Petroleum & Upstream Intelligence Dashboard",
-    color: "#92400E", accent: "rgba(146,64,14,0.05)",
-    persona: "Upstream crude production, downstream product distribution and retail sales analytics.",
-    defaultView: "downstream", navOrder: ["downstream","upstream","revenue","overview","midstream","power","renewable","bioenergy","faac"],
-    kpis: [
-      { label: "Crude Oil Production", series: "crude_oil_production", unit: "M Barrels" },
-      { label: "PMS (Petrol) Sales",   series: "pms_sales",            unit: "M Litres" },
-      { label: "AGO (Diesel) Sales",   series: "ago_sales",            unit: "M Litres" },
-      { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
-    ],
-  },
-  electricity: {
-    label: "Power & Grid Analyst", roleTitle: "Power Sector Intelligence Dashboard",
-    color: "#1D4ED8", accent: "rgba(29,78,216,0.05)",
-    persona: "Generation capacity, grid transmission, distribution losses and market financial settlement.",
-    defaultView: "power", navOrder: ["power","downstream","midstream","overview","upstream","renewable","bioenergy","faac","revenue"],
-    kpis: [
-      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
-      { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
-      { label: "Electricity Consumed",   series: "electricity_consumption",unit: "GWh" },
-      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
-    ],
-  },
-  renewables: {
-    label: "Clean Energy Analyst", roleTitle: "Renewables & Clean Energy Intelligence Dashboard",
-    color: "#059669", accent: "rgba(5,150,105,0.05)",
-    persona: "Renewable capacity, natural gas production, biomass and clean energy transition metrics.",
-    defaultView: "renewable", navOrder: ["renewable","bioenergy","overview","power","upstream","downstream","midstream","faac","revenue"],
-    kpis: [
-      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
-      { label: "Renewable Capacity",   series: "renewable_energy",       unit: "MW" },
-      { label: "Fuelwood Consumption", series: "fuelwood_consumption",   unit: "M m³", higherIsBetter: false },
-      { label: "LPG Sales",            series: "lpg_sales",              unit: "MT" },
-    ],
-  },
-  fiscal: {
-    label: "Fiscal & Revenue Analyst", roleTitle: "Fiscal Revenue Intelligence Dashboard",
-    color: "#7C3AED", accent: "rgba(124,58,237,0.05)",
-    persona: "FAAC energy contribution, upstream revenue flows, royalty collections and producing company financial intelligence.",
-    defaultView: "revenue", navOrder: ["revenue","faac","upstream","overview","downstream","midstream","power","renewable","bioenergy"],
-    kpis: [
-      { label: "FAAC Oil Revenue",   series: "faac_oil_revenue",       unit: "₦ Billion" },
-      { label: "Upstream Royalties", series: "upstream_royalties",     unit: "₦ Billion" },
-      { label: "Crude Oil Produced", series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Natural Gas",        series: "natural_gas_production", unit: "Bcf" },
-    ],
-  },
-
-  // ── Investor profiles ──────────────────────────────────────────
-  investor_fdi: {
-    label: "FDI Intelligence", roleTitle: "Foreign Direct Investment Intelligence Dashboard",
-    color: "#1B2A4A", accent: "rgba(27,42,74,0.06)",
-    persona: "Investment-grade intelligence for international energy companies and sovereign wealth funds evaluating Nigeria upstream, midstream and power sector assets.",
-    defaultView: "upstream", navOrder: ["upstream","revenue","overview","power","downstream","renewable","midstream","bioenergy","faac"],
-    kpis: [
-      { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
-      { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
-      { label: "Natural Gas Produced", series: "natural_gas_production", unit: "Bcf" },
-    ],
-  },
-  investor_capital: {
-    label: "Capital Markets", roleTitle: "Energy Sector Capital Markets Intelligence Dashboard",
-    color: "#0C4A6E", accent: "rgba(12,74,110,0.06)",
-    persona: "Financial intelligence for portfolio investors, equity analysts and fixed income managers tracking Nigerian energy sector assets and revenue flows.",
-    defaultView: "revenue", navOrder: ["revenue","faac","overview","upstream","downstream","power","renewable","midstream","bioenergy"],
-    kpis: [
-      { label: "FAAC Oil Revenue",     series: "faac_oil_revenue",       unit: "₦ Billion" },
-      { label: "Upstream Royalties",   series: "upstream_royalties",     unit: "₦ Billion" },
-      { label: "Crude Oil Production", series: "crude_oil_production",   unit: "M Barrels" },
-      { label: "Electricity Generation",series: "electricity_generation",unit: "GWh" },
-    ],
-  },
-  investor_infra: {
-    label: "Infrastructure / Power", roleTitle: "Power & Infrastructure Investor Intelligence Dashboard",
-    color: "#B45309", accent: "rgba(180,83,9,0.06)",
-    persona: "Due diligence intelligence for IPPs, GenCo acquirers, DisCo investors and infrastructure funds evaluating Nigerian power sector assets.",
-    defaultView: "power", navOrder: ["power","revenue","downstream","overview","upstream","renewable","midstream","bioenergy","faac"],
-    kpis: [
-      { label: "Electricity Generation", series: "electricity_generation", unit: "GWh" },
-      { label: "Electricity Sent Out",   series: "electricity_sent_out",   unit: "GWh" },
-      { label: "Renewable Capacity",     series: "renewable_energy",       unit: "MW" },
-      { label: "FAAC Oil Revenue",       series: "faac_oil_revenue",       unit: "₦ Billion" },
-    ],
-  },
-  investor_renewable: {
-    label: "Renewable Investors", roleTitle: "Clean Energy Investment Intelligence Dashboard",
-    color: "#059669", accent: "rgba(5,150,105,0.06)",
-    persona: "Investment intelligence for solar, wind, mini-grid and clean energy developers. Capacity gap analysis, FiT obligations, REA pipeline and off-grid market intelligence.",
-    defaultView: "renewable", navOrder: ["renewable","overview","power","revenue","upstream","downstream","midstream","bioenergy","faac"],
-    kpis: [
-      { label: "Renewable Capacity",   series: "renewable_energy",     unit: "MW" },
-      { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
-      { label: "Fuelwood Consumption", series: "fuelwood_consumption", unit: "M m³", higherIsBetter: false },
-      { label: "Electricity Generation",series: "electricity_generation",unit: "GWh" },
-    ],
-  },
-};
 
 // ── Sidebar nav items ──────────────────────────────────────────
 const NAV_ITEMS: Record<string, { label: string; section: string }> = {
@@ -455,6 +183,7 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState(2026);
   const [customTabs, setCustomTabs] = useState<BuilderTab[]>([]);
   const [dashData, setDashData]     = useState<DashData>({});
+  const [prevDashData, setPrevDashData] = useState<DashData>({});
   const [stateMap, setStateMap]     = useState<Record<string, Record<string, number>>>({});
   const [availYears, setAvailYears] = useState<number[]>([2026]);
   const [dataLoading, setDataLoading] = useState(false);
@@ -463,7 +192,11 @@ export default function Dashboard() {
     if (!isLoggedIn()) { router.replace("/data-point/login?redirect=/data-point/dashboard"); return; }
     const name    = getFullName() || "Staff";
     const role    = getRole() || "viewer";
-    const profKey = getDashboardProfile() || "executive";
+    let profKey = getDashboardProfile() || "executive";
+    // Admin preview: /data-point/dashboard?profile=<key> lets an admin open
+    // any profile from the Dashboard Directory without switching accounts.
+    const previewKey = new URLSearchParams(window.location.search).get("profile");
+    if (previewKey && isAdminRole(role) && PROFILE_MAP[previewKey]) profKey = previewKey;
     const prof    = PROFILE_MAP[profKey] ?? PROFILE_MAP.executive;
     setStaffName(name); setStaffRole(role); setProfile(prof); setView(prof.defaultView);
     (async () => {
@@ -501,6 +234,11 @@ export default function Dashboard() {
       })
       .catch(() => {})
       .finally(() => setDataLoading(false));
+    // Prior year, for year-on-year change on the KPI strip and brief
+    fetch(`/api/dashboard-data?year=${selectedYear - 1}`)
+      .then((r) => r.json())
+      .then((payload) => setPrevDashData(payload.series ?? {}))
+      .catch(() => setPrevDashData({}));
   }, [selectedYear]);
 
   // Convenience aliases — empty array if not yet uploaded
@@ -541,7 +279,7 @@ export default function Dashboard() {
                   onClick={() => !soon && navigate(item.id)}
                   style={soon ? { opacity: 0.4, cursor: "not-allowed" } : undefined}>
                   <span className="sb-label">{item.label}</span>
-                  {soon && <span style={{ fontSize: "0.6rem", fontWeight: 700, background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)", padding: "1px 5px", borderRadius: 3 }}>SOON</span>}
+                  {soon && <span style={{ fontSize: "0.58rem", fontWeight: 700, background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)", padding: "1px 5px", borderRadius: 3, whiteSpace: "nowrap" }}>DATA PENDING</span>}
                 </button>
               );
             })}
@@ -551,11 +289,11 @@ export default function Dashboard() {
           <div style={{ padding: "0.875rem 1rem", borderTop: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
             <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>{staffName}</div>
             <div style={{ fontSize: "0.62rem", color: "rgba(255,255,255,0.35)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-              {staffRole === "admin" ? "Administrator" : profile.label}
+              {ROLE_LABELS[staffRole] ?? profile.label}
             </div>
           </div>
           <div style={{ padding: "0.5rem 0", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-            {staffRole === "admin" && (
+            {isAdminRole(staffRole) && (
               <Link href="/admin" className="sb-link">
                 <span className="sb-label">Manage Staff Accounts</span>
                 <span style={{ fontSize: "0.6rem", background: "var(--green)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>ADMIN</span>
@@ -597,11 +335,20 @@ export default function Dashboard() {
 
         <div className="dash-content">
           {/* Profile hero */}
-          <div style={{ background: `linear-gradient(135deg, ${profile.color}08 0%, ${profile.color}03 100%)`, border: `1px solid ${profile.color}20`, borderRadius: "var(--r-lg)", padding: "1.25rem 1.5rem", marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+          <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderLeft: `3px solid ${profile.color}`, borderRadius: "var(--r-lg)", padding: "1.25rem 1.5rem", marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
             <div>
               <div style={{ fontSize: "0.62rem", fontWeight: 700, color: profile.color, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.25rem" }}>{profile.label}</div>
-              <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem", fontWeight: 400, color: "var(--ink)", lineHeight: 1.2, marginBottom: "0.3rem" }}>{profile.roleTitle}</h2>
+              <h2 style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.2, marginBottom: "0.3rem" }}>{profile.roleTitle}</h2>
               <p style={{ fontSize: "0.78rem", color: "var(--ink-4)", lineHeight: 1.5, maxWidth: 540 }}>{profile.persona}</p>
+              {(() => {
+                const live = profile.kpis.filter((k) => (dashData[k.series] ?? []).length > 0).length;
+                const total = profile.kpis.length;
+                return (
+                  <div style={{ fontSize: "0.72rem", fontWeight: 600, marginTop: "0.4rem", color: live === total ? "var(--green)" : "var(--amber)" }}>
+                    {live} of {total} headline indicators live{live < total ? `, ${total - live} awaiting data` : ""}
+                  </div>
+                );
+              })()}
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Welcome back</div>
@@ -611,12 +358,12 @@ export default function Dashboard() {
 
           {/* KPI strip — computed live from dashData */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "1px", background: "var(--border)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden", marginBottom: "1.5rem" }}>
-            {profile.kpis.map((def) => { const m = computeKPI(def, dashData); return (
+            {profile.kpis.map((def) => { const m = computeKPI(def, dashData, prevDashData); return (
               <div key={m.label} className="metric-card" style={{ border: "none", borderRadius: 0 }}>
                 <div className="mc-label">{m.label}</div>
                 <div className="mc-value">{m.value}{m.unit && m.value !== "—" && <span style={{ fontSize: "0.75rem", color: "var(--ink-4)", fontFamily: "var(--font-sans)", marginLeft: 4 }}>{m.unit}</span>}</div>
                 <div className={`mc-trend ${m.up ? "up" : "down"}`} style={{ color: m.value === "—" ? "var(--ink-5)" : undefined }}>
-                  {m.value === "—" ? "Upload data to populate" : <>{m.change && (m.up ? "+" : "−")}{m.change}{m.period && <span style={{ fontWeight: 400, color: "var(--ink-5)" }}> · {m.period}</span>}</>}
+                  {m.value === "—" ? "Upload data to populate" : <>{m.change}{m.period && <span style={{ fontWeight: 400, color: "var(--ink-5)" }}> · {m.period}</span>}</>}
                 </div>
               </div>
             ); })}
@@ -656,19 +403,12 @@ export default function Dashboard() {
               {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Multi-series" subtitle={`PMS · AGO · LPG monthly volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS", color: "#0E7A3C" }, { key: "ago", label: "AGO", color: "#1D4ED8" }, { key: "lpg", label: "LPG", color: "#B45309" }]} unit="M Litres" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
               <div>
                 <div className="sec-hd" style={{ marginBottom: "1rem" }}>
-                  <h2>Fiscal Intelligence Panels</h2>
-                  <span className="sec-hd-meta">Data integration in progress</span>
+                  <h2>Fiscal Panels</h2>
+                  <span className="sec-hd-meta">Populate as source agencies commit data</span>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1.25rem" }}>
                   {FISCAL_PANELS.map((panel) => (
-                    <div key={panel.id} className="cs-panel">
-                      <div className="cs-ghost">{[70,40,55,30,60,45,80,35,50].map((w, i) => <div key={i} className="cs-ghost-bar" style={{ width: `${w}%` }} />)}</div>
-                      <div className="cs-overlay">
-                        <div className="cs-agencies">{panel.agencies.map((ag) => <span key={ag} className="cs-agency-tag" style={{ background: `${panel.color}18`, color: panel.color, border: `1px solid ${panel.color}30` }}>{ag}</span>)}</div>
-                        <h4>{panel.title}</h4><p>{panel.caption}</p>
-                        <span className="tag tag-amber" style={{ marginTop: "0.25rem" }}>Coming Soon</span>
-                      </div>
-                    </div>
+                    <AwaitingData key={panel.id} title={panel.title} agencies={panel.agencies} series={[panel.caption]} />
                   ))}
                 </div>
               </div>
@@ -752,14 +492,14 @@ export default function Dashboard() {
                     { label: "Renewable Capacity",   series: "renewable_energy",     unit: "MW" },
                     { label: "LPG Sales",            series: "lpg_sales",            unit: "MT" },
                     { label: "Fuelwood Consumption", series: "fuelwood_consumption", unit: "M m³", higherIsBetter: false },
-                  ] as KPIDef[]).map((def) => { const m = computeKPI(def, dashData); return (
+                  ] as KPIDef[]).map((def) => { const m = computeKPI(def, dashData, prevDashData); return (
                     <div key={m.label}>
                       <div className="kpi-label">{m.label}</div>
                       <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--ink)", fontFamily: "var(--font-mono)", marginTop: 4 }}>
                         {m.value} {m.value !== "—" && <span style={{ fontSize: "0.75rem", color: "var(--ink-4)", fontFamily: "var(--font-sans)" }}>{m.unit}</span>}
                       </div>
                       <div style={{ fontSize: "0.75rem", color: m.value === "—" ? "var(--ink-5)" : m.up ? "var(--green)" : "var(--red)", fontWeight: 600, marginTop: 2 }}>
-                        {m.value === "—" ? "Upload data to populate" : `${m.change ? (m.up ? "+" : "−") + m.change : ""} · ${m.period}`}
+                        {m.value === "—" ? "Upload data to populate" : `${m.change ? m.change + " · " : ""}${m.period}`}
                       </div>
                     </div>
                   );})}
@@ -776,9 +516,7 @@ export default function Dashboard() {
                 {s("faac_oil_revenue").length ? <SectorChart title="Oil Revenue — FAAC Contribution" subtitle={`Quarterly ₦B · ${selectedYear}`} source="RMAFC / CBN" data={s("faac_oil_revenue")} series={[{ key: "value", label: "FAAC Oil Revenue (₦B)", color: "#7C3AED" }]} unit="₦B" filename="faac-oil-revenue" /> : <EmptyChart seriesName="FAAC Oil Revenue" />}
                 {s("upstream_royalties").length ? <SectorChart title="Upstream Royalties Collected" subtitle={`Quarterly ₦B · ${selectedYear}`} source="NUPRC / FIRS" data={s("upstream_royalties")} series={[{ key: "value", label: "Royalties (₦B)", color: "#9F1239" }]} unit="₦B" filename="upstream-royalties" /> : <EmptyChart seriesName="Upstream Royalties" />}
               </div>
-              <div style={{ padding: "0.875rem 1rem", background: "var(--amber-tint)", border: "1px solid rgba(180,83,0.2)", borderRadius: "var(--r-md)", fontSize: "0.82rem", color: "var(--amber)" }}>
-                Revenue Portal under active development. Producing companies registry is live. Financial flow data will be published upon completion of agency data agreements.
-              </div>
+              <FiscalVarianceTable dashData={dashData} prevDashData={prevDashData} year={selectedYear} />
               <RevenueRegistryTable />
             </div>
           )}
@@ -797,7 +535,7 @@ export default function Dashboard() {
 
           {/* ── ENERGY BRIEF (Presidency / Reporting profiles) ── */}
           {view === "brief" && (
-            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis.map((d) => computeKPI(d, dashData))} alerts={computeAnomalies(dashData)} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availYears={availYears} dataLoading={dataLoading} dashData={dashData} />
+            <PresidencyBrief staffName={staffName} profileLabel={profile.label} roleTitle={profile.roleTitle} kpis={profile.kpis.map((d) => computeKPI(d, dashData, prevDashData))} alerts={computeAnomalies(dashData)} selectedYear={selectedYear} setSelectedYear={setSelectedYear} availYears={availYears} dataLoading={dataLoading} dashData={dashData} prevDashData={prevDashData} />
           )}
 
         </div>
@@ -806,7 +544,7 @@ export default function Dashboard() {
       <ApexAI
         currentView={view}
         profileLabel={profile.label}
-        screenContext={`Data Point dashboard — ${profile.label}. Section: ${viewLabel}. Year: ${selectedYear}. Visible KPIs: ${profile.kpis.map((d) => { const m = computeKPI(d, dashData); return `${m.label}: ${m.value}${m.unit && m.value !== "—" ? " " + m.unit : ""}${m.change ? ` (${m.up ? "+" : "-"}${m.change} vs prev, ${m.period})` : ""}`; }).join("; ")}`}
+        screenContext={`Data Point dashboard — ${profile.label}. Section: ${viewLabel}. Year: ${selectedYear}. Visible KPIs: ${profile.kpis.map((d) => { const m = computeKPI(d, dashData, prevDashData); return `${m.label}: ${m.value}${m.unit && m.value !== "—" ? " " + m.unit : ""}${m.change ? ` (${m.change}, ${m.period})` : ""}`; }).join("; ")}`}
       />
     </div>
   );
@@ -814,13 +552,33 @@ export default function Dashboard() {
 
 // ── Presidency Energy Brief ────────────────────────────────────
 
-function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, selectedYear, setSelectedYear, availYears, dataLoading, dashData }: {
+function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, selectedYear, setSelectedYear, availYears, dataLoading, dashData, prevDashData }: {
   staffName: string; profileLabel: string; roleTitle: string;
   kpis: KPI[]; alerts: Alert[]; selectedYear: number; setSelectedYear: (y: number) => void;
-  availYears: number[]; dataLoading: boolean; dashData: DashData;
+  availYears: number[]; dataLoading: boolean; dashData: DashData; prevDashData: DashData;
 }) {
-  const [classification, setClassification] = useState("FOR OFFICIAL USE ONLY");
+  // Fixed marking — a user-selectable classification is worse than none
+  const classification = "FOR OFFICIAL USE ONLY";
   const briefDate = new Date().toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" });
+
+  // Sequential document reference issued and logged server-side; a brief
+  // without an issued reference prints as DRAFT.
+  const [docRef, setDocRef] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getTokenFresh();
+        const r = await fetch("/api/brief-ref", {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ profile: profileLabel, year: selectedYear }),
+        });
+        if (r.ok && !cancelled) { const j = await r.json(); if (j?.ref) setDocRef(j.ref); }
+      } catch { /* prints as DRAFT */ }
+    })();
+    return () => { cancelled = true; };
+  }, [profileLabel, selectedYear]);
 
   function printBrief() {
     window.print();
@@ -859,12 +617,6 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
       <div className="no-print" style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1rem", background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)" }}>
         <div style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "var(--ink)" }}>Energy Brief — Print-Ready Report</div>
         <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
-        <select value={classification} onChange={(e) => setClassification(e.target.value)} style={{ padding: "4px 8px", fontSize: "0.72rem", border: "1px solid var(--border)", borderRadius: 4, background: "var(--surface)", color: "var(--ink)", cursor: "pointer" }}>
-          <option>FOR OFFICIAL USE ONLY</option>
-          <option>CONFIDENTIAL</option>
-          <option>RESTRICTED</option>
-          <option>UNCLASSIFIED</option>
-        </select>
         <button onClick={printBrief} style={{ padding: "6px 16px", fontSize: "0.78rem", fontWeight: 700, background: "var(--ink)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           Print / Save PDF
@@ -877,7 +629,7 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
         {/* Header */}
         <div style={{ background: "#1B2A4A", color: "#fff", padding: "2rem 2.5rem" }} className="brief-header">
           <div style={{ display: "flex", alignItems: "flex-start", gap: "1.5rem", marginBottom: "1.5rem" }}>
-            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "1.5rem" }}>🇳🇬</div>
+            <div style={{ width: 56, height: 56, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><CoatOfArms size={56} /></div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: "0.25rem" }}>Federal Republic of Nigeria</div>
               <div style={{ fontSize: "1.4rem", fontFamily: "var(--font-serif)", fontWeight: 400, lineHeight: 1.2, color: "#fff", marginBottom: "0.25rem" }}>National Energy Data Bank</div>
@@ -906,7 +658,7 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
           {kpis.some((k) => k.value !== "—") ? (
             <p style={{ fontSize: "0.85rem", color: "var(--ink)", lineHeight: 1.7, maxWidth: 780 }}>
               Nigeria energy sector intelligence brief for {selectedYear}.{" "}
-              {kpis.filter((k) => k.value !== "—").map((k) => `${k.label}: ${k.value} ${k.unit}${k.change ? ` (${k.up ? "+" : "−"}${k.change})` : ""}`).join("; ")}.{" "}
+              {kpis.filter((k) => k.value !== "—").map((k) => `${k.label}: ${k.value} ${k.unit}${k.change ? ` (${k.change})` : ""}`).join("; ")}.{" "}
               {alerts.length > 0 ? `${alerts.filter((a) => a.level === "high").length} high-priority anomalies detected from committed data.` : "No anomalies detected in committed data."}
             </p>
           ) : (
@@ -934,13 +686,13 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
             <div key={sec.section} style={{ marginBottom: "1.5rem" }}>
               <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#1B2A4A", textTransform: "uppercase", letterSpacing: "0.1em", borderBottom: "2px solid #1B2A4A", paddingBottom: "0.4rem", marginBottom: "0.875rem" }}>{sec.section}</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-                {sec.items.map((def) => { const m = computeKPI(def, dashData); const hasVal = m.value !== "—"; return (
+                {sec.items.map((def) => { const m = computeKPI(def, dashData, prevDashData); const hasVal = m.value !== "—"; return (
                   <div key={def.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0.5rem 0.75rem", background: hasVal && !m.up ? "rgba(192,57,43,0.04)" : "var(--surface)", borderRadius: 4, border: "1px solid var(--border)" }}>
                     <span style={{ fontSize: "0.75rem", color: "var(--ink-4)" }}>{def.label}</span>
                     <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "1rem" }}>
                       <div style={{ fontSize: "0.82rem", fontWeight: 700, color: hasVal ? "var(--ink)" : "var(--ink-5)", fontFamily: "var(--font-mono)" }}>{m.value}{hasVal ? ` ${def.unit}` : ""}</div>
                       <div style={{ fontSize: "0.65rem", color: !hasVal ? "var(--ink-5)" : m.up ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
-                        {!hasVal ? "No data" : m.change ? `${m.up ? "+" : "−"}${m.change} · ${m.period}` : m.period}
+                        {!hasVal ? "No data" : m.change ? `${m.change} · ${m.period}` : m.period}
                       </div>
                     </div>
                   </div>
@@ -965,7 +717,7 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
         {/* Footer */}
         <div style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", padding: "1rem 2.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontSize: "0.65rem", color: "var(--ink-5)" }}>NEDB · Energy Commission of Nigeria · This document is classified <strong>{classification}</strong> and is intended solely for the named recipient.</div>
-          <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", fontFamily: "var(--font-mono)" }}>NEDB-{selectedYear}-{Math.floor(Math.random() * 9000 + 1000)}</div>
+          <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", fontFamily: "var(--font-mono)" }}>{docRef ?? "DRAFT — no reference issued"}</div>
         </div>
       </div>
 

@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (!auth) return err("Unauthorized", 401);
-  if ((auth as { role?: string }).role !== "admin") return err("Admin only", 403);
+  if (!["admin", "superadmin"].includes((auth as { role?: string }).role ?? "")) return err("Admin only", 403);
 
   const body = await req.json().catch(() => ({}));
   const cycle = await getCycleStatus();

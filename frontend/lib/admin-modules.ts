@@ -34,8 +34,14 @@ export const ADMIN_NAV: AdminGroup[] = [
   {
     group: "Dashboards",
     items: [
-      { href: "/admin/dashboards", label: "Dashboard Builder", icon: "layout" },
+      { href: "/admin/dashboards", label: "Dashboard Directory", icon: "layout" },
       { href: "/data-point/dashboard", label: "Live Dashboard", icon: "chart" },
+    ],
+  },
+  {
+    group: "Publications",
+    items: [
+      { href: "/admin/bulletins", label: "Bulletin Editions", icon: "clipboard" },
     ],
   },
   {

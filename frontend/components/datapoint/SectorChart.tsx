@@ -24,7 +24,7 @@ interface SectorChartProps {
   defaultType?: ChartType;
 }
 
-type ChartType = "line" | "bar" | "area" | "column" | "pie" | "donut" | "radar" | "scatter" | "histogram";
+type ChartType = "line" | "bar" | "area" | "column" | "pie" | "donut" | "radar" | "scatter" | "histogram" | "table";
 
 const CHART_TYPES: { id: ChartType; icon: string; label: string }[] = [
   { id: "line",      icon: "〜", label: "Line"      },
@@ -36,6 +36,7 @@ const CHART_TYPES: { id: ChartType; icon: string; label: string }[] = [
   { id: "radar",     icon: "✦", label: "Radar"     },
   { id: "scatter",   icon: "⁙", label: "Scatter"   },
   { id: "histogram", icon: "▦", label: "Histogram" },
+  { id: "table",     icon: "≣", label: "Table"     },
 ];
 
 const RADIAN = Math.PI / 180;
@@ -219,12 +220,38 @@ export default function SectorChart({ title, subtitle, source, data, series, uni
 
   return (
     <ChartShell title={title} subtitle={subtitle} chartType={chartType} setChartType={setChartType} downloadCSV={downloadCSV} note={note}>
-      <div className="chart-panel-body" style={{ padding: "0.75rem 0.25rem 0.25rem" }}>
-        <ResponsiveContainer width="100%" height={height}>
-          {renderChart()}
-        </ResponsiveContainer>
-      </div>
-      {source && <div className="chart-source">Source: {source} &nbsp;·&nbsp; Sample data — real records populate as uploads are committed</div>}
+      {chartType === "table" ? (
+        /* View as table — the accessible twin of every chart */
+        <div className="data-table-wrap" style={{ border: "none", borderRadius: 0, maxHeight: height + 40, overflowY: "auto" }}>
+          <table className="data-table" style={{ fontSize: "0.76rem" }}>
+            <thead>
+              <tr>
+                <th>Period</th>
+                {series.map((s) => <th key={s.key} style={{ textAlign: "right" }}>{s.label}{unit ? ` (${unit})` : ""}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((r) => (
+                <tr key={r.period}>
+                  <td className="td-primary">{r.period}</td>
+                  {series.map((s) => (
+                    <td key={s.key} style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                      {r[s.key] == null || r[s.key] === "" ? "—" : Number(r[s.key]).toLocaleString()}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="chart-panel-body" style={{ padding: "0.75rem 0.25rem 0.25rem" }}>
+          <ResponsiveContainer width="100%" height={height}>
+            {renderChart()}
+          </ResponsiveContainer>
+        </div>
+      )}
+      {source && <div className="chart-source">Source: {source}</div>}
     </ChartShell>
   );
 }

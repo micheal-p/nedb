@@ -3,15 +3,21 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { isLoggedIn, getRole } from "@/lib/auth";
+import { isLoggedIn, getRole, isAdminRole } from "@/lib/auth";
+import { ConfirmPanel } from "@/components/ui/gov";
 import { QTYPES, ANALYTICS_KEYS, penaSlugify, DEFAULT_TIER_CONFIG, TIERS, type TierConfig } from "@/lib/pena";
+import { PENA_LANGS, type PenaLang } from "@/lib/pena-i18n";
 
 type Question = {
   label: string; slug: string; qtype: string; unit: string | null;
   is_required: boolean; is_pii: boolean; analytics_key: string | null;
-  config: { options?: string[]; min?: number; max?: number } | null;
+  // translations: per-language question label, keyed by lang code (pcm/ha/yo/ig).
+  // Lives inside config so no schema change is needed; answers stay keyed by slug.
+  config: { options?: string[]; min?: number; max?: number; translations?: Partial<Record<PenaLang, string>> } | null;
   _new?: boolean;   // client-only: slug auto-generates from the label ONLY while new
 };
+
+const TRANSLATE_LANGS = PENA_LANGS.filter((l) => l.value !== "en");
 
 type FormDetail = {
   id: number; slug: string; share_token: string; title: string; description: string | null;
@@ -51,7 +57,7 @@ export default function PenaBuilderPage() {
 
   useEffect(() => {
     if (!isLoggedIn()) { router.replace(`/data-point/login?redirect=/admin/pena/${id}`); return; }
-    if (getRole() !== "admin") { router.replace("/data-point/dashboard"); return; }
+    if (!isAdminRole(getRole())) { router.replace("/data-point/dashboard"); return; }
     load();
   }, [router, load, id]);
 
@@ -98,9 +104,13 @@ export default function PenaBuilderPage() {
     });
   }
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   async function deleteForm() {
-    if (!confirm(`Delete "${form?.title}" and all ${form?.response_count ?? 0} responses? This cannot be undone.`)) return;
+    setDeleting(true);
     const res = await fetch(`/api/pena/forms/${id}`, { method: "DELETE", credentials: "include" });
+    setDeleting(false); setConfirmDelete(false);
     if (res.ok) router.replace("/admin/pena");
     else setError("Delete failed");
   }
@@ -261,6 +271,27 @@ export default function PenaBuilderPage() {
                     Respondents get live place suggestions as they type; the picked place pins their response on the assessment map.
                   </div>
                 )}
+                {/* Per-language label translations — respondents who switch the
+                    form to Pidgin/Hausa/Yorùbá/Igbo see these instead of the
+                    English label. Blank = falls back to English. */}
+                <details style={{ marginTop: "0.5rem" }}>
+                  <summary style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--ink-4)", cursor: "pointer" }}>
+                    Translations{(() => { const n = TRANSLATE_LANGS.filter((l) => (q.config?.translations?.[l.value] ?? "").trim()).length; return n ? ` — ${n} of ${TRANSLATE_LANGS.length} set` : " (optional)"; })()}
+                  </summary>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.5rem", marginTop: "0.5rem" }}>
+                    {TRANSLATE_LANGS.map((l) => (
+                      <div key={l.value}>
+                        <label style={labelStyle}>{l.label}</label>
+                        <input
+                          value={q.config?.translations?.[l.value] ?? ""}
+                          onChange={(e) => updateQ(i, "config", { ...(q.config ?? {}), translations: { ...(q.config?.translations ?? {}), [l.value]: e.target.value } })}
+                          placeholder={q.label || "Translated label"}
+                          style={inputStyle}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </details>
               </div>
             ))}
           </div>
@@ -344,14 +375,28 @@ export default function PenaBuilderPage() {
         )}
 
         {/* Danger zone */}
-        <div style={{ border: "1px solid rgba(192,57,43,0.3)", borderRadius: "var(--r-md)", padding: "1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
-          <div>
-            <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--red)" }}>Delete this assessment</div>
-            <div style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>Removes the form, its questions and all responses permanently.</div>
-          </div>
-          <button onClick={deleteForm} style={{ padding: "0.5rem 1.25rem", background: "#fff", border: "1px solid var(--red)", color: "var(--red)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
-            Delete
-          </button>
+        <div style={{ border: "1px solid rgba(192,57,43,0.3)", borderRadius: "var(--r-md)", padding: "1rem 1.25rem" }}>
+          {!confirmDelete ? (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div>
+                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--red)" }}>Delete this assessment</div>
+                <div style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>Removes the form, its questions and all responses permanently.</div>
+              </div>
+              <button onClick={() => setConfirmDelete(true)} style={{ padding: "0.5rem 1.25rem", background: "#fff", border: "1px solid var(--red)", color: "var(--red)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
+                Delete…
+              </button>
+            </div>
+          ) : (
+            <ConfirmPanel
+              title={`Delete "${form.title}" permanently?`}
+              body={`This removes the form, its questions and all ${form.response_count.toLocaleString()} responses for good. It cannot be undone.`}
+              confirmLabel="Delete permanently"
+              danger
+              busy={deleting}
+              onConfirm={deleteForm}
+              onCancel={() => setConfirmDelete(false)}
+            />
+          )}
         </div>
       </div>
       <style>{`

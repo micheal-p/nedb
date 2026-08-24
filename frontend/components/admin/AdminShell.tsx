@@ -31,7 +31,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     // Every admin route is gated here — one guard for the whole console.
     if (!getToken()) { router.replace(`/data-point/login?redirect=${encodeURIComponent(pathname)}`); return; }
-    if (getRole() !== "admin") { router.replace("/"); return; }
+    if (!["admin", "superadmin"].includes(getRole())) { router.replace("/"); return; }
     setName(getFullName());
     setReady(true);
   }, [router, pathname]);

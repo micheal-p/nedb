@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 
 type PubForm = {
   slug: string; title: string; description: string | null;
@@ -79,6 +80,7 @@ export default function AssessmentsIndexPage() {
         )}
       </div>
     </div>
+    <Footer />
     </>
   );
 }

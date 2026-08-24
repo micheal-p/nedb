@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import CoatOfArms from "./CoatOfArms";
-import { isLoggedIn, getFullName, getRole, clearTokens } from "@/lib/auth";
+import { OfficialBanner } from "@/components/ui/gov";
+import { isLoggedIn, getFullName, getRole, clearTokens, isAdminRole } from "@/lib/auth";
 
 type NavbarProps = {
   active?: "databank" | "upload" | "datapoint" | "about" | "graph" | "assessments";
@@ -59,8 +60,8 @@ export default function Navbar({ active }: NavbarProps) {
     router.push("/");
   }
 
-  const portalHref  = role === "admin" ? "/admin" : "/upload";
-  const portalLabel = role === "admin" ? "Admin Panel" : "Upload Data";
+  const portalHref  = isAdminRole(role) ? "/admin" : "/upload";
+  const portalLabel = isAdminRole(role) ? "Admin Panel" : "Upload Data";
 
   return (
     <>
@@ -68,6 +69,7 @@ export default function Navbar({ active }: NavbarProps) {
         FEDERAL REPUBLIC OF NIGERIA &nbsp;&middot;&nbsp; ENERGY COMMISSION OF NIGERIA (ECN)
         &nbsp;&middot;&nbsp; ESTABLISHED UNDER ECN ACT, CAP. E10, LFN 2004
       </div>
+      <OfficialBanner />
 
       <nav className="primary-nav">
         <Link href="/" className="nav-brand" onClick={() => setMenuOpen(false)}>

@@ -49,7 +49,9 @@ export default function Footer() {
           <a href="/documents/ecn_act.pdf" target="_blank" rel="noopener noreferrer">ECN Act, CAP. E10</a>
           <a href="/documents/Petroleum_Industry_Act_2021.pdf" target="_blank" rel="noopener noreferrer">PIA Act 2021</a>
           <a href="/documents/Energy_Policy_Document.pdf" target="_blank" rel="noopener noreferrer">National Energy Policy</a>
-          <a href="/documents/Hydrocarbon_Oil_Refinery_Act.pdf" target="_blank" rel="noopener noreferrer">Hydrocarbon Oil Refinery Act</a>
+          <Link href="/privacy">Privacy Notice</Link>
+          <Link href="/accessibility">Accessibility Statement</Link>
+          <Link href="/terms-of-data-use">Terms of Data Use</Link>
           <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer">ECN Official Site</a>
         </div>
       </div>

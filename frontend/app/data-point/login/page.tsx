@@ -8,8 +8,8 @@ import { saveTokens, isLoggedIn, getRole } from "@/lib/auth";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 
 function defaultRedirect(role: string): string {
-  if (role === "admin") return "/admin";
-  if (role === "staff") return "/upload";
+  if (role === "admin" || role === "superadmin") return "/admin";
+  if (role === "staff" || role === "editor")     return "/upload";
   return "/data-point/dashboard"; // viewer
 }
 

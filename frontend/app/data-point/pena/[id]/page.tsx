@@ -9,7 +9,8 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import PenaDrillMap from "@/components/pena/PenaDrillMap";
 import PenaPointsMap, { type PenaPoint } from "@/components/pena/PenaPointsMap";
-import { isLoggedIn, getRole } from "@/lib/auth";
+import { isLoggedIn, getRole, isAdminRole } from "@/lib/auth";
+import { ConfirmPanel, FilterChips } from "@/components/ui/gov";
 import { TIERS, TIER_ORDER, type PenaTier } from "@/lib/pena";
 import { buildBenchmarkIndex, coveragePer100k, DEFAULT_NBS_ROWS, type BenchmarkIndex, type NbsRow } from "@/lib/nbs-benchmarks";
 
@@ -146,16 +147,24 @@ export default function PenaInsightsPage() {
     setOffset(0);
   }, []);
 
+  // In-page NDPA delete confirmation — window.confirm() blocks the browser
+  // and cannot state what is actually happening; ConfirmPanel can.
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting]           = useState(false);
+  const [deleteErr, setDeleteErr]         = useState("");
+  useEffect(() => { setConfirmDelete(false); setDeleteErr(""); }, [detail]);
+
   async function deleteResponse(r: ResponseRow) {
-    if (!confirm(`Delete response #${r.id} (${r.email ?? "no email"}) permanently? This honours an NDPA removal request and cannot be undone.`)) return;
+    setDeleting(true); setDeleteErr("");
     const res = await fetch(`/api/pena/forms/${id}/responses?response_id=${r.id}`, { method: "DELETE", credentials: "include" });
+    setDeleting(false); setConfirmDelete(false);
     if (res.ok) {
       setDetail(null);
       loadRows();
       fetch(`/api/pena/forms/${id}/insights`, { credentials: "include" })
         .then((x) => (x.ok ? x.json() : null)).then((j) => j && setIns(j)).catch(() => {});
     } else {
-      alert("Delete failed.");
+      setDeleteErr("Delete failed — please try again.");
     }
   }
 
@@ -391,7 +400,7 @@ export default function PenaInsightsPage() {
               <div className="chart-panel-title">Responses</div>
               <div className="chart-panel-sub">{total.toLocaleString()} matching · showing {total === 0 ? 0 : offset + 1}–{offset + rows.length} · click a row for full answers{redacted ? " · personal fields hidden for your role" : ""}</div>
             </div>
-            {getRole() === "admin" && (
+            {isAdminRole(getRole()) && (
               <a href={`/api/pena/forms/${id}/responses?format=csv&${filterQS()}`}
                 style={{ padding: "4px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-tint)", color: "var(--green)", textDecoration: "none" }}>
                 Export CSV
@@ -412,16 +421,29 @@ export default function PenaInsightsPage() {
             <input value={fMin} onChange={(e) => setFMin(e.target.value)} placeholder="Income min ₦" inputMode="numeric" style={{ ...ctl, width: 110 }} />
             <input value={fMax} onChange={(e) => setFMax(e.target.value)} placeholder="Income max ₦" inputMode="numeric" style={{ ...ctl, width: 110 }} />
             <button onClick={() => { setOffset(0); loadRows(); }} style={{ padding: "7px 16px", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.76rem", fontWeight: 700, cursor: "pointer" }}>Apply</button>
-            {fLga && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "var(--green-tint)", border: "1px solid var(--green-line)", borderRadius: 12, fontSize: "0.72rem", color: "var(--green)", fontWeight: 600 }}>
-                LGA: {fLga}
-                <button onClick={() => { setFLga(""); setOffset(0); }} style={{ background: "none", border: "none", color: "var(--green)", cursor: "pointer", fontSize: "0.8rem", padding: 0, lineHeight: 1 }}>×</button>
-              </span>
-            )}
-            {(fState || fLga || fTier || fMin || fMax) && (
-              <button onClick={() => { setFState(""); setFLga(""); setFTier(""); setFMin(""); setFMax(""); setOffset(0); }} style={{ padding: "6px 10px", background: "none", border: "1px solid var(--border)", borderRadius: 4, fontSize: "0.74rem", color: "var(--ink-4)", cursor: "pointer" }}>Clear</button>
-            )}
           </div>
+
+          {/* Active filters, always visible — the map drill can set filters
+              silently, so the chip row is what keeps the table's true state
+              in front of the analyst */}
+          <FilterChips
+            chips={[
+              fState ? { key: "state", label: `State: ${fState}` } : null,
+              fLga   ? { key: "lga",   label: `LGA: ${fLga}` } : null,
+              fTier  ? { key: "tier",  label: `Tier ${fTier}` } : null,
+              fMin   ? { key: "min",   label: `Income ≥ ₦${Number(fMin).toLocaleString()}` } : null,
+              fMax   ? { key: "max",   label: `Income ≤ ₦${Number(fMax).toLocaleString()}` } : null,
+            ].filter(Boolean) as { key: string; label: string }[]}
+            onClear={(key) => {
+              if (key === "state") { setFState(""); setFLga(""); }
+              if (key === "lga")   setFLga("");
+              if (key === "tier")  setFTier("");
+              if (key === "min")   setFMin("");
+              if (key === "max")   setFMax("");
+              setOffset(0);
+            }}
+            onClearAll={() => { setFState(""); setFLga(""); setFTier(""); setFMin(""); setFMax(""); setOffset(0); }}
+          />
 
           <div style={{ overflowX: "auto" }}>
             <table className="data-table" style={{ width: "100%", fontSize: "0.74rem" }}>
@@ -526,15 +548,30 @@ export default function PenaInsightsPage() {
                   </tbody>
                 </table>
 
-                {getRole() === "admin" && (
-                  <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-                    <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", maxWidth: 300, lineHeight: 1.5 }}>
-                      NDPA 2023: respondents may request removal of their data at any time. Deleting also refreshes the public aggregates.
-                    </div>
-                    <button onClick={() => deleteResponse(detail)}
-                      style={{ padding: "0.5rem 1.1rem", background: "#fff", border: "1px solid var(--red)", color: "var(--red)", borderRadius: 6, fontSize: "0.76rem", fontWeight: 700, cursor: "pointer" }}>
-                      Delete Response
-                    </button>
+                {isAdminRole(getRole()) && (
+                  <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
+                    {!confirmDelete ? (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                        <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", maxWidth: 300, lineHeight: 1.5 }}>
+                          NDPA 2023: respondents may request removal of their data at any time. Deleting also refreshes the public aggregates.
+                        </div>
+                        <button onClick={() => { setConfirmDelete(true); setDeleteErr(""); }}
+                          style={{ padding: "0.5rem 1.1rem", background: "#fff", border: "1px solid var(--red)", color: "var(--red)", borderRadius: 6, fontSize: "0.76rem", fontWeight: 700, cursor: "pointer" }}>
+                          Delete Response…
+                        </button>
+                      </div>
+                    ) : (
+                      <ConfirmPanel
+                        title={`Delete response #${detail.id} permanently?`}
+                        body="This honours an NDPA removal request. The row is removed for good, the public aggregates refresh, and the deletion is written to the audit log. It cannot be undone."
+                        confirmLabel="Delete permanently"
+                        danger
+                        busy={deleting}
+                        onConfirm={() => deleteResponse(detail)}
+                        onCancel={() => setConfirmDelete(false)}
+                      />
+                    )}
+                    {deleteErr && <div style={{ fontSize: "0.75rem", color: "var(--red)", marginTop: 6 }}>{deleteErr}</div>}
                   </div>
                 )}
               </div>

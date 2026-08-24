@@ -6,7 +6,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { isLoggedIn, getRole } from "@/lib/auth";
+import { isLoggedIn, getRole, isAdminRole } from "@/lib/auth";
 
 type PenaForm = {
   id: number; slug: string; title: string; description: string | null;
@@ -38,7 +38,7 @@ export default function PenaListPage() {
           </div>
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
             <Link href="/data-point/dashboard" style={{ fontSize: "0.78rem", color: "var(--ink-4)", textDecoration: "none" }}>← Dashboard</Link>
-            {getRole() === "admin" && (
+            {isAdminRole(getRole()) && (
               <Link href="/admin/pena" style={{ padding: "0.6rem 1.25rem", background: "var(--green)", color: "#fff", borderRadius: 6, fontSize: "0.82rem", fontWeight: 700, textDecoration: "none" }}>
                 Manage Assessments
               </Link>
@@ -50,7 +50,7 @@ export default function PenaListPage() {
           <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)", fontSize: "0.82rem" }}>Loading…</div>
         ) : forms.length === 0 ? (
           <div style={{ textAlign: "center", padding: "4rem 2rem", background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", color: "var(--ink-4)", fontSize: "0.82rem" }}>
-            No assessments yet{getRole() === "admin" ? " — create one from the admin dashboard." : "."}
+            No assessments yet{isAdminRole(getRole()) ? " — create one from the admin dashboard." : "."}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>

@@ -37,7 +37,7 @@ const median = (xs: number[]) => {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req);
   if (!auth) return err("Unauthorized", 401);
-  const isAdmin = (auth as { role?: string }).role === "admin";
+  const isAdmin = ["admin", "superadmin"].includes((auth as { role?: string }).role ?? "");
   const { id } = await params;
 
   const { data: form } = await db().from("pena_forms").select("id, title, slug, status, is_public_stats").eq("id", id).single();

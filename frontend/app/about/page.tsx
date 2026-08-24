@@ -1,6 +1,35 @@
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Link from "next/link";
+import { db } from "@/lib/supabase-server";
+import { SECTOR_LABEL } from "@/lib/bulletin-shared";
+
+// Coverage and headline stats are computed from the live registry — an About
+// page whose numbers drift from the database reads as marketing, not record.
+async function getCoverage() {
+  try {
+    const { data } = await db()
+      .from("series_types")
+      .select("id, name, sector, energy_records(count)")
+      .order("sector").order("name");
+    const series = (data ?? []).map((s) => ({
+      id: s.id as string,
+      name: s.name as string,
+      sector: s.sector as string,
+      records: (s.energy_records as { count: number }[] | null)?.[0]?.count ?? 0,
+    }));
+    const { data: earliest } = await db()
+      .from("energy_records")
+      .select("period_date")
+      .order("period_date", { ascending: true })
+      .limit(1)
+      .single();
+    const earliestYear = earliest?.period_date ? new Date(earliest.period_date as string).getFullYear() : null;
+    return { series, earliestYear };
+  } catch {
+    return { series: [], earliestYear: null };
+  }
+}
 
 const MILESTONES = [
   { year: "1979", event: "Energy Commission of Nigeria (ECN) established by decree to coordinate national energy policy and advise the Federal Government." },
@@ -11,13 +40,13 @@ const MILESTONES = [
   { year: "2025", event: "NEDB Platform v1.0 launched — first fully digital, API-accessible repository of Nigerian energy statistics with validated upload workflow." },
 ];
 
-const DATA_SERIES = [
-  { sector: "Petroleum", count: 5, series: ["Crude Oil Production", "PMS Sales", "AGO (Diesel) Sales", "LPG Distribution", "Natural Gas Production"] },
-  { sector: "Electricity", count: 4, series: ["Electricity Generation", "Electricity Sent Out", "Electricity Consumption", "Grid Losses"] },
-  { sector: "Biomass & Solid Fuels", count: 3, series: ["Fuelwood Consumption", "Charcoal Production", "Coal Output & Exports"] },
-];
+export default async function AboutPage() {
+  const { series, earliestYear } = await getCoverage();
+  const bySector = series.reduce((acc, s) => {
+    (acc[s.sector] ??= []).push(s);
+    return acc;
+  }, {} as Record<string, typeof series>);
 
-export default function AboutPage() {
   return (
     <>
       <Navbar active="about" />
@@ -40,10 +69,10 @@ export default function AboutPage() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "var(--r-lg)", overflow: "hidden", flexShrink: 0 }}>
               {[
-                { num: "12", lbl: "Active Series" },
+                { num: String(series.length || "—"), lbl: "Active Series" },
                 { num: "36 + FCT", lbl: "State Coverage" },
                 { num: "Monthly", lbl: "Update Cycle" },
-                { num: "1960+", lbl: "Earliest Data" },
+                { num: earliestYear ? `${earliestYear}+` : "—", lbl: "Earliest Data" },
               ].map((s) => (
                 <div key={s.lbl} style={{ padding: "1.25rem 1.5rem" }}>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: "1.25rem", fontWeight: 700, color: "#fff", lineHeight: 1 }}>{s.num}</div>
@@ -121,22 +150,30 @@ export default function AboutPage() {
             </div>
           </section>
 
-          {/* Series coverage */}
+          {/* Series coverage — live from the registry */}
           <section>
-            <div className="sec-hd"><h2>Current Data Coverage</h2></div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.25rem" }}>
-              {DATA_SERIES.map((sec) => (
-                <div key={sec.sector} className="panel">
+            <div className="sec-hd">
+              <h2>Current Data Coverage</h2>
+              <span className="sec-hd-meta">Computed from the live series registry</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.25rem" }}>
+              {Object.entries(bySector).map(([sector, list]) => (
+                <div key={sector} className="panel">
                   <div className="panel-header">
-                    <span className="panel-title">{sec.sector}</span>
-                    <span style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>{sec.count} series</span>
+                    <span className="panel-title">{SECTOR_LABEL[sector] ?? sector.charAt(0).toUpperCase() + sector.slice(1)}</span>
+                    <span style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>{list.length} series</span>
                   </div>
                   <div>
-                    {sec.series.map((s, i) => (
-                      <div key={s} style={{ padding: "0.6rem 1.25rem", borderBottom: i < sec.series.length - 1 ? "1px solid var(--border-soft)" : "none", fontSize: "0.8rem", color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--green)", flexShrink: 0 }} />
-                        {s}
-                      </div>
+                    {list.map((s, i) => (
+                      <Link key={s.id} href={`/series/${s.id}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "0.6rem 1.25rem", borderBottom: i < list.length - 1 ? "1px solid var(--border-soft)" : "none", fontSize: "0.8rem", color: "var(--ink-3)" }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                          <span style={{ width: 5, height: 5, borderRadius: "50%", background: s.records > 0 ? "var(--green)" : "var(--ink-5)", flexShrink: 0 }} />
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
+                        </span>
+                        <span style={{ fontSize: "0.68rem", color: "var(--ink-5)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                          {s.records > 0 ? `${s.records.toLocaleString()} records` : "awaiting data"}
+                        </span>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -174,9 +211,8 @@ export default function AboutPage() {
                   <p>For data quality reports, methodology queries, or agency submission arrangements:</p>
                   <div style={{ marginTop: "0.875rem", display: "flex", flexDirection: "column", gap: "0.375rem" }}>
                     <strong style={{ color: "var(--ink)" }}>Energy Commission of Nigeria</strong>
-                    <span>Plot 701C, Muhammadu Buhari Way, CBD, Abuja</span>
-                    <span>data@ecnnigeria.org &nbsp;·&nbsp; +234 9 290 2815</span>
-                    <a href="https://ecnnigeria.org" style={{ color: "var(--green)", fontWeight: 600, marginTop: 4 }}>ecnnigeria.org</a>
+                    <span>Plot 701C, Behind National Mosque, Central Business District, P.M.B. 358, Garki, Abuja</span>
+                    <a href="https://www.energy.gov.ng/contact.html" target="_blank" rel="noopener noreferrer" style={{ color: "var(--green)", fontWeight: 600, marginTop: 4 }}>energy.gov.ng — official contact page</a>
                   </div>
                 </div>
               </div>

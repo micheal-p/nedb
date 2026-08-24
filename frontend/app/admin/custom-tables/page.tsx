@@ -232,7 +232,7 @@ export default function CustomTablesPage() {
   useEffect(() => {
     if (!isLoggedIn()) { router.replace("/data-point/login?redirect=/admin/custom-tables"); return; }
     const role = getRole();
-    if (role !== "admin" && role !== "staff") { router.replace("/data-point/dashboard"); return; }
+    if (!["admin", "superadmin", "staff", "editor"].includes(role)) { router.replace("/data-point/dashboard"); return; }
     load();
   }, [router, load]);
 
@@ -259,7 +259,6 @@ export default function CustomTablesPage() {
           <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)", fontSize: "0.82rem" }}>Loading…</div>
         ) : series.length === 0 ? (
           <div style={{ textAlign: "center", padding: "4rem 2rem", background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)" }}>
-            <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>📊</div>
             <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.375rem" }}>No custom series yet</div>
             <div style={{ fontSize: "0.8rem", color: "var(--ink-4)", marginBottom: "1.5rem" }}>Create your first custom data table — define columns, choose types, and start entering records.</div>
             <button onClick={() => setShowNew(true)} style={{ padding: "0.65rem 1.5rem", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>

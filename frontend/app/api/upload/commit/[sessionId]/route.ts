@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
-import { requireAuth, ok, err } from "@/lib/api-helpers";
+import { requireAuth, roleRank, ok, err } from "@/lib/api-helpers";
 import { cacheDel } from "@/lib/redis";
 import { detectAndFlag } from "@/lib/anomaly";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ sessionId: string }> }) {
   const claims = await requireAuth(req);
@@ -10,10 +11,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ses
 
   const { sessionId } = await params;
 
-  // Server-side enforcement of the approval workflow: only administrators
-  // commit. A staff call is converted into a review submission instead —
-  // the UI already routes staff there; this closes the direct-API path.
-  if ((claims as { role?: string }).role !== "admin") {
+  // Server-side enforcement of the maker-checker workflow: only admins and
+  // superadmins commit. An editor call is converted into a review submission
+  // instead — the UI already routes editors there; this closes the direct-API path.
+  if (roleRank((claims as { role?: string }).role) < roleRank("admin")) {
     await db().from("upload_sessions").update({ status: "pending_review" }).eq("id", sessionId);
     return ok({ pending_review: true, message: "Submitted for admin approval" });
   }
@@ -33,6 +34,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ses
   if (insertErr) return err("failed to insert records: " + insertErr.message, 500);
 
   await client.from("upload_sessions").update({ status: "committed", uploaded_by: claims.username }).eq("id", sessionId);
+  await logAudit({
+    action: "INSERT",
+    series_type_id: session.series_type_id,
+    performed_by: String(claims.username ?? claims.sub ?? "unknown"),
+    notes: `Committed upload session ${sessionId} — ${session.validated_rows.length} records`,
+  });
   await cacheDel(`stats:${session.series_type_id}`, "series:list");
 
   // Anomaly detection — fetch the just-inserted records by session id
