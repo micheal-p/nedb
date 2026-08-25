@@ -6,8 +6,8 @@ const CAPABILITIES = [
   {
     label: "Sector",
     title: "Upstream Revenue Intelligence",
-    desc: "Royalty streams, PPT settlements, profit-oil splits and signature bonuses disaggregated by OML block and producing company. Sourced from NUPRC and FIRS transaction-level data.",
-    agencies: ["NUPRC", "FIRS", "NNPC"],
+    desc: "Royalty streams, PPT settlements, profit-oil splits and signature bonuses disaggregated by OML block and producing company. Sourced from NUPRC and Nigeria Revenue Service transaction-level data.",
+    agencies: ["NUPRC", "NRS", "NNPC"],
     status: "in-development",
   },
   {

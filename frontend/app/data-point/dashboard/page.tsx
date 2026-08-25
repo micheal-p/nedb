@@ -167,7 +167,7 @@ function PeriodNav({ year, setYear, availYears, loading }: { year: number; setYe
 
 // ── Fiscal "coming soon" panels ───────────────────────────────
 const FISCAL_PANELS = [
-  { id: "upstream",  title: "Upstream Revenue Intelligence",  caption: "Royalties, PPT, profit oil splits and signature bonuses per OML block.", agencies: ["NUPRC","FIRS","NNPC"],  color: "#0E7A3C" },
+  { id: "upstream",  title: "Upstream Revenue Intelligence",  caption: "Royalties, PPT, profit oil splits and signature bonuses per OML block.", agencies: ["NUPRC","NRS","NNPC"],  color: "#0E7A3C" },
   { id: "midstream", title: "Midstream Throughput & Tariff",  caption: "Pipeline tariff revenue, GDSO shortfall cost recovery, refinery throughput.", agencies: ["NGC","NMDPRA"],          color: "#1D4ED8" },
   { id: "power",     title: "Power Sector Settlement",        caption: "GenCo invoices vs payments, market shortfall deficit, ATC&C losses in ₦.", agencies: ["NERC","NBET","TCN"],    color: "#B45309" },
   { id: "renewable", title: "Renewable Energy Investment",    caption: "Solar/wind capacity trends, FiT obligations vs actual payments, mini-grid capex.", agencies: ["REA","NERC"],     color: "#0E7A3C" },
@@ -536,7 +536,7 @@ export default function Dashboard() {
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div className="grid-2" style={{ gap: "1.25rem" }}>
                 {s("faac_oil_revenue").length ? <SectorChart title="Oil Revenue — FAAC Contribution" subtitle={`Quarterly ₦B · ${selectedYear}`} source="RMAFC / CBN" data={s("faac_oil_revenue")} series={[{ key: "value", label: "FAAC Oil Revenue (₦B)", color: "#7C3AED" }]} unit="₦B" filename="faac-oil-revenue" /> : <EmptyChart seriesName="FAAC Oil Revenue" />}
-                {s("upstream_royalties").length ? <SectorChart title="Upstream Royalties Collected" subtitle={`Quarterly ₦B · ${selectedYear}`} source="NUPRC / FIRS" data={s("upstream_royalties")} series={[{ key: "value", label: "Royalties (₦B)", color: "#9F1239" }]} unit="₦B" filename="upstream-royalties" /> : <EmptyChart seriesName="Upstream Royalties" />}
+                {s("upstream_royalties").length ? <SectorChart title="Upstream Royalties Collected" subtitle={`Quarterly ₦B · ${selectedYear}`} source="NUPRC / NRS" data={s("upstream_royalties")} series={[{ key: "value", label: "Royalties (₦B)", color: "#9F1239" }]} unit="₦B" filename="upstream-royalties" /> : <EmptyChart seriesName="Upstream Royalties" />}
               </div>
               <FiscalVarianceTable dashData={scopedData} prevDashData={scopedPrevData} year={selectedYear} />
               <RevenueRegistryTable />

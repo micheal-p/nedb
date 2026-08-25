@@ -24,7 +24,7 @@ const PROFILES = [
   { value: "nrs",         label: "NRS — Natural Resources Statistics" },
   { value: "rea",         label: "REA — Rural Electrification Agency (off-grid, renewables)" },
   { value: "tcn",         label: "TCN — Transmission Company of Nigeria (grid intelligence)" },
-  { value: "firs",        label: "FIRS — Federal Inland Revenue Service (PPT, royalties, FAAC)" },
+  { value: "firs",        label: "NRS — Nigeria Revenue Service (PPT, royalties, FAAC)" },
   { value: "nbs",         label: "NBS — National Bureau of Statistics (energy sector data)" },
   // Generic sector profiles
   { value: "executive",   label: "Executive Overview — cross-sector national intelligence" },

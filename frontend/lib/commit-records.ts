@@ -106,7 +106,24 @@ export async function commitRecords(
   }
 
   const { error: ie } = await client.from("energy_records").insert(rows);
-  if (ie) return { ok: false, error: `failed to write records: ${ie.message}` };
+  if (ie) {
+    // Since migration 051 the database enforces one record per
+    // (series, period, region, fuel product). Before that it did not, and a
+    // migration run twice put 36 duplicate rows into the bank unnoticed. A raw
+    // Postgres constraint message helps nobody at an upload screen, so the one
+    // failure this path can now hit is explained in the terms of the workflow.
+    if (/uq_energy_records_key|duplicate key/i.test(ie.message)) {
+      return {
+        ok: false,
+        error:
+          "This upload would create a second record for a period that already has one, " +
+          "and the data bank now holds one figure per series, period and region. " +
+          "That normally means the same file is being committed twice. Re-validate the file: " +
+          "conflicting rows are shown as replacements, and committing then revises the existing figure instead of adding to it.",
+      };
+    }
+    return { ok: false, error: `failed to write records: ${ie.message}` };
+  }
 
   // ── 4. Audit ─────────────────────────────────────────────────────────────
   await logAudit({

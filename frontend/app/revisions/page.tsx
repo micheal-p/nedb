@@ -15,6 +15,7 @@ const ACTION_LABEL: Record<string, string> = {
   commit: "Dataset committed",
   freeze: "Period frozen",
   unfreeze: "Period unfrozen",
+  dedupe: "Duplicate records removed",
 };
 
 export default async function RevisionsPage() {

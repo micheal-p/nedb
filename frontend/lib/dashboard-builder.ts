@@ -48,7 +48,7 @@ export const SERIES_CATALOG: { id: string; label: string; unit: string; source: 
   { id: "renewable_energy",       label: "Renewable energy capacity", unit: "MW",        source: "REA / NERC",     higherIsBetter: true },
   { id: "fuelwood_consumption",   label: "Fuelwood consumption",      unit: "M m³",      source: "ECN / NBS",      higherIsBetter: false },
   { id: "faac_oil_revenue",       label: "FAAC oil revenue",          unit: "₦ Billion", source: "RMAFC / CBN",    higherIsBetter: true },
-  { id: "upstream_royalties",     label: "Upstream royalties",        unit: "₦ Billion", source: "NUPRC / FIRS",   higherIsBetter: true },
+  { id: "upstream_royalties",     label: "Upstream royalties",        unit: "₦ Billion", source: "NUPRC / NRS",     higherIsBetter: true },
 ];
 
 export const seriesMeta = (id: string) => SERIES_CATALOG.find((s) => s.id === id);
@@ -72,7 +72,7 @@ export const DASHBOARD_PROFILES: { key: string; label: string }[] = [
   { key: "nrs", label: "NRS — Natural Resources Statistics" },
   { key: "rea", label: "REA — Rural Electrification Agency" },
   { key: "tcn", label: "TCN — Transmission Company of Nigeria" },
-  { key: "firs", label: "FIRS — Federal Inland Revenue Service" },
+  { key: "firs", label: "NRS — Nigeria Revenue Service" },
   { key: "nbs", label: "NBS — National Bureau of Statistics" },
   { key: "executive", label: "Executive Overview" },
   { key: "petroleum", label: "Petroleum & Gas Analyst" },
