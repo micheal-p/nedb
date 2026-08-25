@@ -3,7 +3,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import BulletinView from "@/components/BulletinView";
 import { db } from "@/lib/supabase-server";
-import { getBulletinData, type BulletinData } from "@/lib/bulletin-data";
+import { getBulletinData, defaultWindow, makeWindow, type BulletinData } from "@/lib/bulletin-data";
 
 // /bulletin — the latest PUBLISHED edition is the page (frozen, citable).
 // If no edition has been published yet, a live provisional view renders,
@@ -13,16 +13,40 @@ export const dynamic = "force-dynamic";
 
 type EditionRow = {
   edition_no: number; title: string; period_label: string; status: string;
+  period_kind: string | null; period_start: string | null; period_end: string | null;
   commentary: Record<string, string>; snapshot: BulletinData;
   data_cutoff: string; published_at: string | null;
 };
 
-export default async function BulletinPage() {
-  const { data: editions } = await db()
+// ?year=2026 and ?month=8 pick an edition out of the archive, and ?kind=year
+// narrows to annual editions. Without them the newest published edition is the
+// page, as before.
+export default async function BulletinPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string; month?: string; kind?: string }>;
+}) {
+  const sp = await searchParams;
+  const wantYear = Number(sp.year);
+  const wantMonth = Number(sp.month);
+  const wantKind = sp.kind === "year" || sp.kind === "month" ? sp.kind : null;
+
+  // Migration 048 adds the period columns. A deploy can land before the manual
+  // migration, and losing the whole published archive in that gap would be far
+  // worse than losing the period filter, so this falls back.
+  const withPeriod = await db()
     .from("bulletin_editions")
-    .select("edition_no, title, period_label, status, commentary, snapshot, data_cutoff, published_at")
+    .select("edition_no, title, period_label, period_kind, period_start, period_end, status, commentary, snapshot, data_cutoff, published_at")
     .eq("status", "published")
     .order("edition_no", { ascending: false });
+
+  const editions = withPeriod.error
+    ? (await db()
+        .from("bulletin_editions")
+        .select("edition_no, title, period_label, status, commentary, snapshot, data_cutoff, published_at")
+        .eq("status", "published")
+        .order("edition_no", { ascending: false })).data
+    : withPeriod.data;
 
   const { data: storyRows } = await db()
     .from("bulletin_stories")
@@ -33,16 +57,45 @@ export default async function BulletinPage() {
   const stories = storyRows ?? [];
 
   const published = (editions ?? []) as EditionRow[];
-  const latest = published[0] ?? null;
 
-  const data: BulletinData = latest ? latest.snapshot : await getBulletinData();
+  // Which edition is the page: the one asked for, else the newest published.
+  const matches = published.filter((e) => {
+    if (wantKind && (e.period_kind ?? "month") !== wantKind) return false;
+    if (!Number.isFinite(wantYear) || wantYear < 1900) return true;
+    const start = e.period_start ?? "";
+    if (Number.isFinite(wantMonth) && wantMonth >= 1 && wantMonth <= 12) {
+      const w = makeWindow("month", wantYear, wantMonth);
+      return start >= w.start && start <= w.end;
+    }
+    return start.startsWith(String(wantYear));
+  });
+  const asked = Number.isFinite(wantYear) || wantKind !== null;
+  const latest = (asked ? matches[0] : published[0]) ?? null;
+  const askedButMissing = asked && !latest;
+
+  // A provisional view is built for last month, which is what a monthly
+  // bulletin reports on, rather than for "whatever the newest record is".
+  const provisionalWindow = defaultWindow();
+  const data: BulletinData = latest ? latest.snapshot : await getBulletinData(provisionalWindow);
   const meta = latest
     ? { editionNo: latest.edition_no, periodLabel: latest.period_label, publishedAt: latest.published_at, dataCutoff: latest.data_cutoff, provisional: false, commentary: latest.commentary }
-    : { periodLabel: new Date().toLocaleDateString("en-NG", { month: "long", year: "numeric" }), dataCutoff: data.generated_at, provisional: true };
+    : { periodLabel: provisionalWindow.label, dataCutoff: data.generated_at, provisional: true };
 
   return (
     <>
       <div className="no-print"><Navbar active="databank" /></div>
+
+      {askedButMissing && (
+        <div className="no-print" style={{ background: "var(--surface)", padding: "1rem 0 0" }}>
+          <div className="page-wrap">
+            <div style={{ background: "var(--amber-tint)", border: "1px solid var(--amber)", padding: "0.75rem 1.05rem", fontSize: "var(--t-sm)", color: "var(--ink-2)", lineHeight: 1.65 }}>
+              No published edition covers that period. Showing the provisional view for {provisionalWindow.label} instead.
+              The archive below lists every edition that exists.
+            </div>
+          </div>
+        </div>
+      )}
+
       <BulletinView data={data} meta={meta} />
 
       {/* Analysis */}

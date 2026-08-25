@@ -34,17 +34,31 @@ export type Scenario = {
   econ: EconomicAssumptions;
   /** Sector targets. A goal with no target is absent, never zero. */
   goals: Record<string, number>;
+  /**
+   * The anchor the run was computed against, in GWh.
+   *
+   * Carried so the report can PROVE its "these are the figures you were shown"
+   * claim rather than assert it. The anchor is refetched when a report opens, so
+   * without this an editor committing a new generation record between generating
+   * a link and someone opening it would silently change every figure in the
+   * document while the banner still promised parity.
+   */
+  anchorGwh?: number;
 };
 
 export const DEFAULT_SCENARIO: Scenario = {
   v: 1,
   name: "Untitled scenario",
-  presetId: "access",
+  // "custom", not "access": DEFAULT_MIX is not the access preset's mix, and
+  // labelling a run with a pathway it did not use puts a false pathway name on
+  // the report cover and in the cite line.
+  presetId: "custom",
   drivers: DEFAULT_DRIVERS,
   mix: DEFAULT_MIX,
   policy: {},
   econ: DEFAULT_ECONOMICS,
   goals: { clean_share: 60, access: 100, losses: 8 },
+  anchorGwh: undefined,
 };
 
 /**
@@ -85,10 +99,14 @@ export function deriveScenario(s: Scenario, base: PlanBase) {
   const counterfactual = runPlan(
     {
       ...DEFAULT_DRIVERS,
+      ...(current?.drivers ?? {}),
+      // AFTER the preset spread. These three are what make the comparison like
+      // for like, so the preset must not be able to override them; otherwise the
+      // baseline silently runs over a different span than the scenario while the
+      // chart still says the gap is what your scenario changed.
       baseYear: s.drivers.baseYear,
       horizon: s.drivers.horizon,
       tdLossPct: s.drivers.tdLossPct,
-      ...(current?.drivers ?? {}),
     },
     current?.mix ?? DEFAULT_MIX,
     base
@@ -132,21 +150,66 @@ export function encodeScenario(s: Scenario): string {
   return toBase64Url(JSON.stringify(s));
 }
 
-/** Returns null for anything malformed or from a version this build cannot read. */
+// A link is untrusted input, so every numeric field is coerced and checked.
+
+/** Fill a known shape, ignoring keys the model does not have. */
+function knownNumbers<T extends Record<string, number>>(base: T, raw: unknown): T | null {
+  if (raw == null) return { ...base };
+  if (typeof raw !== "object") return null;
+  const out = { ...base };
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!(k in base)) continue;
+    const n = Number(v);
+    if (!Number.isFinite(n)) return null;   // a non-number is a malformed link
+    (out as Record<string, number>)[k] = n;
+  }
+  return out;
+}
+
+/** Policy and goals have open key sets, so every key is kept but still checked. */
+function openNumbers(raw: unknown): Record<string, number> | null {
+  if (raw == null) return {};
+  if (typeof raw !== "object") return null;
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return null;
+    out[k] = n;
+  }
+  return out;
+}
+
 export function decodeScenario(encoded: string | null | undefined): Scenario | null {
   if (!encoded) return null;
   try {
     const parsed = JSON.parse(fromBase64Url(encoded)) as Partial<Scenario>;
     if (parsed?.v !== 1 || !parsed.drivers || !parsed.mix) return null;
+
+    // Without this, a hand-edited link carrying {"horizon":"abc"} sailed through:
+    // runPlan's guard compared "abc" <= 2024 as false, the year loop never ran,
+    // and the page rendered as a Federal Republic of Nigeria planning document
+    // with "to abc" on the cover and -Infinity peak emissions inside.
+    const drivers = knownNumbers(DEFAULT_DRIVERS as unknown as Record<string, number>, parsed.drivers);
+    const mix = knownNumbers(DEFAULT_MIX as unknown as Record<string, number>, parsed.mix);
+    const econ = knownNumbers(DEFAULT_ECONOMICS as unknown as Record<string, number>, parsed.econ);
+    const policy = openNumbers(parsed.policy);
+    const goals = openNumbers(parsed.goals);
+    if (!drivers || !mix || !econ || !policy || !goals) return null;
+
+    // A horizon at or before the base year produces an empty year list, which is
+    // where Math.max(...[]) turns into -Infinity further downstream.
+    if (drivers.horizon <= drivers.baseYear) return null;
+
     return {
       v: 1,
       name: String(parsed.name ?? "Untitled scenario").slice(0, 120),
-      presetId: String(parsed.presetId ?? "custom"),
-      drivers: { ...DEFAULT_DRIVERS, ...parsed.drivers },
-      mix: { ...DEFAULT_MIX, ...parsed.mix },
-      policy: parsed.policy ?? {},
-      econ: { ...DEFAULT_ECONOMICS, ...(parsed.econ ?? {}) },
-      goals: parsed.goals ?? {},
+      presetId: String(parsed.presetId ?? "custom").slice(0, 40),
+      drivers: drivers as unknown as PlanningDrivers,
+      mix: mix as unknown as MixTargets,
+      policy: policy as PolicyMix,
+      econ: econ as unknown as EconomicAssumptions,
+      goals,
+      anchorGwh: Number.isFinite(Number(parsed.anchorGwh)) ? Number(parsed.anchorGwh) : undefined,
     };
   } catch {
     return null;

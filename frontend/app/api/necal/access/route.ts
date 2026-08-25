@@ -20,7 +20,16 @@ export async function GET(req: NextRequest) {
     .map(([, p]) => p.label);
 
   if (!access.ok) {
-    return ok({ allowed: false, reason: access.error, profile_label: null, holders });
+    // 401 and 403 mean different things to the person reading the page: one
+    // needs to sign in, the other needs a profile grant. Flattening both into
+    // "ask an administrator" sent signed-out users on a pointless errand.
+    return ok({
+      allowed: false,
+      authenticated: access.status !== 401,
+      reason: access.error,
+      profile_label: null,
+      holders,
+    });
   }
 
   const label =
@@ -28,5 +37,5 @@ export async function GET(req: NextRequest) {
       ? "Administrator"
       : PROFILE_MAP[access.profileKey]?.label ?? access.profileKey;
 
-  return ok({ allowed: true, reason: null, profile_label: label, holders });
+  return ok({ allowed: true, authenticated: true, reason: null, profile_label: label, holders });
 }

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok, err } from "@/lib/api-helpers";
 import { requireNecal } from "@/lib/necal-access";
+import { inferCadence, recordsPerYear, cadenceLabel, type Cadence } from "@/lib/cadence";
 
 // GET /api/necal/inputs — the planning model's data anchor.
 //
@@ -34,18 +35,15 @@ type Input = {
 const NATIONAL = ["NGA", "", "national"];
 const isNational = (region: unknown) => !region || NATIONAL.includes(String(region));
 
-/** Expected records in a full year, by frequency. */
-function expectedForYear(frequency: string): number {
-  if (frequency === "monthly") return 12;
-  if (frequency === "quarterly") return 4;
-  return 1;
-}
-
 type YearTotal = {
   total: number; period: string; count: number; expected: number;
+  /** Cadence read from the records themselves, not the registry column. */
+  cadence: Cadence;
   complete: boolean;
-  /** More records than the frequency allows, so the sum is probably double counting. */
+  /** More records than the cadence allows, so the sum is probably double counting. */
   overcounted: boolean;
+  /** Records in this year carry more than one unit, so the sum is meaningless. */
+  mixedUnits: boolean;
 };
 
 /**
@@ -55,10 +53,16 @@ type YearTotal = {
  * it and report the series as "not held".
  */
 async function nationalYearTotal(seriesId: string, frequency: string): Promise<YearTotal | null | "error"> {
+  // Region is filtered SERVER side. Fetching 600 rows across every region and
+  // filtering in JavaScript meant a state-disaggregated series (37 regions by
+  // 12 months is 444 rows a year) burned its whole window on two years of state
+  // rows, so national records that existed were reported as "not held", and any
+  // year the window cut through was counted short and flagged incomplete.
   const { data, error } = await db()
     .from("energy_records")
-    .select("value, period_date, region")
+    .select("value, period_date, unit, region")
     .eq("series_type_id", seriesId)
+    .or(`region.is.null,region.in.(${NATIONAL.filter(Boolean).map((r) => `"${r}"`).join(",")},"")`)
     .order("period_date", { ascending: false })
     .limit(600);
   if (error) return "error";
@@ -66,14 +70,19 @@ async function nationalYearTotal(seriesId: string, frequency: string): Promise<Y
   const national = (data ?? []).filter((r) => isNational(r.region));
   if (!national.length) return null;
 
+  // Cadence comes from the records, never from the registry column. See lib/cadence.ts.
+  const cadence = inferCadence(national.map((r) => String(r.period_date)), frequency);
+  const expected = recordsPerYear(cadence);
+
   const byYear = new Map<number, number[]>();
+  const unitsByYear = new Map<number, Set<string>>();
   for (const r of national) {
     const y = new Date(String(r.period_date)).getFullYear();
-    if (!byYear.has(y)) byYear.set(y, []);
+    if (!byYear.has(y)) { byYear.set(y, []); unitsByYear.set(y, new Set()); }
     byYear.get(y)!.push(Number(r.value ?? 0));
+    unitsByYear.get(y)!.add(String(r.unit ?? ""));
   }
 
-  const expected = expectedForYear(frequency);
   const years = [...byYear.keys()].sort((a, b) => b - a);
 
   // Prefer the most recent COMPLETE year; fall back to the most recent partial
@@ -87,8 +96,12 @@ async function nationalYearTotal(seriesId: string, frequency: string): Promise<Y
     period: String(chosen),
     count: values.length,
     expected,
+    cadence,
     complete: values.length >= expected,
     overcounted: values.length > expected,
+    // Summing across units produces a number that means nothing. Fuelwood holds
+    // both a tonnes era and an FAO cubic metres migration, so this is real.
+    mixedUnits: (unitsByYear.get(chosen)?.size ?? 0) > 1,
   };
 }
 
@@ -98,6 +111,7 @@ async function nationalLatest(seriesId: string): Promise<{ value: number; period
     .from("energy_records")
     .select("value, period, period_date, region")
     .eq("series_type_id", seriesId)
+    .or(`region.is.null,region.in.(${NATIONAL.filter(Boolean).map((r) => `"${r}"`).join(",")},"")`)
     .order("period_date", { ascending: false })
     .limit(400);
   if (error) return "error";
@@ -125,11 +139,15 @@ function flowInput(
   if (!result) {
     return { id, label, status: "missing", value: null, unit, period: null, series_id: seriesId, note: missingNote };
   }
-  const note = result.overcounted
-    ? `Sum of ${result.count} committed national records for ${result.period}, where a ${result.expected === 1 ? "year" : "complete year"} should hold ${result.expected}. The extra records are being added together, so this total is probably double counting. Check the series for duplicates before relying on it.`
-    : result.complete
-      ? `Sum of ${result.count} committed national records for ${result.period}, a complete year.`
-      : `Sum of ${result.count} of an expected ${result.expected} committed national records for ${result.period}. This year is INCOMPLETE, so the annual total is understated and every figure derived from it is understated with it.`;
+  const cadence = cadenceLabel(result.cadence);
+  const article = cadence === "annual" ? "an" : "a";
+  const note = result.mixedUnits
+    ? `The ${result.count} committed national records for ${result.period} do not share a unit, so adding them together produces a figure that means nothing. Reconcile the units on this series before relying on it.`
+    : result.overcounted
+      ? `Sum of ${result.count} committed national records for ${result.period}, where ${article} ${cadence} series should hold ${result.expected} a year. The extra records are being added together, so this total is probably double counting. Check the series for duplicates.`
+      : result.complete
+        ? `Sum of ${result.count} committed national ${cadence} record${result.count === 1 ? "" : "s"} for ${result.period}, a complete year.`
+        : `Sum of ${result.count} of an expected ${result.expected} committed national ${cadence} records for ${result.period}. This year is INCOMPLETE, so the annual total is understated and every figure derived from it is understated with it.`;
 
   return { id, label, status: "measured", value: result.total, unit, period: result.period, series_id: seriesId, note };
 }
@@ -172,7 +190,8 @@ export async function GET(req: NextRequest) {
       value: null, unit: "%", period: null, series_id: null,
       note: "Cannot be derived because one of its inputs could not be read." });
   } else if (gen && sent && gen.period === sent.period && gen.complete && sent.complete
-             && !gen.overcounted && !sent.overcounted && gen.total > 0) {
+             && !gen.overcounted && !sent.overcounted
+             && !gen.mixedUnits && !sent.mixedUnits && gen.total > 0) {
     const lossPct = ((gen.total - sent.total) / gen.total) * 100;
     if (lossPct >= 0 && lossPct < 100) {
       inputs.push({
@@ -192,9 +211,11 @@ export async function GET(req: NextRequest) {
       ? "both generation and energy sent out are needed, and one is not held"
       : gen.period !== sent.period
         ? `the latest complete year differs between the two series (${gen.period} against ${sent.period})`
-        : gen.overcounted || sent.overcounted
-          ? "one of the two years holds more records than a year should, so its total cannot be trusted"
-          : "one of the two years is incomplete";
+        : gen.mixedUnits || sent.mixedUnits
+          ? "one of the two series mixes units within the year, so its total cannot be trusted"
+          : gen.overcounted || sent.overcounted
+            ? "one of the two years holds more records than a year should, so its total cannot be trusted"
+            : "one of the two years is incomplete";
     inputs.push({
       id: "td_loss", label: "Transmission and distribution losses", status: "missing",
       value: null, unit: "%", period: null, series_id: null,
@@ -243,6 +264,8 @@ export async function GET(req: NextRequest) {
       anchorComplete: genOk && (gen as YearTotal).complete,
       /** True when the anchor year holds more records than it should — likely double counted. */
       anchorOvercounted: genOk && (gen as YearTotal).overcounted,
+      /** True when the anchor year mixes units, so its total means nothing. */
+      anchorMixedUnits: genOk && (gen as YearTotal).mixedUnits,
       readFailure: inputs.some((i) => i.status === "unavailable"),
     },
   });

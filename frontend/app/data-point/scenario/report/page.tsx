@@ -99,6 +99,16 @@ function ReportBody() {
   const { plan, econResult, commitments, shownMix, applied } =
     useMemo(() => deriveScenario(effectiveScenario, base), [effectiveScenario, base]);
 
+  // Parity is PROVEN, not asserted. Three ways it can fail: the anchor moved
+  // between generating the link and opening it, the link predates anchorGwh, or
+  // the inputs read failed and the whole report is running on runPlan's nominal
+  // 40,000 GWh fallback with nothing behind it.
+  const anchorAtGeneration = effectiveScenario.anchorGwh;
+  const anchorNow = base.generationGwh;
+  const anchorMatches =
+    anchorAtGeneration != null && Math.abs(anchorAtGeneration - anchorNow) < 0.5;
+  const parityProven = fromCalculator && !loadError && anchorMatches;
+
   const horizon = effectiveScenario.drivers.horizon;
   const presetLabel = PRESETS.find((p) => p.id === effectiveScenario.presetId)?.label ?? "Custom pathway";
   const presetDescription = PRESETS.find((p) => p.id === effectiveScenario.presetId)?.description
@@ -124,14 +134,20 @@ function ReportBody() {
           </div>
 
           <div style={{
-            background: fromCalculator ? "var(--green-tint)" : "var(--amber-tint)",
-            border: `1px solid ${fromCalculator ? "var(--green-line)" : "var(--amber)"}`,
+            background: parityProven ? "var(--green-tint)" : "var(--amber-tint)",
+            border: `1px solid ${parityProven ? "var(--green-line)" : "var(--amber)"}`,
             padding: "0.65rem 0.85rem", marginBottom: "0.9rem",
             fontSize: "var(--t-sm)", color: "var(--ink-2)", lineHeight: 1.65,
           }}>
-            {fromCalculator
-              ? <>This report is of the run you had open: your drivers, your capacity mix, {activeInstruments.length} policy {activeInstruments.length === 1 ? "instrument" : "instruments"} and your economic assumptions. The figures below are the figures you were shown.</>
-              : <>You opened this report directly, so there is no run to report on. It shows the <strong>{presetLabel}</strong> preset on stock assumptions. Generate it from the calculator to report your own pathway.</>}
+            {parityProven
+              ? <>This report is of the run you had open: your drivers, your capacity mix, {activeInstruments.length} policy {activeInstruments.length === 1 ? "instrument" : "instruments"} and your economic assumptions, against the same {fmt(anchorNow)} GWh anchor. The figures below are the figures you were shown.</>
+              : !fromCalculator
+                ? <>You opened this report directly, so there is no run to report on. It shows the <strong>{presetLabel}</strong> pathway on stock assumptions. Generate it from the calculator to report your own pathway.</>
+                : loadError
+                  ? <><strong>These figures are not anchored.</strong> The data bank could not be read, so the model fell back to a nominal starting point rather than Nigeria&apos;s committed generation. Do not circulate this until it can be regenerated.</>
+                  : anchorAtGeneration == null
+                    ? <>This report carries your drivers, mix and policy, but the link predates anchor tracking, so it cannot prove the starting figure is the one you were shown. Regenerate it from the calculator to be certain.</>
+                    : <><strong>The anchor has changed since this link was made.</strong> It was generated against {fmt(anchorAtGeneration)} GWh and the data bank now reports {fmt(anchorNow)} GWh, so every figure below differs from the screen it came off. Regenerate it from the calculator.</>}
           </div>
 
           <div className="grid-2" style={{ gap: "0.8rem" }}>
@@ -410,7 +426,16 @@ function ReportBody() {
               <li>It covers the <strong>power sector only</strong>. Transport, industrial heat and agriculture are outside it, so a commitment met here is met on one sector.</li>
               <li>Capital figures are overnight costs. Grid reinforcement, storage, land and financing are excluded and would add materially.</li>
               <li>Where variable renewables exceed roughly 60% of capacity, the system needs flexibility this model does not cost.</li>
-              {!fromCalculator && <li>This report was opened directly rather than generated from a run, so it shows a stock preset rather than anyone&apos;s pathway.</li>}
+              {!fromCalculator && <li>This report was opened directly rather than generated from a run, so it shows a stock pathway rather than anyone&apos;s.</li>}
+              {fromCalculator && !parityProven && (
+                <li><strong>These figures may differ from the screen this report was generated from.</strong>{" "}
+                  {loadError
+                    ? "The data bank could not be read, so the model ran on a nominal starting point."
+                    : anchorAtGeneration == null
+                      ? "The link predates anchor tracking, so parity cannot be confirmed."
+                      : `It was generated against ${fmt(anchorAtGeneration)} GWh and the data bank now reports ${fmt(anchorNow)} GWh.`}
+                </li>
+              )}
               {!anchored && <li><strong>This run is not anchored on committed NEDB data.</strong> Treat every figure as illustrative until the generation series is filled.</li>}
               {anchored && !anchorComplete && <li><strong>The anchor year is incomplete.</strong> The base year does not hold a full set of records, so demand, capacity and capital are all understated.</li>}
               {anchored && anchorOvercounted && <li><strong>The anchor year holds more records than it should.</strong> The base-year total is probably double counting, which would overstate every figure here. Check the generation series for duplicates before circulating this.</li>}

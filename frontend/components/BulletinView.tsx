@@ -22,6 +22,12 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
   const { series, sectorStats, totalRecords, movers } = data;
   const heading = meta.editionNo != null ? `No. ${meta.editionNo} · ${meta.periodLabel}` : meta.periodLabel;
 
+  // When SOME series reported in period, the out-of-period ones are worth
+  // badging individually. When NONE did, badging all fifteen is noise, so the
+  // page says it once and says it plainly instead.
+  const someInPeriod = (data.in_period_count ?? 0) > 0;
+  const noneInPeriod = !!data.window && (data.in_period_count ?? 0) === 0;
+
   return (
     <>
       {/* Publication cover page — print only */}
@@ -55,8 +61,15 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
         <img src="/ecn-logo.png" alt="ECN" style={{ height: 48, width: "auto", objectFit: "contain" }} />
         <div style={{ flex: 1, borderLeft: "1px solid #ccc", paddingLeft: "1rem", marginLeft: "0.25rem" }}>
           <div className="print-header-org">ENERGY COMMISSION OF NIGERIA (ECN)</div>
-          <div className="print-header-title">NEDB Monthly Energy Bulletin{meta.editionNo != null ? ` — No. ${meta.editionNo}` : ""}</div>
-          <div className="print-header-meta">{meta.periodLabel} · Data cutoff {fmtDate(meta.dataCutoff)}</div>
+          <div className="print-header-title">NEDB {data.window?.kind === "year" ? "Annual" : "Monthly"} Energy Bulletin{meta.editionNo != null ? ` — No. ${meta.editionNo}` : ""}</div>
+          <div className="print-header-meta">
+            {meta.periodLabel}
+            {data.window ? ` (${data.window.start} to ${data.window.end})` : ""}
+            {" · "}Data cutoff {fmtDate(meta.dataCutoff)}
+            {data.window && typeof data.in_period_count === "number"
+              ? ` · ${data.in_period_count} of ${data.series.length} series reported in period`
+              : ""}
+          </div>
         </div>
         <div className="print-header-ecn">{meta.provisional ? "PROVISIONAL" : "OFFICIAL DATA PUBLICATION"}</div>
       </div>
@@ -79,7 +92,7 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
                   : <span className="tag tag-ink">Published edition — frozen</span>}
               </div>
               <h1 style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--ink)" }}>
-                NEDB Monthly Energy Bulletin
+                NEDB {data.window?.kind === "year" ? "Annual" : "Monthly"} Energy Bulletin
               </h1>
               <p style={{ fontSize: "0.78rem", color: "var(--ink-4)", marginTop: "0.35rem", lineHeight: 1.6 }}>
                 {meta.provisional
@@ -93,6 +106,22 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
           </div>
         </div>
       </div>
+
+      {noneInPeriod && (
+        <div style={{ background: "var(--surface)", padding: "1.25rem 0 0" }}>
+          <div className="page-wrap">
+            <div style={{ background: "var(--amber-tint)", border: "1px solid var(--amber)", borderLeft: "3px solid var(--amber)", padding: "0.85rem 1.1rem" }}>
+              <div className="eyebrow" style={{ color: "var(--amber)", marginBottom: 4 }}>Coverage for this period</div>
+              <div style={{ fontSize: "0.82rem", color: "var(--ink-2)", lineHeight: 1.7 }}>
+                <strong>No series holds a record for {meta.periodLabel}.</strong>{" "}Every figure below is the latest available
+                from an earlier period, shown with its own date so it is never mistaken for this period&apos;s. A bulletin
+                can only report what has been committed; filling the monthly series is what turns this into a monthly
+                bulletin in substance rather than in name.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main style={{ background: "var(--surface)", padding: "2rem 0 5rem" }}>
         <div className="page-wrap">
@@ -176,13 +205,21 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
                       <td style={{ padding: "0.75rem 1rem" }}>
                         <Link href={`/series/${s.id}`} style={{ color: "var(--green)", fontWeight: 600, textDecoration: "none" }}>{s.name}</Link>
                       </td>
-                      <td style={{ padding: "0.75rem 1rem", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.78rem", color: "var(--ink-4)" }}>{s.latest_period ?? "—"}</td>
+                      <td style={{ padding: "0.75rem 1rem", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.78rem", color: "var(--ink-4)" }}>
+                        {s.latest_period ?? "—"}
+                        {s.in_period === false && someInPeriod && (
+                          <span title="This series has no record in the edition's period. This is its latest available figure."
+                            style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "var(--amber)", border: "1px solid var(--amber)", padding: "0 4px", whiteSpace: "nowrap" }}>
+                            OUT OF PERIOD
+                          </span>
+                        )}
+                      </td>
                       <td style={{ padding: "0.75rem 1rem", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.8rem" }}>
                         {s.latest !== null ? `${Number(s.latest).toLocaleString()} ${s.unit}` : "—"}
                       </td>
                       <td style={{ padding: "0.75rem 1rem", textAlign: "right" }}>
                         {s.yoy_pct !== null ? (
-                          <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "0.82rem", color: s.yoy_pct >= 0 ? "var(--green)" : "var(--red)" }}>
+                          <span title={s.change_basis ?? undefined} style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "0.82rem", color: s.yoy_pct >= 0 ? "var(--green)" : "var(--red)" }}>
                             {s.yoy_pct >= 0 ? "▲ +" : "▼ −"}{Math.abs(s.yoy_pct).toFixed(1)}%
                           </span>
                         ) : "—"}
@@ -216,15 +253,31 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
                         <Link href={`/series/${s.id}`} style={{ color: "var(--green)", textDecoration: "none" }}>{s.name}</Link>
                       </td>
                       <td style={{ padding: "0.625rem 1rem", color: "var(--ink-4)", textTransform: "capitalize" }}>{s.sector}</td>
-                      <td style={{ padding: "0.625rem 1rem", textAlign: "right", textTransform: "capitalize", color: "var(--ink-4)" }}>{s.frequency}</td>
+                      <td style={{ padding: "0.625rem 1rem", textAlign: "right", textTransform: "capitalize", color: "var(--ink-4)" }}>
+                        {s.cadence ?? s.frequency}
+                        {s.cadence && s.frequency && s.cadence !== s.frequency && (
+                          <span title={`The registry declares this series ${s.frequency}, but its records arrive ${s.cadence}. The records are what is shown.`}
+                            style={{ marginLeft: 5, fontSize: "0.58rem", fontWeight: 700, color: "var(--amber)", textTransform: "none" }}>
+                            ≠{s.frequency}
+                          </span>
+                        )}
+                      </td>
                       <td style={{ padding: "0.625rem 1rem", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.record_count.toLocaleString()}</td>
-                      <td style={{ padding: "0.625rem 1rem", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.72rem", color: "var(--ink-5)" }}>{s.latest_period ?? "—"}</td>
+                      <td style={{ padding: "0.625rem 1rem", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.72rem", color: "var(--ink-5)" }}>
+                        {s.latest_period ?? "—"}
+                        {s.in_period === false && someInPeriod && (
+                          <span title="No record in this edition's period; latest available shown."
+                            style={{ marginLeft: 5, fontSize: "0.58rem", fontWeight: 700, color: "var(--amber)" }}>
+                            ·OOP
+                          </span>
+                        )}
+                      </td>
                       <td style={{ padding: "0.625rem 1rem", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                         {s.latest !== null ? `${Number(s.latest).toLocaleString()} ${s.unit}` : "—"}
                       </td>
                       <td style={{ padding: "0.625rem 1rem", textAlign: "right" }}>
                         {s.yoy_pct !== null ? (
-                          <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "0.75rem", color: s.yoy_pct >= 0 ? "var(--green)" : "var(--red)" }}>
+                          <span title={s.change_basis ?? undefined} style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "0.75rem", color: s.yoy_pct >= 0 ? "var(--green)" : "var(--red)" }}>
                             {s.yoy_pct >= 0 ? "▲ +" : "▼ −"}{Math.abs(s.yoy_pct).toFixed(1)}%
                           </span>
                         ) : <span style={{ color: "var(--ink-5)" }}>—</span>}
@@ -241,7 +294,7 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
 
           <div className="print-only" style={{ marginTop: "2rem", padding: "1rem", borderTop: "1px solid #ccc", fontSize: "0.7rem", color: "#777" }}>
             National Energy Data Bank (NEDB) · Energy Commission of Nigeria · energy.gov.ng<br />
-            Cite as: NEDB Monthly Energy Bulletin{meta.editionNo != null ? `, No. ${meta.editionNo}` : ""}, {meta.periodLabel}. Energy Commission of Nigeria.
+            Cite as: NEDB {data.window?.kind === "year" ? "Annual" : "Monthly"} Energy Bulletin{meta.editionNo != null ? `, No. ${meta.editionNo}` : ""}, {meta.periodLabel}. Energy Commission of Nigeria.
           </div>
         </div>
       </main>

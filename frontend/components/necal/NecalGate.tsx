@@ -17,12 +17,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getFullName, getToken } from "@/lib/auth";
+import { getFullName, getTokenFresh } from "@/lib/auth";
 
-type Answer = { allowed: boolean; reason: string | null; profile_label: string | null; holders: string[] };
+type Answer = { allowed: boolean; reason: string | null; profile_label: string | null; holders: string[]; authenticated?: boolean };
 
 export default function NecalGate({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<"checking" | "allowed" | "denied">("checking");
+  const [state, setState] = useState<"checking" | "allowed" | "denied" | "signed-out">("checking");
   const [answer, setAnswer] = useState<Answer | null>(null);
 
   useEffect(() => {
@@ -30,7 +30,10 @@ export default function NecalGate({ children }: { children: React.ReactNode }) {
 
     (async () => {
       try {
-        const token = getToken();
+        // getTokenFresh, not getToken: the access cookie lives 15 minutes and a
+        // lapsed one must be refreshed, not reported to an authorised planner as
+        // "you are not allowed in". The refresh token is good for 7 days.
+        const token = await getTokenFresh();
         const res = await fetch("/api/necal/access", {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           cache: "no-store",
@@ -41,6 +44,11 @@ export default function NecalGate({ children }: { children: React.ReactNode }) {
         if (res.ok && body?.allowed === true) {
           setAnswer(body as Answer);
           setState("allowed");
+        } else if (body?.authenticated === false) {
+          // Not signed in is a different problem from not authorised, and it has
+          // a different fix. Sending someone to ask an administrator for a
+          // planning profile when they simply need to log in wastes their time.
+          setState("signed-out");
         } else {
           setAnswer({
             allowed: false,
@@ -68,6 +76,24 @@ export default function NecalGate({ children }: { children: React.ReactNode }) {
 
   if (state === "checking") {
     return <div style={{ padding: "2rem", color: "var(--ink-5)", fontSize: "var(--t-base)" }}>Checking access…</div>;
+  }
+
+  if (state === "signed-out") {
+    return (
+      <div style={{ maxWidth: 520, margin: "3rem auto", padding: "0 1.25rem" }}>
+        <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", padding: "1.75rem" }}>
+          <div className="eyebrow">Session ended</div>
+          <h1 style={{ fontSize: "var(--t-xl)", fontWeight: 700, color: "var(--ink)", marginBottom: "0.5rem" }}>
+            Please sign in again
+          </h1>
+          <p style={{ fontSize: "var(--t-base)", color: "var(--ink-3)", lineHeight: 1.75, marginBottom: "1.25rem" }}>
+            Your session has expired. This is not a question of whether you hold NECAL2050, only that we could not confirm
+            who you are. Signing in again returns you here.
+          </p>
+          <Link href="/data-point/login?redirect=/data-point/scenario" className="btn btn-primary">Sign in</Link>
+        </div>
+      </div>
+    );
   }
 
   if (state === "denied") {

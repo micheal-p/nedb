@@ -104,7 +104,7 @@ function NecalWorkspace() {
   const [mix, setMix] = useState<MixTargets>(DEFAULT_MIX);
   const [policy, setPolicy] = useState<PolicyMix>({});
   const [econ, setEcon] = useState(DEFAULT_ECONOMICS);
-  const [preset, setPreset] = useState("access");
+  const [preset, setPreset] = useState("custom");
   // A goal is either set or not set. Clearing the box must remove the target,
   // not silently set it to zero — "aim for 0% clean generation" would read as met.
   const [goals, setGoals] = useState<Record<string, number | undefined>>({ clean_share: 60, access: 100, losses: 8 });
@@ -180,7 +180,9 @@ function NecalWorkspace() {
   /** Back to a clean sheet, keeping the anchor the data bank gave us. */
   function newScenario() {
     setName("Untitled scenario");
-    setPreset("access");
+    // "custom", not "access": the reset uses DEFAULT_MIX, which is not the
+    // access preset's mix, and the chip and the report cover both read the id.
+    setPreset("custom");
     setDrivers((d) => ({ ...DEFAULT_DRIVERS, baseYear: d.baseYear, tdLossPct: d.tdLossPct }));
     setMix(DEFAULT_MIX);
     setPolicy({});
@@ -193,8 +195,8 @@ function NecalWorkspace() {
   // The whole run, in one place. The printable report derives from exactly this,
   // so the paper version can never carry different numbers from the screen.
   const scenario: Scenario = useMemo(
-    () => ({ v: 1, name, presetId: preset, drivers, mix, policy, econ, goals: definedGoals(goals) }),
-    [name, preset, drivers, mix, policy, econ, goals]
+    () => ({ v: 1, name, presetId: preset, drivers, mix, policy, econ, goals: definedGoals(goals), anchorGwh: base.generationGwh }),
+    [name, preset, drivers, mix, policy, econ, goals, base.generationGwh]
   );
 
   const { applied, plan, counterfactual, econResult, commitments, shownMix } =

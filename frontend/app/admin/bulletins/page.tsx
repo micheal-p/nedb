@@ -29,11 +29,23 @@ async function authedFetch(url: string, init?: RequestInit): Promise<Response> {
   });
 }
 
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const THIS_YEAR = new Date().getFullYear();
+const YEAR_CHOICES = Array.from({ length: 8 }, (_, i) => THIS_YEAR - i);
+
 export default function AdminBulletinsPage() {
   const [editions, setEditions] = useState<Edition[]>([]);
   const [loading, setLoading]   = useState(true);
   const [creating, setCreating] = useState(false);
-  const [periodLabel, setPeriodLabel] = useState(new Date().toLocaleDateString("en-NG", { month: "long", year: "numeric" }));
+  // An edition is built FOR a period, so the period is chosen rather than typed
+  // and the label is derived from it. A typed label could disagree with what was
+  // actually filtered, which is how "August 2026" ended up on 2024 figures.
+  const nowD = new Date();
+  const prevMonth = nowD.getMonth() === 0 ? 12 : nowD.getMonth();
+  const prevMonthYear = nowD.getMonth() === 0 ? nowD.getFullYear() - 1 : nowD.getFullYear();
+  const [periodKind, setPeriodKind] = useState<"month" | "year">("month");
+  const [periodYear, setPeriodYear] = useState(prevMonthYear);
+  const [periodMonth, setPeriodMonth] = useState(prevMonth);
   const [openNo, setOpenNo]     = useState<number | null>(null);
   const [detail, setDetail]     = useState<FullEdition | null>(null);
   const [commentary, setCommentary] = useState<Record<string, string>>({});
@@ -63,7 +75,10 @@ export default function AdminBulletinsPage() {
 
   async function createDraft() {
     setCreating(true); setMsg("");
-    const r = await authedFetch("/api/bulletin/editions", { method: "POST", body: JSON.stringify({ period_label: periodLabel }) });
+    const r = await authedFetch("/api/bulletin/editions", {
+      method: "POST",
+      body: JSON.stringify({ period_kind: periodKind, period_year: periodYear, period_month: periodMonth }),
+    });
     const j = await r.json();
     setCreating(false);
     if (!r.ok) { setMsg(j.error ?? "Could not create draft."); return; }
@@ -107,11 +122,35 @@ export default function AdminBulletinsPage() {
 
         {/* Create draft */}
         <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", padding: "1rem 1.25rem", marginBottom: "1.25rem", display: "flex", gap: "0.75rem", alignItems: "flex-end", flexWrap: "wrap" }}>
-          <label style={{ flex: "1 1 220px" }}>
-            <span className="form-label">Period label for the new edition</span>
-            <input className="form-input" value={periodLabel} onChange={(e) => setPeriodLabel(e.target.value)} placeholder="August 2026" />
+          <label style={{ flex: "0 1 160px" }}>
+            <span className="form-label">Edition covers</span>
+            <select className="form-input form-select" value={periodKind}
+              onChange={(e) => setPeriodKind(e.target.value as "month" | "year")}>
+              <option value="month">A month</option>
+              <option value="year">A full year</option>
+            </select>
+          </label>
+          {periodKind === "month" && (
+            <label style={{ flex: "0 1 160px" }}>
+              <span className="form-label">Month</span>
+              <select className="form-input form-select" value={periodMonth}
+                onChange={(e) => setPeriodMonth(Number(e.target.value))}>
+                {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+              </select>
+            </label>
+          )}
+          <label style={{ flex: "0 1 120px" }}>
+            <span className="form-label">Year</span>
+            <select className="form-input form-select" value={periodYear}
+              onChange={(e) => setPeriodYear(Number(e.target.value))}>
+              {YEAR_CHOICES.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
           </label>
           <button className="btn btn-primary" onClick={createDraft} disabled={creating}>{creating ? "Creating…" : "Create Draft Edition"}</button>
+          <div style={{ flexBasis: "100%", fontSize: "var(--t-xs)", color: "var(--ink-4)", lineHeight: 1.6 }}>
+            The snapshot is filtered to this period. Series with no record in it are shown with their latest figure and
+            marked out of period, rather than printed as though they were this period&apos;s news.
+          </div>
         </div>
 
         {msg && <div style={{ fontSize: "0.78rem", color: "var(--ink-3)", padding: "0.4rem 0 0.8rem" }}>{msg}</div>}
