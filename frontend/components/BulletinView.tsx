@@ -25,6 +25,20 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
   // When SOME series reported in period, the out-of-period ones are worth
   // badging individually. When NONE did, badging all fifteen is noise, so the
   // page says it once and says it plainly instead.
+  const num = (v: number | null | undefined) =>
+    v === null || v === undefined ? "—" : v.toLocaleString("en-NG", { maximumFractionDigits: 0 });
+
+  const pctCell = (v: number | null) =>
+    v === null ? (
+      <span style={{ color: "var(--ink-5)" }}>—</span>
+    ) : (
+      <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, color: v >= 0 ? "var(--green)" : "var(--red)" }}>
+        {v >= 0 ? "▲ +" : "▼ −"}{Math.abs(v).toFixed(1)}%
+      </span>
+    );
+
+  const kindWord = data.window?.kind === "year" ? "Annual" : data.window?.kind === "quarter" ? "Quarterly" : "Monthly";
+
   const someInPeriod = (data.in_period_count ?? 0) > 0;
   const noneInPeriod = !!data.window && (data.in_period_count ?? 0) === 0;
 
@@ -61,7 +75,7 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
         <img src="/ecn-logo.png" alt="ECN" style={{ height: 48, width: "auto", objectFit: "contain" }} />
         <div style={{ flex: 1, borderLeft: "1px solid #ccc", paddingLeft: "1rem", marginLeft: "0.25rem" }}>
           <div className="print-header-org">ENERGY COMMISSION OF NIGERIA (ECN)</div>
-          <div className="print-header-title">NEDB {data.window?.kind === "year" ? "Annual" : "Monthly"} Energy Bulletin{meta.editionNo != null ? ` — No. ${meta.editionNo}` : ""}</div>
+          <div className="print-header-title">NEDB {kindWord} Energy Bulletin{meta.editionNo != null ? ` — No. ${meta.editionNo}` : ""}</div>
           <div className="print-header-meta">
             {meta.periodLabel}
             {data.window ? ` (${data.window.start} to ${data.window.end})` : ""}
@@ -92,7 +106,7 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
                   : <span className="tag tag-ink">Published edition — frozen</span>}
               </div>
               <h1 style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--ink)" }}>
-                NEDB {data.window?.kind === "year" ? "Annual" : "Monthly"} Energy Bulletin
+                NEDB {kindWord} Energy Bulletin
               </h1>
               <p style={{ fontSize: "0.78rem", color: "var(--ink-4)", marginTop: "0.35rem", lineHeight: 1.6 }}>
                 {meta.provisional
@@ -232,6 +246,126 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
             </div>
           )}
 
+          {/* ── Differential analysis ────────────────────────────────────
+              What this period did against the one before it and against the
+              same period a year earlier. Both totals are shown, not just the
+              percentages, so the arithmetic can be checked rather than trusted. */}
+          {data.comparison && data.series.some((x) => x.period_total !== null) && (
+            <div className="panel print-break" style={{ marginBottom: "1.5rem" }}>
+              <div className="panel-header">
+                <span className="panel-title">Differential Analysis — {meta.periodLabel}</span>
+                <span style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>
+                  against {data.comparison.previous.label}
+                  {data.comparison.sameWindow ? "" : ` and ${data.comparison.year_ago.label}`}
+                </span>
+              </div>
+              <div className="scroll-x">
+                <table className="data-table" style={{ fontSize: "0.8rem" }}>
+                  <thead>
+                    <tr>
+                      <th>Series</th>
+                      <th style={{ textAlign: "right" }}>{meta.periodLabel}</th>
+                      <th style={{ textAlign: "right" }}>{data.comparison.previous.label}</th>
+                      <th style={{ textAlign: "right" }}>Change</th>
+                      {!data.comparison.sameWindow && <>
+                        <th style={{ textAlign: "right" }}>{data.comparison.year_ago.label}</th>
+                        <th style={{ textAlign: "right" }}>Change</th>
+                      </>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.series.filter((x) => x.period_total !== null).map((x) => (
+                      <tr key={x.id}>
+                        <td className="td-primary">
+                          {x.name}
+                          <span style={{ marginLeft: 6, fontSize: "0.62rem", color: "var(--ink-5)" }}>
+                            {x.period_records} rec
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>
+                          {num(x.period_total)} <span style={{ fontSize: "0.68rem", color: "var(--ink-5)" }}>{x.unit}</span>
+                        </td>
+                        <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--ink-4)" }}>{num(x.previous_total)}</td>
+                        <td style={{ textAlign: "right" }}>{pctCell(x.vs_previous_pct)}</td>
+                        {!data.comparison!.sameWindow && <>
+                          <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--ink-4)" }}>{num(x.year_ago_total)}</td>
+                          <td style={{ textAlign: "right" }}>{pctCell(x.vs_year_ago_pct)}</td>
+                        </>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="chart-source">
+                A period total is the sum of every committed record inside the window, so a quarter of a monthly series is
+                three months added together. Where a period holds records in more than one unit the total is withheld
+                rather than added. A dash means the comparison period holds nothing to compare against.
+              </div>
+            </div>
+          )}
+
+          {/* ── Q1 to Q4 ──────────────────────────────────────────────────── */}
+          {data.quarters && (
+            <div className="panel print-break" style={{ marginBottom: "1.5rem" }}>
+              <div className="panel-header">
+                <span className="panel-title">Q1 to Q4 — {data.window?.start.slice(0, 4)}</span>
+                <span style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>
+                  {data.quarters.map((q) => `${q.label.split(" ")[0]} ${q.reporting}`).join(" · ")} series reporting
+                </span>
+              </div>
+              <div className="scroll-x">
+                <table className="data-table" style={{ fontSize: "0.8rem" }}>
+                  <thead>
+                    <tr>
+                      <th>Series</th>
+                      <th style={{ textAlign: "right" }}>Unit</th>
+                      {data.quarters.map((q) => <th key={q.quarter} style={{ textAlign: "right" }}>Q{q.quarter}</th>)}
+                      <th style={{ textAlign: "right" }}>Year</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.series
+                      .filter((x) => data.quarters!.some((q) => q.totals[x.id] !== null))
+                      .map((x) => {
+                        const vals = data.quarters!.map((q) => q.totals[x.id]);
+                        const yearTotal = vals.every((v) => v === null)
+                          ? null
+                          : vals.reduce((a: number, v) => a + (v ?? 0), 0);
+                        const annualStamp = data.quarters![0]?.annualStamped?.includes(x.id);
+                        return (
+                          <tr key={x.id}>
+                            <td className="td-primary">
+                              {x.name}
+                              {annualStamp && (
+                                <span title="This series reports annually. Its figure sits in the quarter its single date falls in; it is not split across the year."
+                                  style={{ marginLeft: 6, fontSize: "0.6rem", fontWeight: 700, color: "var(--amber)", border: "1px solid var(--amber)", padding: "0 4px", whiteSpace: "nowrap" }}>
+                                  ANNUAL FIGURE
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ textAlign: "right", fontSize: "0.7rem", color: "var(--ink-5)" }}>{x.unit}</td>
+                            {vals.map((v, i) => (
+                              <td key={i} style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: v === null ? "var(--ink-5)" : "var(--ink)" }}>
+                                {num(v)}
+                              </td>
+                            ))}
+                            <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>{num(yearTotal)}</td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="chart-source">
+                Each cell is the sum of committed records inside that quarter. A dash means the quarter holds no record for
+                that series, which is not the same as a zero. The year column adds the quarters that do exist, so it
+                understates any series with a gap. Rows marked ANNUAL FIGURE report once a year: that value sits in
+                whichever quarter its single date falls in and is not a quarterly split, so read it as the year&apos;s
+                total rather than as that quarter&apos;s activity.
+              </div>
+            </div>
+          )}
+
           {/* All series table */}
           <div className="panel print-break">
             <div className="panel-header">
@@ -294,7 +428,7 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
 
           <div className="print-only" style={{ marginTop: "2rem", padding: "1rem", borderTop: "1px solid #ccc", fontSize: "0.7rem", color: "#777" }}>
             National Energy Data Bank (NEDB) · Energy Commission of Nigeria · energy.gov.ng<br />
-            Cite as: NEDB {data.window?.kind === "year" ? "Annual" : "Monthly"} Energy Bulletin{meta.editionNo != null ? `, No. ${meta.editionNo}` : ""}, {meta.periodLabel}. Energy Commission of Nigeria.
+            Cite as: NEDB {kindWord} Energy Bulletin{meta.editionNo != null ? `, No. ${meta.editionNo}` : ""}, {meta.periodLabel}. Energy Commission of Nigeria.
           </div>
         </div>
       </main>

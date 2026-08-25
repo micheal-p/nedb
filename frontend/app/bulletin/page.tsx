@@ -24,12 +24,13 @@ type EditionRow = {
 export default async function BulletinPage({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string; month?: string; kind?: string }>;
+  searchParams: Promise<{ year?: string; month?: string; quarter?: string; kind?: string }>;
 }) {
   const sp = await searchParams;
   const wantYear = Number(sp.year);
   const wantMonth = Number(sp.month);
-  const wantKind = sp.kind === "year" || sp.kind === "month" ? sp.kind : null;
+  const wantQuarter = Number(sp.quarter);
+  const wantKind = sp.kind === "year" || sp.kind === "month" || sp.kind === "quarter" ? sp.kind : null;
 
   // Migration 048 adds the period columns. A deploy can land before the manual
   // migration, and losing the whole published archive in that gap would be far
@@ -63,6 +64,10 @@ export default async function BulletinPage({
     if (wantKind && (e.period_kind ?? "month") !== wantKind) return false;
     if (!Number.isFinite(wantYear) || wantYear < 1900) return true;
     const start = e.period_start ?? "";
+    if (Number.isFinite(wantQuarter) && wantQuarter >= 1 && wantQuarter <= 4) {
+      const w = makeWindow("quarter", wantYear, wantQuarter);
+      return start >= w.start && start <= w.end;
+    }
     if (Number.isFinite(wantMonth) && wantMonth >= 1 && wantMonth <= 12) {
       const w = makeWindow("month", wantYear, wantMonth);
       return start >= w.start && start <= w.end;

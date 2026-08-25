@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     // Filters, so the archive can be read by month or by year rather than only
     // as one long list. ?kind=month|year narrows to that cadence; ?year=2026
     // narrows to a calendar year; ?month=8 needs a year alongside it.
-    if (kind === "month" || kind === "year") q = q.eq("period_kind", kind);
+    if (kind === "month" || kind === "quarter" || kind === "year") q = q.eq("period_kind", kind);
     if (Number.isFinite(year) && year > 1900) {
       if (Number.isFinite(month) && month >= 1 && month <= 12) {
         const w = makeWindow("month", year, month);
@@ -65,12 +65,14 @@ export async function POST(req: NextRequest) {
   // An edition is built FOR a period. The label is derived from the window
   // rather than typed, so the masthead can never disagree with what was
   // filtered. Defaults to last month, which is what a monthly bulletin reports.
-  const kind: PeriodKind = body.period_kind === "year" ? "year" : "month";
+  const kind: PeriodKind =
+    body.period_kind === "year" ? "year" : body.period_kind === "quarter" ? "quarter" : "month";
   const year = Number(body.period_year);
-  const month = Number(body.period_month);
+  // The unit is the month for a month edition and the quarter for a quarter one.
+  const unit = Number(kind === "quarter" ? body.period_quarter : body.period_month);
   const window =
     Number.isFinite(year) && year > 1900
-      ? makeWindow(kind, year, kind === "month" ? (Number.isFinite(month) ? month : 1) : undefined)
+      ? makeWindow(kind, year, kind === "year" ? undefined : (Number.isFinite(unit) ? unit : 1))
       : defaultWindow();
 
   const periodLabel = window.label;
@@ -101,7 +103,9 @@ export async function POST(req: NextRequest) {
   const baseRow = {
     edition_no: editionNo,
     period_label: periodLabel,
-    title: window.kind === "year" ? "NEDB Annual Energy Bulletin" : "NEDB Monthly Energy Bulletin",
+    title: window.kind === "year" ? "NEDB Annual Energy Bulletin"
+         : window.kind === "quarter" ? "NEDB Quarterly Energy Bulletin"
+         : "NEDB Monthly Energy Bulletin",
     status: "draft",
     snapshot,
     data_cutoff: snapshot.generated_at,
@@ -128,7 +132,7 @@ export async function POST(req: NextRequest) {
   await logAudit({
     action: "BULLETIN_DRAFT",
     performed_by: String(auth.username ?? auth.sub ?? "unknown"),
-    notes: `Created ${window.kind === "year" ? "annual" : "monthly"} bulletin draft No. ${editionNo} for ${periodLabel} — ${snapshot.in_period_count} of ${snapshot.series.length} series reported in period`,
+    notes: `Created ${window.kind} bulletin draft No. ${editionNo} for ${periodLabel} — ${snapshot.in_period_count} of ${snapshot.series.length} series reported in period`,
   });
   return ok(data, 201);
 }

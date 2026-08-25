@@ -43,9 +43,10 @@ export default function AdminBulletinsPage() {
   const nowD = new Date();
   const prevMonth = nowD.getMonth() === 0 ? 12 : nowD.getMonth();
   const prevMonthYear = nowD.getMonth() === 0 ? nowD.getFullYear() - 1 : nowD.getFullYear();
-  const [periodKind, setPeriodKind] = useState<"month" | "year">("month");
+  const [periodKind, setPeriodKind] = useState<"month" | "quarter" | "year">("month");
   const [periodYear, setPeriodYear] = useState(prevMonthYear);
   const [periodMonth, setPeriodMonth] = useState(prevMonth);
+  const [periodQuarter, setPeriodQuarter] = useState(Math.max(1, Math.ceil(prevMonth / 3)));
   const [openNo, setOpenNo]     = useState<number | null>(null);
   const [detail, setDetail]     = useState<FullEdition | null>(null);
   const [commentary, setCommentary] = useState<Record<string, string>>({});
@@ -77,7 +78,12 @@ export default function AdminBulletinsPage() {
     setCreating(true); setMsg("");
     const r = await authedFetch("/api/bulletin/editions", {
       method: "POST",
-      body: JSON.stringify({ period_kind: periodKind, period_year: periodYear, period_month: periodMonth }),
+      body: JSON.stringify({
+        period_kind: periodKind,
+        period_year: periodYear,
+        period_month: periodMonth,
+        period_quarter: periodQuarter,
+      }),
     });
     const j = await r.json();
     setCreating(false);
@@ -125,8 +131,9 @@ export default function AdminBulletinsPage() {
           <label style={{ flex: "0 1 160px" }}>
             <span className="form-label">Edition covers</span>
             <select className="form-input form-select" value={periodKind}
-              onChange={(e) => setPeriodKind(e.target.value as "month" | "year")}>
+              onChange={(e) => setPeriodKind(e.target.value as "month" | "quarter" | "year")}>
               <option value="month">A month</option>
+              <option value="quarter">A quarter</option>
               <option value="year">A full year</option>
             </select>
           </label>
@@ -139,6 +146,17 @@ export default function AdminBulletinsPage() {
               </select>
             </label>
           )}
+          {periodKind === "quarter" && (
+            <label style={{ flex: "0 1 160px" }}>
+              <span className="form-label">Quarter</span>
+              <select className="form-input form-select" value={periodQuarter}
+                onChange={(e) => setPeriodQuarter(Number(e.target.value))}>
+                {[1, 2, 3, 4].map((q) => (
+                  <option key={q} value={q}>Q{q} ({MONTH_NAMES[(q - 1) * 3].slice(0, 3)}–{MONTH_NAMES[(q - 1) * 3 + 2].slice(0, 3)})</option>
+                ))}
+              </select>
+            </label>
+          )}
           <label style={{ flex: "0 1 120px" }}>
             <span className="form-label">Year</span>
             <select className="form-input form-select" value={periodYear}
@@ -148,8 +166,10 @@ export default function AdminBulletinsPage() {
           </label>
           <button className="btn btn-primary" onClick={createDraft} disabled={creating}>{creating ? "Creating…" : "Create Draft Edition"}</button>
           <div style={{ flexBasis: "100%", fontSize: "var(--t-xs)", color: "var(--ink-4)", lineHeight: 1.6 }}>
-            The snapshot is filtered to this period. Series with no record in it are shown with their latest figure and
-            marked out of period, rather than printed as though they were this period&apos;s news.
+            The snapshot is filtered to this period, and a quarter is the sum of what fell inside it rather than its
+            newest record. Every series is measured against the period before and against the same period a year earlier.
+            Quarter and year editions also carry a Q1 to Q4 breakdown. Series with no record in the period are shown with
+            their latest figure and marked, rather than printed as though they were this period&apos;s news.
           </div>
         </div>
 
