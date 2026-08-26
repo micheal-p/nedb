@@ -167,10 +167,10 @@ function PeriodNav({ year, setYear, availYears, loading }: { year: number; setYe
 
 // ── Fiscal "coming soon" panels ───────────────────────────────
 const FISCAL_PANELS = [
-  { id: "upstream",  title: "Upstream Revenue Intelligence",  caption: "Royalties, PPT, profit oil splits and signature bonuses per OML block.", agencies: ["NUPRC","NRS","NNPC"],  color: "#0E7A3C" },
+  { id: "upstream",  title: "Upstream Revenue Intelligence",  caption: "Royalties, PPT, profit oil splits and signature bonuses per OML block.", agencies: ["NUPRC","NRS","NNPC"],  color: "var(--green)" },
   { id: "midstream", title: "Midstream Throughput & Tariff",  caption: "Pipeline tariff revenue, GDSO shortfall cost recovery, refinery throughput.", agencies: ["NGC","NMDPRA"],          color: "#1D4ED8" },
   { id: "power",     title: "Power Sector Settlement",        caption: "GenCo invoices vs payments, market shortfall deficit, ATC&C losses in ₦.", agencies: ["NERC","NBET","TCN"],    color: "#B45309" },
-  { id: "renewable", title: "Renewable Energy Investment",    caption: "Solar/wind capacity trends, FiT obligations vs actual payments, mini-grid capex.", agencies: ["REA","NERC"],     color: "#0E7A3C" },
+  { id: "renewable", title: "Renewable Energy Investment",    caption: "Solar/wind capacity trends, FiT obligations vs actual payments, mini-grid capex.", agencies: ["REA","NERC"],     color: "var(--green)" },
   { id: "bioenergy", title: "Bioenergy & Solid Fuels",        caption: "Biomass consumption by state, coal export earnings, fuelwood displacement by LPG.", agencies: ["ECN","MMSD"],  color: "#78350F" },
   { id: "faac",      title: "FAAC Energy Contribution",       caption: "Monthly oil revenue share of FAAC pool vs Federal budget projection.", agencies: ["RMAFC","DMO","CBN"],        color: "#C0392B" },
 ];
@@ -319,8 +319,8 @@ export default function Dashboard() {
                 cannot open. */}
             {(hasCapability(profile, "necal") || isAdminRole(staffRole)) && (
               <Link href="/data-point/scenario" className="sb-link">
-                <span className="sb-label">Scenario Studio</span>
-                <span style={{ fontSize: "0.6rem", background: "#1B2A4A", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>NECAL</span>
+                <span className="sb-label">National Energy Calculator</span>
+                <span style={{ fontSize: "0.6rem", background: "var(--ink)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>NECAL2050</span>
               </Link>
             )}
             <Link href="/data-point/pena" className="sb-link">
@@ -422,7 +422,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <NigeriaMap stateData={stateMap["electricity_generation"] ?? {}} id="electricity-access" title="Electricity Generation by State" unit="GWh" colorLow="#FEF3C7" colorHigh="#0E7A3C" higherIsBetter={true} source="NERC / ECN" />
-              {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Multi-series" subtitle={`PMS · AGO · LPG monthly volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS", color: "#0E7A3C" }, { key: "ago", label: "AGO", color: "#1D4ED8" }, { key: "lpg", label: "LPG", color: "#B45309" }]} unit="M Litres" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
+              {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Multi-series" subtitle={`PMS · AGO · LPG monthly volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS", color: "var(--green)" }, { key: "ago", label: "AGO", color: "#1D4ED8" }, { key: "lpg", label: "LPG", color: "#B45309" }]} unit="M Litres" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
               <div>
                 <div className="sec-hd" style={{ marginBottom: "1rem" }}>
                   <h2>Fiscal Panels</h2>
@@ -441,7 +441,7 @@ export default function Dashboard() {
           {view === "downstream" && inScope("downstream") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
-              {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Monthly Trend" subtitle={`PMS · AGO · LPG volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS (M L)", color: "#0E7A3C" }, { key: "ago", label: "AGO (M L)", color: "#1D4ED8" }, { key: "lpg", label: "LPG (MT)", color: "#B45309" }]} unit="" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
+              {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Monthly Trend" subtitle={`PMS · AGO · LPG volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS (M L)", color: "var(--green)" }, { key: "ago", label: "AGO (M L)", color: "#1D4ED8" }, { key: "lpg", label: "LPG (MT)", color: "#B45309" }]} unit="" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
               <div className="panel">
                 <div className="panel-header">
                   <span className="panel-title">Distribution Companies — ATC&amp;C Performance</span>
@@ -462,7 +462,7 @@ export default function Dashboard() {
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div className="grid-2" style={{ gap: "1.25rem" }}>
                 {s("crude_oil_production").length ? <SectorChart title="Crude Oil Production" subtitle={`Monthly barrels · ${selectedYear}`} source="NUPRC" data={s("crude_oil_production")} series={[{ key: "value", label: "Production", color: "#78350F" }]} unit="M Barrels" filename="crude-oil-production" /> : <EmptyChart seriesName="Crude Oil Production" />}
-                {s("natural_gas_production").length ? <SectorChart title="Natural Gas Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC / NNPCL" data={s("natural_gas_production")} series={[{ key: "value", label: "Gas", color: "#0E7A3C" }]} unit="Bcf" filename="natural-gas-production" /> : <EmptyChart seriesName="Natural Gas Production" />}
+                {s("natural_gas_production").length ? <SectorChart title="Natural Gas Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC / NNPCL" data={s("natural_gas_production")} series={[{ key: "value", label: "Gas", color: "var(--green)" }]} unit="Bcf" filename="natural-gas-production" /> : <EmptyChart seriesName="Natural Gas Production" />}
               </div>
               <NigeriaMap stateData={stateMap["crude_oil_production"] ?? {}} id="crude-production" title="Crude Oil Production by State" unit="M Barrels" colorLow="#FEF3C7" colorHigh="#78350F" higherIsBetter={true} source="NUPRC" />
               <div className="panel">
@@ -483,7 +483,7 @@ export default function Dashboard() {
           {view === "power" && inScope("power") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
-              {(s("electricity_generation").length || s("electricity_sent_out").length) ? <SectorChart title="Electricity Generation vs. Sent Out" subtitle={`Monthly GWh · ${selectedYear}`} source="NERC / TCN" data={mergeSeries([{ data: s("electricity_generation"), key: "generation" }, { data: s("electricity_sent_out"), key: "sent_out" }])} series={[{ key: "generation", label: "Generation (GWh)", color: "#1D4ED8" }, { key: "sent_out", label: "Sent Out (GWh)", color: "#0E7A3C" }]} unit="GWh" filename="electricity-generation" /> : <EmptyChart seriesName="Electricity Generation" />}
+              {(s("electricity_generation").length || s("electricity_sent_out").length) ? <SectorChart title="Electricity Generation vs. Sent Out" subtitle={`Monthly GWh · ${selectedYear}`} source="NERC / TCN" data={mergeSeries([{ data: s("electricity_generation"), key: "generation" }, { data: s("electricity_sent_out"), key: "sent_out" }])} series={[{ key: "generation", label: "Generation (GWh)", color: "#1D4ED8" }, { key: "sent_out", label: "Sent Out (GWh)", color: "var(--green)" }]} unit="GWh" filename="electricity-generation" /> : <EmptyChart seriesName="Electricity Generation" />}
               <NigeriaMap stateData={stateMap["electricity_sent_out"] ?? {}} id="atc-loss" title="Electricity Sent Out by State" unit="GWh" colorLow="#DCFCE7" colorHigh="#1D4ED8" higherIsBetter={true} source="TCN / NERC" />
               <div className="panel">
                 <div className="panel-header">

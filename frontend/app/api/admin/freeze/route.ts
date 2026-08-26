@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
-import { requireAdmin, ok, err } from "@/lib/api-helpers";
+import { requireAdmin, requireSuperadmin, ok, err } from "@/lib/api-helpers";
 import { logAudit } from "@/lib/audit";
 
 // GET /api/admin/freeze — list all frozen periods
@@ -24,9 +24,14 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/admin/freeze — freeze a period
+//
+// Superadmin, not admin. Locking and unlocking a published national figure is
+// one of the three levers that can rewrite the record or open a door, alongside
+// role changes and API key issue. Separating them from day-to-day
+// administration is what gives the superadmin tier any meaning.
 export async function POST(req: NextRequest) {
-  const claims = await requireAdmin(req);
-  if (!claims) return err("admin required", 403);
+  const claims = await requireSuperadmin(req);
+  if (!claims) return err("Freezing a period requires a super administrator.", 403);
 
   const body = await req.json().catch(() => null);
   if (!body?.series_type_id || !body?.period) return err("series_type_id and period required", 400);
@@ -58,9 +63,12 @@ export async function POST(req: NextRequest) {
 }
 
 // DELETE /api/admin/freeze — unfreeze by id
+//
+// Unfreezing reopens a published figure to revision, so it is the more
+// consequential half of the pair and is held at the same tier.
 export async function DELETE(req: NextRequest) {
-  const claims = await requireAdmin(req);
-  if (!claims) return err("admin required", 403);
+  const claims = await requireSuperadmin(req);
+  if (!claims) return err("Unfreezing a period requires a super administrator.", 403);
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");

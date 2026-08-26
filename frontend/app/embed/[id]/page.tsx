@@ -32,7 +32,7 @@ export default async function EmbedPage({ params }: Props) {
         </div>
         <div style={{ padding: "4px 16px 10px", fontSize: 10, color: "#8E867B", borderTop: "1px solid #E7E5E0", display: "flex", justifyContent: "space-between" }}>
           <span>Source: ECN / NEDB · energy.gov.ng</span>
-          <a href={`/series/${id}`} target="_blank" rel="noreferrer" style={{ color: "#0E7A3C", textDecoration: "none", fontWeight: 600 }}>View full data →</a>
+          <a href={`/series/${id}`} target="_blank" rel="noreferrer" style={{ color: "var(--green)", textDecoration: "none", fontWeight: 600 }}>View full data →</a>
         </div>
       </body>
     </html>

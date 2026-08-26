@@ -47,6 +47,8 @@ export type BulletinSeries = {
   in_period: boolean;
   /** What the change is measured against, in words. Null when there is none. */
   change_basis: string | null;
+  /** provisional | revised | final, from the record being reported. */
+  record_status: string | null;
 
   // ── Differential analysis ────────────────────────────────────────────────
   /** Total across the window, which for a quarter is the sum of its months. */
@@ -209,7 +211,7 @@ export async function getBulletinData(window: BulletinWindow | null = null): Pro
       // Enough history to reach one year back at any cadence, plus headroom.
       const { data } = await db()
         .from("energy_records")
-        .select("period, period_date, value, unit")
+        .select("period, period_date, value, unit, status")
         .eq("series_type_id", s.id)
         .order("period_date", { ascending: false })
         .limit(40);
@@ -221,6 +223,7 @@ export async function getBulletinData(window: BulletinWindow | null = null): Pro
       const blank: BulletinSeries = {
         ...s, latest: null, latest_period: null, yoy_pct: null,
         cadence: normaliseDeclared(s.frequency), in_period: false, change_basis: null,
+        record_status: null,
         period_total: null, period_records: 0,
         vs_previous_pct: null, vs_year_ago_pct: null,
         previous_total: null, year_ago_total: null,
@@ -292,6 +295,7 @@ export async function getBulletinData(window: BulletinWindow | null = null): Pro
         change_basis: yoy_pct === null
           ? null
           : `against ${priorRow!.period}, one year earlier on a ${cadenceLabel(cadence)} series`,
+        record_status: (chosen as { status?: string }).status ?? null,
         period_total: thisPeriod.total,
         period_records: thisPeriod.count,
         previous_total: prevPeriod.total,

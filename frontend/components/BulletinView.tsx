@@ -227,6 +227,14 @@ export default function BulletinView({ data, meta }: { data: BulletinData; meta:
                             OUT OF PERIOD
                           </span>
                         )}
+                        {s.record_status && s.record_status !== "final" && (
+                          <span title={s.record_status === "provisional"
+                            ? "Published early and expected to change."
+                            : "This figure has been revised since it was first published."}
+                            style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "var(--blue)", border: "1px solid var(--blue)", padding: "0 4px", whiteSpace: "nowrap", textTransform: "uppercase" }}>
+                            {s.record_status}
+                          </span>
+                        )}
                       </td>
                       <td style={{ padding: "0.75rem 1rem", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.8rem" }}>
                         {s.latest !== null ? `${Number(s.latest).toLocaleString()} ${s.unit}` : "—"}

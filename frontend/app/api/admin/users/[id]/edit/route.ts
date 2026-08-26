@@ -26,9 +26,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (update.role !== undefined) {
     const newRole = update.role === "staff" ? "editor" : String(update.role);
     if (!VALID_ROLES.has(newRole)) return err("invalid role", 400);
-    // Only a superadmin may grant or revoke the superadmin role
-    if ((newRole === "superadmin" || target.role === "superadmin") && auth.role !== "superadmin") {
-      return err("only a super administrator can change superadmin accounts", 403);
+
+    // ANY role change is a superadmin act, not just one touching a superadmin.
+    // Previously an admin could promote an account to admin, which meant the
+    // admin tier could expand itself and the superadmin tier drew a line only
+    // around its own membership. Separation of duties needs the line drawn
+    // around the power to grant power.
+    if (newRole !== target.role && auth.role !== "superadmin") {
+      return err(
+        "Changing a role requires a super administrator. Administrators manage accounts; only a super administrator grants or withdraws access levels.",
+        403
+      );
     }
     update.role = newRole;
   }

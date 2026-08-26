@@ -52,6 +52,9 @@ export default function Footer() {
           <Link href="/privacy">Privacy Notice</Link>
           <Link href="/accessibility">Accessibility Statement</Link>
           <Link href="/terms-of-data-use">Terms of Data Use</Link>
+          <Link href="/code-of-practice">Code of Practice</Link>
+          <Link href="/statistical-confidentiality">Statistical Confidentiality</Link>
+          <Link href="/release-calendar">Release Calendar</Link>
           <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer">ECN Official Site</a>
         </div>
       </div>

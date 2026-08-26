@@ -35,8 +35,12 @@ const MILESTONES = [
   { year: "1979", event: "Energy Commission of Nigeria (ECN) established by decree to coordinate national energy policy and advise the Federal Government." },
   { year: "2004", event: "ECN Act, CAP. E10 LFN 2004 — consolidates the ECN mandate and gives statutory backing to energy data collection and publication obligations." },
   { year: "2006", event: "National Energy Policy published, articulating data-driven targets across petroleum, electricity, renewable and biomass sectors." },
+  { year: "2007", event: "Statistics Act 2007 establishes the National Bureau of Statistics and the National Statistical System, setting the framework Nigerian official statistics are produced within." },
   { year: "2021", event: "Petroleum Industry Act (PIA) creates NUPRC and NMDPRA, mandating structured data publication — bringing petroleum sector data into NEDB scope." },
+  { year: "2023", event: "Electricity Act 2023 replaces EPSRA 2005, decentralises electricity market regulation to the states and re-scopes the reporting obligations NEDB tracks for the power sector." },
+  { year: "2023", event: "Nigeria Data Protection Act 2023 governs the personal data collected through energy assessments and sets the basis for the platform's aggregation and access controls." },
   { year: "2023", event: "National Energy Transition Plan released, creating a tracking obligation for renewable capacity, gas-to-power, and biomass displacement." },
+  { year: "2025", event: "Nigeria Revenue Service Establishment Act 2025 replaces the Federal Inland Revenue Service, effective 1 January 2026, renaming the counterparty for energy sector tax and royalty data." },
   { year: "2025", event: "NEDB Platform v1.0 launched — first fully digital, API-accessible repository of Nigerian energy statistics with validated upload workflow." },
 ];
 
@@ -103,6 +107,14 @@ export default async function AboutPage() {
                     NEDB operationalises this mandate by providing a centralised digital infrastructure
                     for data submission by licensed agencies (NUPRC, NERC, NMDPRA, NGC), validation
                     against IEA/UN Energy statistical standards, and public dissemination.
+                  </p>
+                  <p style={{ marginTop: "0.75rem" }}>
+                    Energy statistics are produced within the National Statistical System established by the
+                    Statistics Act 2007, under which the National Bureau of Statistics coordinates official
+                    statistics in Nigeria. Personal data collected through energy assessments is handled under
+                    the Nigeria Data Protection Act 2023. How NEDB produces, checks and corrects figures is set
+                    out in its{" "}
+                    <a href="/code-of-practice" style={{ color: "var(--green)", fontWeight: 600 }}>Code of Practice</a>.
                   </p>
                 </div>
               </div>

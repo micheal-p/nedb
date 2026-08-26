@@ -28,8 +28,17 @@ export async function POST(req: NextRequest) {
 
   const newRole = normalizeRole(role ?? "editor");
   if (!VALID_ROLES.has(newRole)) return err("invalid role", 400);
-  // Only a superadmin may create another superadmin
-  if (newRole === "superadmin" && admin.role !== "superadmin") return err("only a super administrator can grant the superadmin role", 403);
+
+  // An administrator may create viewers and editors. Creating another account
+  // at admin level or above is granting power, which is a superadmin act — the
+  // same rule the edit route applies, so an admin cannot sidestep it by
+  // creating a new account instead of promoting an existing one.
+  if ((newRole === "admin" || newRole === "superadmin") && admin.role !== "superadmin") {
+    return err(
+      "Creating an account at administrator level or above requires a super administrator.",
+      403
+    );
+  }
 
   const hash = await bcrypt.hash(password, 12);
 

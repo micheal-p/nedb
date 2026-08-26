@@ -43,7 +43,7 @@ export async function PATCH(
   // Fetch current record for audit trail + freeze check
   const { data: before } = await client
     .from("energy_records")
-    .select("id, series_type_id, period, region, value")
+    .select("id, series_type_id, period, region, value, revision_count")
     .eq("id", Number(id))
     .single();
 
@@ -59,10 +59,21 @@ export async function PATCH(
     }
   }
 
-  const allowed = ["period", "period_date", "value", "unit", "region", "source", "notes"];
+  const allowed = ["period", "period_date", "value", "unit", "region", "source", "notes", "status"];
   const patch: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) patch[key] = body[key];
+  }
+  if ("status" in patch && !["provisional", "revised", "final"].includes(String(patch.status))) {
+    return NextResponse.json({ error: "status must be provisional, revised or final" }, { status: 400 });
+  }
+
+  // Changing the VALUE of a figure that has already been published makes it a
+  // revision, and saying so is the point of having the field. The editor does
+  // not have to remember; a figure that changes is marked as changed.
+  if ("value" in patch && before && Number(patch.value) !== Number(before.value) && !("status" in patch)) {
+    patch.status = "revised";
+    patch.revision_count = Number((before as { revision_count?: number }).revision_count ?? 0) + 1;
   }
   if (!Object.keys(patch).length) return NextResponse.json({ error: "No valid fields" }, { status: 400 });
 

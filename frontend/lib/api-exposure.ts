@@ -11,6 +11,7 @@
 // value can never expose them.
 
 import { NextRequest } from "next/server";
+import { createHash } from "node:crypto";
 import { db } from "@/lib/supabase-server";
 import { checkRateLimitDurable } from "@/lib/rate-limit";
 
@@ -78,10 +79,15 @@ export async function authorizeApiCall(req: NextRequest): Promise<
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
 
   if (presented) {
+    // Matched on the SHA-256 of the presented key, never on a stored secret.
+    // api_keys.key used to hold the live credential in clear, so a database
+    // export, a backup or a screenshot of the admin list handed over working
+    // API access. Migration 054 added key_hash; 055 drops the plaintext.
+    const presentedHash = createHash("sha256").update(presented).digest("hex");
     const { data: key } = await db()
       .from("api_keys")
-      .select("id, key, label, is_active, rate_limit, call_count")
-      .eq("key", presented)
+      .select("id, label, is_active, rate_limit, call_count")
+      .eq("key_hash", presentedHash)
       .single();
 
     if (!key || !key.is_active) {

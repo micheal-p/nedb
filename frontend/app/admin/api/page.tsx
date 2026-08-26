@@ -20,7 +20,10 @@ type SeriesRow = {
 };
 
 type ApiKey = {
-  id: number; key: string; label: string; owner: string | null;
+  id: number; label: string; owner: string | null;
+  // The secret is never returned after issue. The prefix and last four are not
+  // secret and are what let an administrator recognise a key in this list.
+  key_prefix?: string | null; last_four?: string | null;
   is_active: boolean; created_at: string; last_used: string | null;
   rate_limit?: number; call_count?: number;
 };
@@ -227,6 +230,10 @@ export default function AdminApiPage() {
                 {issuedKey && (
                   <div style={{ background: "var(--green-tint)", border: "1px solid var(--green-line)", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
                     <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--green-deep)", marginBottom: 4 }}>Key issued — copy it now</div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--ink-3)", lineHeight: 1.55, marginBottom: 6 }}>
+                      This is the only time it will be shown. Only a hash is stored, so nobody, including an administrator,
+                      can retrieve it later. If it is lost, revoke it and issue another.
+                    </div>
                     <code style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem", wordBreak: "break-all" }}>{issuedKey}</code>
                     <div style={{ marginTop: 6 }}>
                       <button onClick={() => { navigator.clipboard.writeText(issuedKey); setIssuedKey(null); }}
@@ -245,7 +252,14 @@ export default function AdminApiPage() {
                     <tbody>
                       {keys.map((k) => (
                         <tr key={k.id}>
-                          <td className="td-primary">{k.label}</td>
+                          <td className="td-primary">
+                            {k.label}
+                            {k.key_prefix && (
+                              <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 2 }}>
+                                {k.key_prefix}…{k.last_four ?? ""}
+                              </div>
+                            )}
+                          </td>
                           <td style={{ fontSize: "0.75rem", color: "var(--ink-4)" }}>{k.owner ?? "—"}</td>
                           <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.75rem" }}>{(k.call_count ?? 0).toLocaleString()}</td>
                           <td style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>{k.last_used ? new Date(k.last_used).toLocaleDateString("en-NG") : "never"}</td>

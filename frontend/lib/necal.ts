@@ -1,7 +1,7 @@
 // ── lib/necal.ts ────────────────────────────────────────────────────────────
 // NECAL2050 planning engine.
 //
-// The previous Scenario Studio applied a single growth rate to one series and
+// The previous scenario tool applied a single growth rate to one series and
 // drew the line forward. That is extrapolation, not planning: it cannot answer
 // what capacity must be built, what it costs, what it emits, or whether the
 // system balances.
@@ -137,12 +137,6 @@ export function normaliseMix(mix: MixTargets): MixTargets {
   return out;
 }
 
-/**
- * Run the plan.
- *
- * baseGenerationGwh and baseCapacityMw come from committed NEDB series so the
- * plan starts from the country's real position, not a round number.
- */
 /**
  * The starting position the plan is anchored on.
  *
