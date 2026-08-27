@@ -16,6 +16,13 @@
 //
 //   status    list every migration and whether it has been applied
 //   up        apply everything pending, oldest first, each in a transaction
+//   accept    record that an ALREADY-APPLIED file was edited deliberately and
+//             the edit does not change the resulting schema, e.g. fixing a
+//             comment or removing a statement whose effect was undone by hand.
+//             It refreshes the stored checksum and nothing else. Never use it
+//             to make a real schema change stop showing as drift: write a new
+//             migration for that.
+//               node scripts/migrate.mjs accept 052_schema_migrations.sql
 //   backfill  mark existing files as applied WITHOUT running them, for a
 //             database that was migrated by hand before this script existed.
 //             Use --through <prefix> to stop at a file, so anything genuinely
@@ -95,6 +102,26 @@ try {
     process.exit(pending ? 1 : 0);
   }
 
+  if (command === "accept") {
+    const target = process.argv[3];
+    if (!target) { console.error("accept needs a filename"); process.exit(1); }
+    if (!files.includes(target)) { console.error(`no such migration: ${target}`); process.exit(1); }
+    const row = applied.get(target);
+    if (!row) { console.error(`${target} has not been applied, so there is nothing to accept`); process.exit(1); }
+    const sum = sha(readFileSync(join(MIG_DIR, target), "utf8"));
+    if (row.checksum === sum) { console.log(`${target} already matches; nothing to do`); process.exit(0); }
+    const reason = process.argv.slice(4).join(" ") || "edited after apply; accepted as schema-equivalent";
+    await client.query(
+      `UPDATE schema_migrations
+         SET checksum = $2,
+             notes = COALESCE(notes || ' | ', '') || $3
+       WHERE filename = $1`,
+      [target, sum, `accepted ${new Date().toISOString().slice(0, 10)} by ${who}: ${reason}`]
+    );
+    console.log(`accepted ${target}\n  reason: ${reason}`);
+    process.exit(0);
+  }
+
   if (command === "backfill") {
     // Everything up to and including this prefix is marked applied. Without it
     // a backfill would also mark genuinely pending migrations as done, which is
@@ -152,7 +179,7 @@ try {
     process.exit(0);
   }
 
-  console.error(`unknown command: ${command}\nuse: status | up | up --dry-run | backfill`);
+  console.error(`unknown command: ${command}\nuse: status | up | up --dry-run | backfill | accept <file>`);
   process.exit(1);
 } finally {
   await client.end();

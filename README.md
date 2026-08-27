@@ -79,6 +79,16 @@ DATABASE_URL=postgres://... node scripts/migrate.mjs up
 `DATABASE_URL` is the session pooler string from the Supabase dashboard. Pass it
 on the command line; do not commit it.
 
+If you correct an already-applied file in a way that does not change the
+resulting schema, such as fixing a comment, `status` will flag it as drift.
+Record the correction rather than leaving a permanent warning:
+
+```bash
+DATABASE_URL=postgres://... node scripts/migrate.mjs accept 052_schema_migrations.sql "why"
+```
+
+Never use `accept` to silence a real schema change. Write a new migration.
+
 For a database that was migrated by hand before the runner existed:
 
 ```bash
