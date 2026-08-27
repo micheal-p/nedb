@@ -3,12 +3,17 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 // ── Server-side route guard ─────────────────────────────────────────────────
-// Next.js only runs middleware from a root middleware.ts. Until this file
-// existed the app had page guards in client components only, reading the role
-// out of localStorage — which the visitor controls, so setting
+// Formerly middleware.ts. Next 16 renamed the convention to proxy.ts and warned
+// on every build while the old name was used; the behaviour is unchanged.
+//
+// Before this existed the app had page guards in client components only,
+// reading the role out of localStorage — which the visitor controls, so setting
 // localStorage.nedb_role = "admin" rendered the whole admin console. The API
-// layer was the only real boundary. This restores a server-side boundary in
-// front of the pages themselves.
+// layer was the only real boundary. This is the server-side boundary in front
+// of the pages themselves.
+//
+// It guards PAGES, not data. Every API route re-checks, because a page guard
+// says nothing about a direct call to an endpoint.
 //
 // Roles: viewer < editor (legacy name "staff") < admin < superadmin.
 

@@ -114,9 +114,9 @@ correct if the schema really is up to date.
 
 ## Roles
 
-`viewer` < `editor` < `admin` < `superadmin`. Guarded twice: `middleware.ts`
-gates page loads, and every API route re-checks. Both are needed, because
-middleware protects pages and not data.
+`viewer` < `editor` < `admin` < `superadmin`. Guarded twice: `frontend/proxy.ts`
+gates page loads, and every API route re-checks. Both are needed, because the
+proxy protects pages and not data.
 
 Superadmin exists to separate the levers that can rewrite the record or open a
 door from day-to-day administration. Only a superadmin may:
