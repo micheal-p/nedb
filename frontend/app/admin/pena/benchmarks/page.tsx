@@ -143,7 +143,7 @@ export default function NbsBenchmarksPage() {
               </div>
               <div className="chart-source">
                 Defaults: UN World Population Prospects 2024 (mid-2026 estimate, 242.4m) distributed by NPC 2006 census shares ·
-                NLSS 2018/19 poverty headcount · Borno's NLSS rate was not published. LGA-level population rows can be added later via the same table.
+                NLSS 2018/19 poverty headcount · Borno&apos;s NLSS rate was not published. LGA-level population rows can be added later via the same table.
               </div>
             </div>
           </>

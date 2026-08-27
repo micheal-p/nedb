@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { api, type StaffUser } from "@/lib/api";
-import { getToken, getRole, getFullName, isAdminRole } from "@/lib/auth";
+import { getToken, getRole, isAdminRole } from "@/lib/auth";
 import InfoTip from "@/components/ui/InfoTip";
 
 interface Company {
@@ -180,7 +179,6 @@ export default function AdminPage() {
   const [dataReqLoading, setDataReqLoading] = useState(false);
   const [dataReqMsg, setDataReqMsg]         = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  const adminName = getFullName() || "Administrator";
 
   const loadUsers = useCallback(async () => {
     const token = getToken();

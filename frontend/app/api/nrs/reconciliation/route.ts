@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
-import { ok, err, requireAuth, requireRole, requireAdmin } from "@/lib/api-helpers";
+import { ok, err, requireAuth, requireAdmin } from "@/lib/api-helpers";
 import { reconcile, type Declaration, type Telemetry } from "@/lib/reconciliation";
 import { verifyChain } from "@/lib/ledger";
 import { logAudit } from "@/lib/audit";

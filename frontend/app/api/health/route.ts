@@ -17,10 +17,20 @@ export const dynamic = "force-dynamic";
 
 type Probe = { status: "ok" | "error" | "not-configured"; detail?: string; ms?: number };
 
+// A health endpoint that hangs is its own kind of outage: monitors give up and
+// report the whole service down. An unreachable dependency took 4.5s to fail on
+// DNS alone, so each probe is bounded and a timeout is reported as what it is.
+const PROBE_TIMEOUT_MS = 3000;
+
 async function timed(fn: () => Promise<unknown>): Promise<Probe> {
   const started = Date.now();
   try {
-    await fn();
+    await Promise.race([
+      fn(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`did not answer within ${PROBE_TIMEOUT_MS}ms`)), PROBE_TIMEOUT_MS)
+      ),
+    ]);
     return { status: "ok", ms: Date.now() - started };
   } catch (e) {
     return { status: "error", detail: e instanceof Error ? e.message : "unknown", ms: Date.now() - started };
@@ -52,12 +62,33 @@ async function checkCache(): Promise<Probe> {
 
 export async function GET() {
   const [database, cache] = await Promise.all([checkDb(), checkCache()]);
+  const checks = { database, cache };
 
-  const failed = [database, cache].filter((p) => p.status === "error");
-  const status = failed.length === 0 ? "ok" : "degraded";
+  const failed = Object.values(checks).filter((p) => p.status === "error");
+
+  // "Not configured" is fine in development and is not fine in production: it
+  // means the deployment is running without something it was built to have. It
+  // does not warrant a 503, because the service genuinely works, but reporting
+  // it as plain "ok" is how production ran without a cache unnoticed.
+  const unconfigured = Object.entries(checks)
+    .filter(([, p]) => p.status === "not-configured")
+    .map(([name]) => name);
+  const inProduction = process.env.NODE_ENV === "production";
+
+  const status =
+    failed.length > 0 ? "unhealthy"
+    : unconfigured.length > 0 && inProduction ? "degraded"
+    : "ok";
 
   return NextResponse.json(
-    { status, checks: { database, cache }, checked_at: new Date().toISOString() },
-    { status: failed.length === 0 ? 200 : 503 }
+    {
+      status,
+      checks,
+      ...(unconfigured.length && inProduction
+        ? { warnings: unconfigured.map((n) => `${n} is not configured in production`) }
+        : {}),
+      checked_at: new Date().toISOString(),
+    },
+    { status: failed.length > 0 ? 503 : 200 }
   );
 }

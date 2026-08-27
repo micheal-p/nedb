@@ -40,7 +40,7 @@ function toLogin(request: NextRequest, pathname: string) {
   return NextResponse.redirect(url);
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const guard = GUARDS.find((g) => pathname.startsWith(g.prefix));
