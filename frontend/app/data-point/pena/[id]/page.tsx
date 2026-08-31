@@ -186,6 +186,7 @@ export default function PenaInsightsPage() {
   if (!ins) return <div style={{ minHeight: "100vh", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-5)", fontSize: "0.85rem" }}>Loading insights…</div>;
 
   const maxTier = Math.max(1, ...ins.tier_distribution.map((t) => t.count));
+  const classified = ins.tier_distribution.reduce((sum, t) => sum + t.count, 0);
   const maxSrc  = Math.max(1, ...ins.energy_sources.map((s) => s.count));
 
   return (
@@ -263,7 +264,7 @@ export default function PenaInsightsPage() {
             <div className="chart-panel-head">
               <div>
                 <div className="chart-panel-title">Environmental–Economic Tiers</div>
-                <div className="chart-panel-sub">A = energy secure &nbsp;·&nbsp; E = energy critical{ins.unclassified ? ` · ${ins.unclassified} unclassified` : ""}</div>
+                <div className="chart-panel-sub">A = energy secure &nbsp;·&nbsp; E = energy critical &nbsp;·&nbsp; {classified.toLocaleString()} of {ins.total.toLocaleString()} responses placed in a tier{ins.unclassified ? ` · ${ins.unclassified} unclassified (no income or no energy expense)` : ""}</div>
               </div>
             </div>
             <div className="chart-rows">
@@ -433,7 +434,7 @@ export default function PenaInsightsPage() {
               <div className="chart-panel-title">Responses</div>
               <div className="chart-panel-sub">{total.toLocaleString()} matching · showing {total === 0 ? 0 : offset + 1}–{offset + rows.length} · click a row for full answers{redacted ? " · personal fields hidden for your role" : ""}</div>
             </div>
-            {isAdminRole(getRole()) && (
+            {ins.access?.level === "export" && (
               <a href={`/api/pena/forms/${id}/responses?format=csv&${filterQS()}`}
                 style={{ padding: "4px 10px", fontSize: "0.7rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-tint)", color: "var(--green)", textDecoration: "none" }}>
                 Export CSV

@@ -1,7 +1,15 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok, err, requireAuth, requireAdmin } from "@/lib/api-helpers";
+import { cacheDel } from "@/lib/redis";
 import { penaSlugify, computeTier, DEFAULT_TIER_CONFIG, type TierConfig } from "@/lib/pena";
+
+// The public open-data payload is cached for 10 minutes. Every write below can
+// change or withdraw it — unpublishing, closing, retiering, deleting — and
+// none of them used to invalidate it, so a withdrawn assessment kept being
+// served. Harmless today only because production has no Redis configured;
+// it becomes a live disclosure the moment UPSTASH_* is set on Vercel.
+const bustPublic = (slug?: string | null) => (slug ? cacheDel(`pena:pub:${slug}`) : Promise.resolve());
 
 // GET /api/pena/forms/:id — form detail + questions + response count (staff)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -136,6 +144,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  await bustPublic(form.slug);
   return ok({ ...form, retiered });
 }
 
@@ -145,7 +154,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!auth) return err("Forbidden", 403);
   const { id } = await params;
 
+  // Read the slug BEFORE the delete: afterwards there is nothing to key the
+  // cached public payload off, and it would keep serving the aggregates of an
+  // assessment that no longer exists.
+  const { data: doomed } = await db().from("pena_forms").select("slug").eq("id", id).single();
+
   const { error } = await db().from("pena_forms").delete().eq("id", id);
   if (error) return err(error.message, 500);
+  await bustPublic(doomed?.slug);
   return ok({ success: true });
 }

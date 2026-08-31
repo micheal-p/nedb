@@ -12,7 +12,7 @@ import { ConfirmPanel } from "@/components/ui/gov";
 type Grant = { username: string; can_export: boolean; granted_by: string | null; granted_at: string };
 type View  = { username: string; action: string; identifiable: boolean; viewed_at: string };
 type Staff = { username: string; full_name: string; role: string; agency: string | null };
-type Form  = { id: number; title: string; is_restricted: boolean; owner_agency: string | null };
+type Form  = { id: number; title: string; slug: string; is_restricted: boolean; owner_agency: string | null; is_public_stats: boolean };
 
 async function authed(url: string, init?: RequestInit) {
   const token = await getTokenFresh();
@@ -38,6 +38,11 @@ export default function PenaAccessPanel({ formId }: { formId: number }) {
   const [canExport, setCanExport] = useState(false);
   const [agency, setAgency] = useState("");
   const [confirmRestrict, setConfirmRestrict] = useState(false);
+  // Restricting controls which STAFF may open the assessment. It says nothing
+  // about the k-anonymised aggregates published at /assessments/<slug>, which
+  // is a separate switch an admin restricting an assessment would not expect
+  // to be left on. Offered here, ticked by default, but never silent.
+  const [withdrawPublic, setWithdrawPublic] = useState(true);
   const [tab, setTab] = useState<"who" | "log">("who");
 
   const load = useCallback(async () => {
@@ -97,7 +102,7 @@ export default function PenaAccessPanel({ formId }: { formId: number }) {
               <div style={{ fontSize: "var(--t-sm)", color: "var(--ink-3)", lineHeight: 1.6 }}>
                 {form?.is_restricted
                   ? <>Only administrators and the people listed below can open this assessment{form.owner_agency ? `, held on behalf of ${form.owner_agency}` : ""}.</>
-                  : <>Any signed-in staff member can see aggregate findings. Identifiable responses stay limited to administrators and granted users regardless.</>}
+                  : <>Any signed-in staff member can see aggregate findings and the response table with personal fields removed. Identifiable responses stay limited to administrators and granted users regardless.</>}
               </div>
             </div>
             {!confirmRestrict ? (
@@ -108,16 +113,46 @@ export default function PenaAccessPanel({ formId }: { formId: number }) {
           </div>
 
           {confirmRestrict && (
-            <ConfirmPanel
-              title={form?.is_restricted ? "Open this assessment to all signed-in staff?" : "Restrict this assessment?"}
-              body={form?.is_restricted
-                ? "Any signed-in staff member will be able to see its aggregate findings. Identifiable responses remain limited to administrators and granted users."
-                : "Only administrators and the users you grant will be able to open it. Anyone else gets a clear refusal rather than a blank page."}
-              confirmLabel={form?.is_restricted ? "Open to all staff" : "Restrict"}
-              busy={busy}
-              onConfirm={() => { setConfirmRestrict(false); put({ is_restricted: !form?.is_restricted, owner_agency: agency || null }, form?.is_restricted ? "Assessment opened to all staff." : "Assessment restricted."); }}
-              onCancel={() => setConfirmRestrict(false)}
-            />
+            <>
+              {/* Restricting is a staff-side control. Open data is a second
+                  switch, and leaving it on while believing the assessment is
+                  locked down is the mistake worth preventing here. */}
+              {!form?.is_restricted && form?.is_public_stats && (
+                <div style={{ background: "var(--amber-tint, var(--surface-muted))", border: "1px solid var(--border)", padding: "0.85rem 1.15rem", margin: "0.75rem 0 0" }}>
+                  <div style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
+                    This assessment also publishes open data
+                  </div>
+                  <p style={{ fontSize: "var(--t-sm)", color: "var(--ink-2)", lineHeight: 1.6, margin: "0 0 0.6rem" }}>
+                    Its k-anonymised aggregates are public at <code>/assessments/{form.slug}</code>. Restricting it
+                    limits which staff can open it and does not take that page down.
+                  </p>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: "var(--t-sm)", color: "var(--ink-2)", cursor: "pointer" }}>
+                    <input type="checkbox" checked={withdrawPublic} onChange={(e) => setWithdrawPublic(e.target.checked)} style={{ marginTop: 3 }} />
+                    <span>Withdraw the open-data page too. Leave this unticked to keep publishing aggregates while the assessment itself is restricted.</span>
+                  </label>
+                </div>
+              )}
+              <ConfirmPanel
+                title={form?.is_restricted ? "Open this assessment to all signed-in staff?" : "Restrict this assessment?"}
+                body={form?.is_restricted
+                  ? "Any signed-in staff member will be able to see its aggregate findings, and its responses in redacted form. Identifiable responses remain limited to administrators and granted users."
+                  : `Only administrators and the users you grant will be able to open it, list it, or read its responses. Anyone else gets a clear refusal rather than a blank page.${form?.is_public_stats ? (withdrawPublic ? " The open-data page will be withdrawn as well." : " The open-data page will stay published.") : ""}`}
+                confirmLabel={form?.is_restricted ? "Open to all staff" : "Restrict"}
+                busy={busy}
+                onConfirm={() => {
+                  setConfirmRestrict(false);
+                  const restricting = !form?.is_restricted;
+                  put({
+                    is_restricted: restricting,
+                    owner_agency: agency || null,
+                    ...(restricting && form?.is_public_stats && withdrawPublic ? { is_public_stats: false } : {}),
+                  }, restricting
+                    ? (form?.is_public_stats && withdrawPublic ? "Assessment restricted and withdrawn from open data." : "Assessment restricted.")
+                    : "Assessment opened to all staff.");
+                }}
+                onCancel={() => setConfirmRestrict(false)}
+              />
+            </>
           )}
 
           {form?.is_restricted && (

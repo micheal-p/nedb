@@ -51,24 +51,47 @@ export function analyse(d: AnalysisInput): { findings: Finding[]; summary: strin
   }
 
   // ── 1. Energy poverty: the headline ────────────────────────────────────
+  // The denominator is CLASSIFIED responses, not all of them. A response
+  // missing income or energy expense cannot be placed in a tier at all
+  // (lib/pena.ts returns null), so dividing by every verified response
+  // understates energy poverty by however many were unclassifiable — the one
+  // direction a published figure must not be wrong in. The count left out is
+  // stated rather than buried.
   const byTier = new Map(d.tier_distribution.map((t) => [t.tier, t.count]));
-  const critical = (byTier.get("D") ?? 0) + (byTier.get("E") ?? 0);
-  const secure = (byTier.get("A") ?? 0) + (byTier.get("B") ?? 0);
-  const criticalPct = pct(critical, n);
-  const securePct = pct(secure, n);
+  const classified = d.tier_distribution.reduce((sum, t) => sum + t.count, 0);
+  const unclassified = Math.max(0, n - classified);
+  const tierMix = TIER_ORDER.map((t) => `${t} ${byTier.get(t) ?? 0}`).join(", ");
+  const ofClassified = `of the ${classified} response${classified === 1 ? "" : "s"} that could be placed in a tier`;
 
-  findings.push({
-    heading: criticalPct >= 50
-      ? "The majority of respondents are in energy poverty"
-      : criticalPct >= 25
-        ? "A substantial minority of respondents are in energy poverty"
-        : "Most respondents are energy secure or near it",
-    body: criticalPct >= 25
-      ? `${criticalPct.toFixed(0)}% of respondents fall in tiers D and E, meaning they combine short daily supply with a high share of income spent on energy. ${securePct.toFixed(0)}% sit in tiers A and B. On this evidence, interventions aimed at supply hours alone will not move households out of the lower tiers unless the cost burden moves with them.`
-      : `${securePct.toFixed(0)}% of respondents fall in tiers A and B, with ${criticalPct.toFixed(0)}% in tiers D and E. The distribution suggests the binding constraint in this population is not baseline access but reliability and cost at the margin.`,
-    basis: `${n} verified responses. Tier mix: ${TIER_ORDER.map((t) => `${t} ${byTier.get(t) ?? 0}`).join(", ")}.`,
-    weight: "headline",
-  });
+  if (classified === 0) {
+    caveats.push(
+      `None of the ${n} verified responses carry both an income and an energy expense figure, so no tier could be computed and no energy-poverty finding is published.`
+    );
+  } else {
+    const critical = (byTier.get("D") ?? 0) + (byTier.get("E") ?? 0);
+    const secure = (byTier.get("A") ?? 0) + (byTier.get("B") ?? 0);
+    const criticalPct = pct(critical, classified);
+    const securePct = pct(secure, classified);
+
+    findings.push({
+      heading: criticalPct >= 50
+        ? "The majority of classified respondents are in energy poverty"
+        : criticalPct >= 25
+          ? "A substantial minority of classified respondents are in energy poverty"
+          : "Most classified respondents are energy secure or near it",
+      body: criticalPct >= 25
+        ? `${criticalPct.toFixed(0)}% ${ofClassified} fall in tiers D and E, meaning they combine short daily supply with a high share of income spent on energy. ${securePct.toFixed(0)}% sit in tiers A and B. On this evidence, interventions aimed at supply hours alone will not move households out of the lower tiers unless the cost burden moves with them.`
+        : `${securePct.toFixed(0)}% ${ofClassified} fall in tiers A and B, with ${criticalPct.toFixed(0)}% in tiers D and E. The distribution suggests the binding constraint in this population is not baseline access but reliability and cost at the margin.`,
+      basis: `${classified} of ${n} verified responses placed in a tier${unclassified ? `; ${unclassified} unclassified (no income or no energy expense figure)` : ""}. Tier mix: ${tierMix}.`,
+      weight: "headline",
+    });
+  }
+
+  if (unclassified > 0) {
+    caveats.push(
+      `${unclassified} of ${n} verified responses (${pct(unclassified, n).toFixed(0)}%) could not be placed in a tier because they lack an income or an energy expense figure. Tier percentages above are shares of the ${classified} classified responses, not of all respondents.`
+    );
+  }
 
   // ── 2. Energy burden ───────────────────────────────────────────────────
   if (d.stats.avg_burden_pct != null) {
@@ -169,7 +192,7 @@ export function analyse(d: AnalysisInput): { findings: Finding[]; summary: strin
   caveats.push("Incomes and energy spending are self-reported and unaudited.");
 
   const headline = findings.find((f) => f.weight === "headline");
-  const summary = `${d.title}: ${n} verified responses. ${headline ? headline.heading + "." : ""} Average supply ${d.stats.avg_light_hours?.toFixed(1) ?? "—"} hours a day, average energy burden ${d.stats.avg_burden_pct?.toFixed(1) ?? "—"}% of income, median income ${naira(d.stats.median_income)}.`;
+  const summary = `${d.title}: ${n} verified responses${unclassified ? `, ${classified} of them classified into a tier` : ""}. ${headline ? headline.heading + "." : ""} Average supply ${d.stats.avg_light_hours?.toFixed(1) ?? "—"} hours a day, average energy burden ${d.stats.avg_burden_pct?.toFixed(1) ?? "—"}% of income, median income ${naira(d.stats.median_income)}.`;
 
   return { findings, summary, caveats };
 }

@@ -3,11 +3,12 @@ import { createHash, randomBytes } from "node:crypto";
 import { resolveMx, resolve4 } from "node:dns/promises";
 import { sendSystemEmail } from "@/lib/mailer";
 import { db } from "@/lib/supabase-server";
-import { ok, err, requireAuth } from "@/lib/api-helpers";
+import { ok, err, requireAuth, requireRole } from "@/lib/api-helpers";
 import { checkRateLimitDurable } from "@/lib/rate-limit";
-import { cacheGet, cacheSet } from "@/lib/redis";
+import { cacheGet, cacheSet, cacheDel } from "@/lib/redis";
 import { searchPlacesNG } from "@/lib/geocode";
 import { computeTier, VERIFY_TTL_HOURS, type TierConfig } from "@/lib/pena";
+import { normStateKey } from "@/lib/nbs-benchmarks";
 
 // Public respondent endpoints, keyed by the unguessable share token.
 // GET  /api/pena/r/:token            — form definition (open forms only)
@@ -20,6 +21,10 @@ import { computeTier, VERIFY_TTL_HOURS, type TierConfig } from "@/lib/pena";
 //   2. DB-unique email per form (033).
 //   3. One submission per IP per form (hash compare) — holds even if the
 //      respondent signs out or switches Google accounts on the same device.
+//      The enumerator exemption below is editor-and-above only: it waives the
+//      duplicate cap AND the email confirmation, so a bare viewer account
+//      holding it meant any login could push auto-verified rows into the
+//      published statistics.
 //      NOTE: Nigerian mobile carriers CGNAT thousands of users behind one IP,
 //      so a hard 1-per-IP silently locks out neighbours on the same carrier —
 //      3 tolerates shared networks while still stopping bulk stuffing (the
@@ -35,17 +40,56 @@ type Question = {
 async function loadForm(token: string) {
   const { data } = await db()
     .from("pena_forms")
-    .select("id, title, description, consent_text, status, tier_config, require_verification")
+    .select("id, title, description, consent_text, status, tier_config, require_verification, slug")
     .eq("share_token", token)
     .single();
   return data;
 }
 
-// Public origin for links in emails — honour the proxy headers on Vercel
+// Public origin for links in emails. Configured first: a confirmation link
+// built from request headers is a link an attacker can aim, and it would go
+// out over NEDB's own mail. The header path stays as a fallback so a
+// deployment without the variable still sends a working link.
 function siteOrigin(req: NextRequest): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_ORIGIN?.trim();
+  if (configured) return configured.replace(/\/+$/, "");
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "nedb.vercel.app";
   const proto = req.headers.get("x-forwarded-proto") ?? "https";
   return `${proto}://${host}`;
+}
+
+// Anything interpolated into an email body is escaped. The assessment title is
+// admin-authored rather than public, so this is a seatbelt, not a fix for a
+// live hole.
+const escapeHtml = (v: string) =>
+  v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+// Nigeria's bounding box, padded for offshore and border points. A coordinate
+// outside it is not a Nigerian household: it is a typo, a stale pin, or a
+// script. Drop the pin rather than refuse the response — the answers are worth
+// having without a map location.
+const NG_BOUNDS = { latMin: 3.5, latMax: 14.5, lngMin: 2.0, lngMax: 15.5 };
+const inNigeria = (la: number | null, ln: number | null): boolean =>
+  la != null && ln != null && isFinite(la) && isFinite(ln) &&
+  la >= NG_BOUNDS.latMin && la <= NG_BOUNDS.latMax &&
+  ln >= NG_BOUNDS.lngMin && ln <= NG_BOUNDS.lngMax;
+
+// State names are grouped on verbatim string equality by every aggregate in
+// the module, so "Lagos", "lagos" and "Lagos State" would report as three
+// states. Fold a submitted name onto the spelling the lgas table uses, and
+// refuse one that matches no state at all. Cached in module scope: the list
+// changes when Nigeria creates a state.
+let statesCache: { names: string[]; at: number } | null = null;
+async function canonicalState(typed: string): Promise<string | null> {
+  if (!statesCache || Date.now() - statesCache.at > 3_600_000) {
+    const { data } = await db().from("lgas").select("state_name");
+    const names = [...new Set((data ?? []).map((r) => r.state_name as string).filter(Boolean))];
+    if (names.length) statesCache = { names, at: Date.now() };
+  }
+  const names = statesCache?.names ?? [];
+  if (!names.length) return typed;   // lookup unavailable: never block a real respondent
+  const key = normStateKey(typed);
+  return names.find((n) => normStateKey(n) === key) ?? null;
 }
 
 async function loadQuestions(formId: number) {
@@ -142,7 +186,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   // door on one phone and one connection. Their submissions are attributed
   // (collected_by) and get a wider rate limit; the per-IP duplicate cap does
   // not apply to them. Anonymous respondents keep the strict limits.
-  const enumerator = await requireAuth(req);
+  const enumerator = await requireRole(req, "editor");
   const rl = enumerator
     ? await checkRateLimitDurable(`pena-submit-enum:${enumerator.username ?? enumerator.sub}`, 100, 3600)
     : await checkRateLimitDurable(`pena-submit:${ip}`, 5, 3600);
@@ -251,7 +295,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     lga = data;
   }
   const stateQ = questions.find((q) => q.qtype === "state_ref");
-  const stateName = lga?.state_name ?? (stateQ ? (answers[stateQ.slug] as string) ?? null : null);
+  let stateName = lga?.state_name ?? null;
+  if (!stateName && stateQ) {
+    const typed = (answers[stateQ.slug] as string) ?? null;
+    if (typed) {
+      stateName = await canonicalState(typed);
+      if (!stateName) return err(`"${stateQ.label}": choose a Nigerian state from the list.`);
+    }
+  }
 
   const addrQ = questions.find((q) => q.qtype === "address");
   const addressText = addrQ ? ((answers[addrQ.slug] as string) ?? null) : null;
@@ -259,10 +310,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   // Coordinates: respondent picked a geocode suggestion → client sends lat/lng.
   // Otherwise best-effort server geocode; never block the submission on it.
   let lat = num(body.lat), lng = num(body.lng);
+  if (!inNigeria(lat, lng)) { lat = null; lng = null; }
   let geocodeSource: string | null = lat != null && lng != null ? "respondent" : null;
   if (lat == null && addressText) {
     const hits = await searchPlacesNG(`${addressText}, ${lga?.name ?? ""}, ${stateName ?? ""}, Nigeria`, 1);
-    if (hits[0]) { lat = hits[0].lat; lng = hits[0].lng; geocodeSource = "server"; }
+    if (hits[0] && inNigeria(hits[0].lat, hits[0].lng)) {
+      lat = hits[0].lat; lng = hits[0].lng; geocodeSource = "server";
+    }
   }
 
   // An expired pending row must not hold the respondent's email hostage —
@@ -284,12 +338,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   const needsLink = !!form.require_verification && !!email && !googleEmail && !enumerator;
   const verifyToken = needsLink ? randomBytes(24).toString("hex") : null;
 
-  const { error } = await db().from("pena_responses").insert({
+  const row: Record<string, unknown> = {
     form_id: form.id,
     verify_status: needsLink ? "pending" : "verified",
     verify_token: verifyToken,
     verified_at: needsLink ? null : new Date().toISOString(),
     answers,
+    // The wording this respondent actually agreed to. consent_text on the form
+    // is editable at any time, so a timestamp alone cannot show what was
+    // consented to — which is the one thing NDPA 2023 asks the controller to
+    // be able to show.
+    consent_text: form.consent_text,
     state_code: lga?.state_code ?? null,
     state_name: stateName,
     lga_id: lga?.id ?? null,
@@ -307,7 +366,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     // Key only present for enumerator submissions so public submissions keep
     // working even before migration 041 adds the column.
     ...(enumerator ? { collected_by: String(enumerator.username ?? enumerator.sub) } : {}),
-  });
+  };
+
+  let { error } = await db().from("pena_responses").insert(row);
+
+  // A push deploys before the migration can be run by hand, and a submit path
+  // that inserts a column the database does not have yet would take public
+  // collection down in the window between the two. Drop the consent snapshot
+  // and take the response, loudly, rather than lose it. PostgREST answers with
+  // PGRST204 from its schema cache before Postgres ever sees the statement;
+  // 42703 is the raw undefined_column it would raise otherwise. Remove this
+  // fallback once 057 is applied everywhere.
+  if ((error?.code === "PGRST204" || error?.code === "42703") && "consent_text" in row) {
+    console.warn("pena: consent_text column missing — run migration 057. Response stored without its consent snapshot.");
+    delete row.consent_text;
+    ({ error } = await db().from("pena_responses").insert(row));
+  }
 
   if (error) {
     if (error.code === "23505") return err("You have already filled this assessment with this email address.", 409);
@@ -318,12 +392,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     const link = `${siteOrigin(req)}/v/${verifyToken}`;
     await sendSystemEmail({
       to: email!,
-      subject: `Confirm your response — ${form.title}`,
+      subject: `Confirm your response — ${form.title}`,   // plain text, not HTML
       heading: "Confirm your assessment response",
       bodyHtml: `
         <p style="font-size:14px;color:#5C5650;line-height:1.6;margin:0 0 20px">
           You (or someone using this email address) just submitted a response to
-          <strong>${form.title}</strong> on the Nigeria Energy Data Bank. Tap the button
+          <strong>${escapeHtml(form.title)}</strong> on the Nigeria Energy Data Bank. Tap the button
           below to confirm it was you — this link works once and expires in 48 hours.
         </p>
         <p style="margin:0 0 24px">
@@ -341,5 +415,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     });
   }
 
+  // This response counted immediately, so the published aggregates are already
+  // out of date. The magic-link path busts the same key on confirmation.
+  if (form.slug) await cacheDel(`pena:pub:${form.slug}`);
   return ok({ success: true, message: "Response recorded. Thank you for contributing to Nigeria's energy planning." });
 }

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok, err, requireAdmin } from "@/lib/api-helpers";
 import { recentViews } from "@/lib/pena-access";
+import { cacheDel } from "@/lib/redis";
 import { logAudit } from "@/lib/audit";
 
 // GET /api/pena/forms/:id/access — who may see this assessment, and who has.
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
 
   const [{ data: form }, { data: grants }, views, { data: staff }] = await Promise.all([
-    db().from("pena_forms").select("id, title, is_restricted, owner_agency").eq("id", id).single(),
+    db().from("pena_forms").select("id, title, slug, is_restricted, owner_agency, is_public_stats").eq("id", id).single(),
     db().from("pena_form_access").select("username, can_export, granted_by, granted_at").eq("form_id", id).order("granted_at"),
     recentViews(Number(id)),
     db().from("staff_users").select("username, full_name, role, agency").eq("is_active", true).order("full_name"),
@@ -31,22 +32,43 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const body = await req.json().catch(() => null);
   if (!body) return err("Bad request");
 
-  const { data: form } = await db().from("pena_forms").select("id, title").eq("id", id).single();
+  const { data: form } = await db().from("pena_forms").select("id, title, slug, is_public_stats").eq("id", id).single();
   if (!form) return err("Assessment not found", 404);
 
-  // Restrict or open the assessment
+  // Restrict or open the assessment.
+  //
+  // is_restricted and is_public_stats are independent switches: restricting an
+  // assessment limits which STAFF may open it, and does nothing to the
+  // k-anonymised aggregates published at /assessments/<slug>. An admin who
+  // restricts an assessment expecting it to be locked down would leave the
+  // open-data page up. The panel now says so and offers to withdraw it in the
+  // same action; the withdrawal stays deliberate rather than automatic,
+  // because silently pulling published open data is its own kind of wrong for
+  // a statistics producer.
   if (body.is_restricted !== undefined) {
-    const { error } = await db()
-      .from("pena_forms")
-      .update({ is_restricted: !!body.is_restricted, owner_agency: body.owner_agency ?? null })
-      .eq("id", id);
+    const patch: Record<string, unknown> = {
+      is_restricted: !!body.is_restricted,
+      owner_agency: body.owner_agency ?? null,
+    };
+    const withdrawing = body.is_public_stats !== undefined && !!form.is_public_stats !== !!body.is_public_stats;
+    if (body.is_public_stats !== undefined) patch.is_public_stats = !!body.is_public_stats;
+
+    const { error } = await db().from("pena_forms").update(patch).eq("id", id);
     if (error) return err(error.message, 500);
     await logAudit({
       action: body.is_restricted ? "PENA_RESTRICT" : "PENA_UNRESTRICT",
       performed_by: who,
       notes: `${body.is_restricted ? "Restricted" : "Opened"} assessment "${form.title}"${body.owner_agency ? ` to ${body.owner_agency}` : ""}`,
     });
-    return ok({ updated: true });
+    if (withdrawing) {
+      await logAudit({
+        action: body.is_public_stats ? "PENA_PUBLISH_STATS" : "PENA_WITHDRAW_STATS",
+        performed_by: who,
+        notes: `${body.is_public_stats ? "Published" : "Withdrew"} open-data aggregates for "${form.title}"`,
+      });
+      if (form.slug) await cacheDel(`pena:pub:${form.slug}`);
+    }
+    return ok({ updated: true, is_public_stats: patch.is_public_stats ?? form.is_public_stats });
   }
 
   // Grant access to a named user

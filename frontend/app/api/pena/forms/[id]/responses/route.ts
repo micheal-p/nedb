@@ -1,16 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase-server";
 import { ok, err, requireAuth, requireAdmin } from "@/lib/api-helpers";
+import { resolveAccess, logView } from "@/lib/pena-access";
 import { cacheDel } from "@/lib/redis";
 import { logAudit } from "@/lib/audit";
 
 // GET /api/pena/forms/:id/responses — filterable response list.
 // Filters: ?state=Lagos&lga=Ikeja&tier=D&income_min=0&income_max=50000
-// PII policy: admins see everything; non-admin staff get analytics fields
-// only — email, address, coordinates and PII-flagged answers are redacted
-// (matching the consent promise that personal details stay confidential).
-// ?format=csv (admin only) streams the full filtered set, paged past
-// PostgREST's 1000-row cap so large surveys are never silently truncated.
+//
+// ACCESS: the same resolveAccess() gate the insights route uses. This route
+// returns the actual respondent rows, so gating it on role alone was strictly
+// weaker than the page that only shows charts: a restricted assessment was
+// refused by /insights and served in full here, and a grant that promised
+// identifiable access did nothing. Levels:
+//   none         — refused, including every restricted assessment the caller
+//                  has not been granted on
+//   aggregate    — rows with email, address, coordinates and PII-flagged
+//                  answers stripped (the consent promise that personal
+//                  details stay confidential)
+//   identifiable — the full row
+//   export       — the full row plus CSV
+//
+// Every access is written to pena_view_log. Reading the response table and
+// exporting it are the two points where personal data actually leaves the
+// platform, so they are exactly the accesses NDPA 2023 expects to be
+// answerable, and they were the two that were never logged.
+//
+// ?format=csv streams the full filtered set, paged past PostgREST's 1000-row
+// cap so large surveys are never silently truncated.
 // DELETE ?response_id=N — remove one response (admin only; NDPA removal right).
 
 const SELECT = "id, answers, state_name, lga_id, lga_name, address_text, lat, lng, email, income, light_hours, energy_expense, tier, verify_status, created_at";
@@ -25,12 +42,22 @@ type Row = {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req);
   if (!auth) return err("Unauthorized", 401);
-  const isAdmin = ["admin", "superadmin"].includes((auth as { role?: string }).role ?? "");
   const { id } = await params;
+
+  const viewer = await resolveAccess(
+    Number(id),
+    String(auth.username ?? auth.sub ?? "unknown"),
+    String((auth as { role?: string }).role ?? "viewer")
+  );
+  if (viewer.level === "none") return err(viewer.reason, 403);
+  const identifiable = viewer.level === "identifiable" || viewer.level === "export";
 
   const sp = new URL(req.url).searchParams;
   const csv = sp.get("format") === "csv";
-  if (csv && !isAdmin) return err("CSV export contains personal data — administrator only.", 403);
+  if (csv && viewer.level !== "export")
+    return err("CSV export takes personal data off the platform — administrators and users granted export only.", 403);
+
+  await logView(Number(id), viewer.username, csv ? "export" : "detail", identifiable);
 
   const baseQuery = () => {
     let q = db()
@@ -92,8 +119,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (error) return err(error.message, 500);
 
   let rows = (data ?? []) as Row[];
-  if (!isAdmin) {
-    // Redact PII for non-admin staff: direct columns + answers whose
+  if (!identifiable) {
+    // Redact PII below the identifiable level: direct columns + answers whose
     // question is flagged is_pii.
     const { data: piiQs, error: piiErr } = await db()
       .from("pena_questions").select("slug").eq("form_id", id).eq("is_pii", true);
@@ -111,7 +138,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }));
   }
 
-  return ok({ total: count ?? 0, rows, redacted: !isAdmin });
+  return ok({ total: count ?? 0, rows, redacted: !identifiable, access: { level: viewer.level, reason: viewer.reason } });
 }
 
 // DELETE /api/pena/forms/:id/responses?response_id=N — NDPA "right to removal".
