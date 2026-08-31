@@ -50,8 +50,12 @@ async function loadForm(token: string) {
 // built from request headers is a link an attacker can aim, and it would go
 // out over NEDB's own mail. The header path stays as a fallback so a
 // deployment without the variable still sends a working link.
+//
+// Deliberately NOT a NEXT_PUBLIC_ name: those are inlined at build time, and
+// the site origin is the one setting that changes when a custom domain lands.
+// Read on the server at request time, it can be changed without a rebuild.
 function siteOrigin(req: NextRequest): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_ORIGIN?.trim();
+  const configured = process.env.SITE_ORIGIN?.trim();
   if (configured) return configured.replace(/\/+$/, "");
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "nedb.vercel.app";
   const proto = req.headers.get("x-forwarded-proto") ?? "https";
@@ -368,20 +372,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     ...(enumerator ? { collected_by: String(enumerator.username ?? enumerator.sub) } : {}),
   };
 
-  let { error } = await db().from("pena_responses").insert(row);
-
-  // A push deploys before the migration can be run by hand, and a submit path
-  // that inserts a column the database does not have yet would take public
-  // collection down in the window between the two. Drop the consent snapshot
-  // and take the response, loudly, rather than lose it. PostgREST answers with
-  // PGRST204 from its schema cache before Postgres ever sees the statement;
-  // 42703 is the raw undefined_column it would raise otherwise. Remove this
-  // fallback once 057 is applied everywhere.
-  if ((error?.code === "PGRST204" || error?.code === "42703") && "consent_text" in row) {
-    console.warn("pena: consent_text column missing — run migration 057. Response stored without its consent snapshot.");
-    delete row.consent_text;
-    ({ error } = await db().from("pena_responses").insert(row));
-  }
+  const { error } = await db().from("pena_responses").insert(row);
 
   if (error) {
     if (error.code === "23505") return err("You have already filled this assessment with this email address.", 409);
