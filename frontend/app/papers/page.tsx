@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
+import { SkeletonCards, EmptyState } from "@/components/ui/Loading";
 import Footer from "@/components/layout/Footer";
 
 type Paper = {
@@ -42,16 +43,16 @@ export default function PapersIndexPage() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)", fontSize: "0.82rem" }}>Loading…</div>
+          <SkeletonCards rows={3} />
         ) : papers.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "4rem 2rem", background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", color: "var(--ink-4)", fontSize: "0.82rem" }}>
-            No papers published yet.
-          </div>
+          <EmptyState
+            title="No papers published yet"
+            body="Working papers are generated from a published assessment's aggregates against a frozen data vintage, then read and approved before they appear here. The first one publishes when its assessment clears the privacy floor." />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {papers.map((p) => (
               <Link key={p.paper_no} href={`/papers/${slugOf(p.paper_no)}`} style={{ textDecoration: "none" }}>
-                <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.1rem 1.25rem", cursor: "pointer", transition: "border-color 0.15s" }}
+                <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.1rem 1.25rem", cursor: "pointer", transition: "border-color 0.15s" }}
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.68rem", color: "var(--green)", fontWeight: 700, marginBottom: 4 }}>{p.paper_no}</div>

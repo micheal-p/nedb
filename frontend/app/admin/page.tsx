@@ -541,7 +541,7 @@ export default function AdminPage() {
             )}
           </button>
           <button style={TAB_STYLE(tab === "anomalies")} onClick={() => { setTab("anomalies"); loadAnomalies(); setMsg(null); }}>
-            Anomalies {anomalies.length > 0 && <span style={{ marginLeft: 4, background: "#F59E0B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: "0.6rem", fontWeight: 800 }}>{anomalies.length}</span>}
+            Anomalies {anomalies.length > 0 && <span style={{ marginLeft: 4, background: "var(--amber)", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: "0.6rem", fontWeight: 800 }}>{anomalies.length}</span>}
           </button>
           <button style={TAB_STYLE(tab === "data-requests")} onClick={() => { setTab("data-requests"); loadDataRequests(); setMsg(null); }}>
             Data Requests{dataReqs.filter((r) => r.status === "pending").length > 0 && <span style={{ marginLeft: 6, background: "#C0392B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: "0.6rem", fontWeight: 800 }}>{dataReqs.filter((r) => r.status === "pending").length}</span>}
@@ -1116,7 +1116,7 @@ export default function AdminPage() {
                 <div>
                   <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>API Key — share with device operators only</div>
                   <div style={{ display: "flex", alignItems: "stretch", gap: 8, flexWrap: "wrap" }}>
-                    <code style={{ flex: 1, minWidth: 0, background: "var(--ink)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 14px", fontSize: "0.78rem", fontFamily: "var(--font-mono)", color: "var(--green)", letterSpacing: "0.04em", display: "block" }}>
+                    <code style={{ flex: 1, minWidth: 0, background: "var(--ink-surface)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 14px", fontSize: "0.78rem", fontFamily: "var(--font-mono)", color: "var(--green)", letterSpacing: "0.04em", display: "block" }}>
                       Add <strong style={{ color: "#fff" }}>IOT_API_KEY</strong> to your Vercel environment variables
                     </code>
                     <button onClick={() => copyToClipboard("X-API-Key", "key")} style={{ padding: "8px 14px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)", color: "var(--ink-4)", fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -1376,7 +1376,7 @@ Content-Type: application/json
                         <td>
                           <span style={{ fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px", borderRadius: 4,
                             background: entry.action === "INSERT" ? "var(--green-strong)" : entry.action === "DELETE" ? "var(--red-tint)" : "rgba(230,152,0,0.1)",
-                            color: entry.action === "INSERT" ? "var(--green-deep)" : entry.action === "DELETE" ? "var(--red)" : "#92400e" }}>
+                            color: entry.action === "INSERT" ? "var(--green-deep)" : entry.action === "DELETE" ? "var(--red)" : "var(--amber)" }}>
                             {entry.action}
                           </span>
                         </td>
@@ -1433,7 +1433,7 @@ Content-Type: application/json
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {pendingSessions.map((session) => (
-                  <div key={session.id} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem", borderLeft: "4px solid var(--amber)" }}>
+                  <div key={session.id} style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem", borderLeft: "4px solid var(--amber)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem" }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
@@ -1494,7 +1494,7 @@ Content-Type: application/json
 
             {/* Approve modal */}
             {approveId !== null && (
-              <div style={{ marginBottom: "1.5rem", padding: "1.25rem", background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-2)" }}>
+              <div style={{ marginBottom: "1.5rem", padding: "1.25rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-2)" }}>
                 <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.5rem" }}>Set Initial Password</div>
                 <div style={{ fontSize: "0.78rem", color: "var(--ink-4)", marginBottom: "1rem" }}>An account will be created for this user. Set a temporary password to share with them securely.</div>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -1512,7 +1512,7 @@ Content-Type: application/json
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {requests.map((req) => (
-                  <div key={req.id} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem", borderLeft: `4px solid ${req.status === "pending" ? "var(--amber)" : req.status === "approved" ? "var(--green)" : "#aaa"}` }}>
+                  <div key={req.id} style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem", borderLeft: `4px solid ${req.status === "pending" ? "var(--amber)" : req.status === "approved" ? "var(--green)" : "#aaa"}` }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem" }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
@@ -1586,7 +1586,7 @@ Content-Type: application/json
                         <td style={{ padding: "0.625rem 0.75rem", fontFamily: "var(--font-mono)", fontWeight: 700, color: "#E04F39" }}>{a.value?.toLocaleString()}</td>
                         <td style={{ padding: "0.625rem 0.75rem", fontFamily: "var(--font-mono)", color: "var(--ink-4)" }}>{a.mean_value?.toFixed(2)}</td>
                         <td style={{ padding: "0.625rem 0.75rem", fontFamily: "var(--font-mono)", color: "var(--ink-4)" }}>{a.stddev_value?.toFixed(2)}</td>
-                        <td style={{ padding: "0.625rem 0.75rem", fontFamily: "var(--font-mono)", fontWeight: 700, color: "#F59E0B" }}>{a.z_score?.toFixed(1)}σ</td>
+                        <td style={{ padding: "0.625rem 0.75rem", fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--amber)" }}>{a.z_score?.toFixed(1)}σ</td>
                         <td style={{ padding: "0.625rem 0.75rem", fontSize: "0.72rem", color: "var(--ink-5)" }}>{new Date(a.flagged_at).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</td>
                         <td style={{ padding: "0.625rem 0.75rem" }}>
                           <button onClick={() => dismissAnomaly(a.id)} style={{ fontSize: "0.72rem", padding: "3px 10px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", color: "var(--ink-3)" }}>Dismiss</button>
@@ -1622,7 +1622,7 @@ Content-Type: application/json
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {dataReqs.map((req) => (
-                  <div key={req.id} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem", borderLeft: `4px solid ${req.status === "pending" ? "var(--amber,#F59E0B)" : req.status === "fulfilled" ? "var(--green)" : "#aaa"}` }}>
+                  <div key={req.id} style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem", borderLeft: `4px solid ${req.status === "pending" ? "var(--amber,#F59E0B)" : req.status === "fulfilled" ? "var(--green)" : "#aaa"}` }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem" }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>

@@ -101,10 +101,10 @@ export default function AdminPapersPage() {
           <Link href="/admin" style={{ fontSize: "0.78rem", color: "var(--ink-4)", textDecoration: "none" }}>← Admin</Link>
         </div>
 
-        {msg && <div style={{ fontSize: "0.8rem", color: "var(--ink-2)", background: "#fff", border: "1px solid var(--border)", padding: "0.6rem 1rem", marginBottom: "1rem" }}>{msg}</div>}
+        {msg && <div style={{ fontSize: "0.8rem", color: "var(--ink-2)", background: "var(--surface-white)", border: "1px solid var(--border)", padding: "0.6rem 1rem", marginBottom: "1rem" }}>{msg}</div>}
 
         {/* Generate */}
-        <div style={{ background: "#fff", border: "1px solid var(--border)", padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
+        <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
           <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.75rem" }}>Generate a paper</div>
           <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "flex-end" }}>
             <label style={{ flex: "2 1 240px" }}>
@@ -137,7 +137,7 @@ export default function AdminPapersPage() {
 
         {/* Papers */}
         {loading ? <div style={{ textAlign: "center", padding: "2rem", color: "var(--ink-5)", fontSize: "0.82rem" }}>Loading…</div> : (
-          <div style={{ background: "#fff", border: "1px solid var(--border)", overflowX: "auto" }}>
+          <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
               <thead><tr style={{ borderBottom: "1.5px solid var(--ink)", textAlign: "left" }}>
                 <th style={{ padding: "8px 12px" }}>Paper</th><th style={{ padding: "8px 12px" }}>Title</th>

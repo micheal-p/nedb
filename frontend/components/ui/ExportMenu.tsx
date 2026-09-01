@@ -38,7 +38,7 @@ export default function ExportMenu({ seriesId, templateUrl }: Props) {
         </svg>
       </button>
       {open && (
-        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 40, minWidth: 190, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 8px 28px rgba(0,0,0,0.14)", overflow: "hidden", padding: "4px 0" }}>
+        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 40, minWidth: 190, background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 8px 28px rgba(0,0,0,0.14)", overflow: "hidden", padding: "4px 0" }}>
           <a href={`/api/series/${seriesId}/export?format=csv`} download style={item} onClick={() => setOpen(false)}>Download CSV</a>
           <a href={`/api/series/${seriesId}/export?format=xlsx`} download style={item} onClick={() => setOpen(false)}>Download Excel</a>
           <a href={templateUrl} style={item} onClick={() => setOpen(false)}>Upload template (XLSX)</a>

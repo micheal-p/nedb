@@ -10,6 +10,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import CoatOfArms from "@/components/layout/CoatOfArms";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 import { getToken, getRole, getFullName, clearTokens } from "@/lib/auth";
 import { ADMIN_NAV, ADMIN_ICONS, adminSectionTitle } from "@/lib/admin-modules";
 
@@ -80,7 +81,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", padding: "0.875rem 1.25rem" }}>
         <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name || "Administrator"}</div>
-        <button onClick={logout} style={{ marginTop: 6, fontSize: "0.7rem", fontWeight: 700, color: "#fca5a5", background: "none", border: "none", padding: 0, cursor: "pointer" }}>Log out →</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+          <button onClick={logout} style={{ fontSize: "0.7rem", fontWeight: 700, color: "#fca5a5", background: "none", border: "none", padding: 0, cursor: "pointer" }}>Log out →</button>
+          <span style={{ color: "rgba(255,255,255,0.75)" }}><ThemeToggle compact /></span>
+        </div>
       </div>
     </nav>
   );
@@ -100,7 +104,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         {/* Slim top bar */}
-        <div style={{ height: 52, background: "#fff", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12, padding: "0 1.25rem", position: "sticky", top: 0, zIndex: 20 }}>
+        <div style={{ height: 52, background: "var(--surface-white)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12, padding: "0 1.25rem", position: "sticky", top: 0, zIndex: 20 }}>
           <button className="admin-rail-toggle" onClick={() => setMobileOpen((o) => !o)} aria-label="Menu"
             style={{ display: "none", flexDirection: "column", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 4 }}>
             <span style={{ width: 18, height: 2, background: "var(--ink-3)" }} />

@@ -18,8 +18,8 @@ interface Data { board: Row[]; summary: { fresh: number; overdue: number; stale:
 
 const STATUS: Record<string, { label: string; bg: string; fg: string }> = {
   fresh:   { label: "Fresh",   bg: "var(--green-tint)", fg: "var(--green)" },
-  overdue: { label: "Overdue", bg: "#FEF3C7", fg: "#92400E" },
-  stale:   { label: "Stale",   bg: "#FEE2E2", fg: "#991B1B" },
+  overdue: { label: "Overdue", bg: "var(--amber-tint)", fg: "var(--amber)" },
+  stale:   { label: "Stale",   bg: "var(--red-tint)", fg: "var(--red)" },
   empty:   { label: "No data", bg: "var(--surface-muted)", fg: "var(--ink-5)" },
 };
 const VIA: Record<string, string> = { staff: "Staff", iot: "IoT device", auto: "Auto-ingested" };
@@ -84,7 +84,7 @@ export default function FreshnessAdmin() {
                           <td className="td-primary"><Link href={`/series/${r.id}`} style={{ color: "var(--ink)" }}>{r.name}</Link></td>
                           <td style={{ textTransform: "capitalize" }}>{r.frequency}</td>
                           <td style={{ fontFamily: "var(--font-mono)" }}>{r.latest_period ?? "—"}</td>
-                          <td style={{ fontFamily: "var(--font-mono)", color: r.age_days !== null && r.age_days > r.max_age_days ? "#991B1B" : undefined }}>
+                          <td style={{ fontFamily: "var(--font-mono)", color: r.age_days !== null && r.age_days > r.max_age_days ? "var(--red)" : undefined }}>
                             {r.age_days !== null ? `${r.age_days}d` : "—"}
                             <span style={{ color: "var(--ink-5)" }}> / {r.max_age_days}d</span>
                           </td>

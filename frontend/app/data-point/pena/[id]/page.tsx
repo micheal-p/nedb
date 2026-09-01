@@ -52,7 +52,7 @@ const PAGE_SIZE = 50;
 const naira = (v: number | null) => (v == null ? "—" : `₦${Math.round(v).toLocaleString()}`);
 const fixed = (v: number | null, d = 1) => (v == null ? "—" : v.toFixed(d));
 
-const ctl: React.CSSProperties = { padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: "0.76rem", background: "#fff", color: "var(--ink-2)" };
+const ctl: React.CSSProperties = { padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: "0.76rem", background: "var(--surface-white)", color: "var(--ink-2)" };
 
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
@@ -75,7 +75,7 @@ function TierPill({ t }: { t: PenaTier }) {
 
 function StatTile({ label, value, sub, hint, accent = false }: { label: string; value: string; sub?: string; hint?: string; accent?: boolean }) {
   return (
-    <div title={hint} style={{ background: "#fff", border: "1px solid var(--border)", borderTop: accent ? "3px solid var(--green)" : "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.1rem 1.3rem", flex: "1 1 165px", minWidth: 165, cursor: hint ? "help" : "default", boxShadow: "0 1px 3px rgba(16,24,16,0.05)" }}>
+    <div title={hint} style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: accent ? "3px solid var(--green)" : "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.1rem 1.3rem", flex: "1 1 165px", minWidth: 165, cursor: hint ? "help" : "default", boxShadow: "0 1px 3px rgba(16,24,16,0.05)" }}>
       <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
         {label}
         {hint && (
@@ -524,14 +524,14 @@ export default function PenaInsightsPage() {
           {total > PAGE_SIZE && (
             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.75rem", padding: "0.75rem 0 0.25rem" }}>
               <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-                style={{ padding: "5px 14px", border: "1px solid var(--border)", borderRadius: 4, background: "#fff", fontSize: "0.74rem", color: offset === 0 ? "var(--ink-5)" : "var(--ink-2)", cursor: offset === 0 ? "default" : "pointer" }}>
+                style={{ padding: "5px 14px", border: "1px solid var(--border)", borderRadius: 4, background: "var(--surface-white)", fontSize: "0.74rem", color: offset === 0 ? "var(--ink-5)" : "var(--ink-2)", cursor: offset === 0 ? "default" : "pointer" }}>
                 ← Prev
               </button>
               <span style={{ fontSize: "0.72rem", color: "var(--ink-4)", fontFamily: "var(--font-mono)" }}>
                 Page {Math.floor(offset / PAGE_SIZE) + 1} / {Math.max(1, Math.ceil(total / PAGE_SIZE))}
               </span>
               <button disabled={offset + PAGE_SIZE >= total} onClick={() => setOffset(offset + PAGE_SIZE)}
-                style={{ padding: "5px 14px", border: "1px solid var(--border)", borderRadius: 4, background: "#fff", fontSize: "0.74rem", color: offset + PAGE_SIZE >= total ? "var(--ink-5)" : "var(--ink-2)", cursor: offset + PAGE_SIZE >= total ? "default" : "pointer" }}>
+                style={{ padding: "5px 14px", border: "1px solid var(--border)", borderRadius: 4, background: "var(--surface-white)", fontSize: "0.74rem", color: offset + PAGE_SIZE >= total ? "var(--ink-5)" : "var(--ink-2)", cursor: offset + PAGE_SIZE >= total ? "default" : "pointer" }}>
                 Next →
               </button>
             </div>
@@ -542,13 +542,13 @@ export default function PenaInsightsPage() {
         {/* Response detail modal */}
         {detail && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }} onClick={() => setDetail(null)}>
-            <div className="sheet-on-mobile" style={{ background: "#fff", borderRadius: "var(--r-lg)", width: "100%", maxWidth: 560, maxHeight: "88vh", overflow: "auto", boxShadow: "var(--shadow-3)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-on-mobile" style={{ background: "var(--surface-white)", borderRadius: "var(--r-lg)", width: "100%", maxWidth: 560, maxHeight: "88vh", overflow: "auto", boxShadow: "var(--shadow-3)" }} onClick={(e) => e.stopPropagation()}>
               <div style={{ padding: "1.1rem 1.5rem", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)" }}>Response #{detail.id}</div>
                   <div style={{ fontSize: "0.78rem", color: "var(--ink-4)" }}>{new Date(detail.created_at).toLocaleString()}</div>
                 </div>
-                <button onClick={() => setDetail(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-4)", fontSize: "1.2rem" }}>×</button>
+                <button aria-label="Close" onClick={() => setDetail(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-4)", fontSize: "1.2rem" }}>×</button>
               </div>
 
               <div style={{ padding: "1.25rem 1.5rem" }}>
@@ -590,7 +590,7 @@ export default function PenaInsightsPage() {
                           NDPA 2023: respondents may request removal of their data at any time. Deleting also refreshes the public aggregates.
                         </div>
                         <button onClick={() => { setConfirmDelete(true); setDeleteErr(""); }}
-                          style={{ padding: "0.5rem 1.1rem", background: "#fff", border: "1px solid var(--red)", color: "var(--red)", borderRadius: 6, fontSize: "0.76rem", fontWeight: 700, cursor: "pointer" }}>
+                          style={{ padding: "0.5rem 1.1rem", background: "var(--surface-white)", border: "1px solid var(--red)", color: "var(--red)", borderRadius: 6, fontSize: "0.76rem", fontWeight: 700, cursor: "pointer" }}>
                           Delete Response…
                         </button>
                       </div>

@@ -48,7 +48,7 @@ type GsiWindow = Window & {
 
 const fieldStyle: React.CSSProperties = {
   width: "100%", padding: "11px 12px", border: "1px solid var(--border)", borderRadius: 8,
-  fontSize: "1rem", fontFamily: "var(--font-sans)", boxSizing: "border-box", background: "#fff",
+  fontSize: "1rem", fontFamily: "var(--font-sans)", boxSizing: "border-box", background: "var(--surface-white)",
   color: "var(--ink)", // 16px minimum — anything smaller makes iOS Safari zoom on focus
 };
 
@@ -331,7 +331,7 @@ export default function PenaPublicForm() {
             Nigeria Energy Data Bank · PENA
           </div>
           <select value={lang} onChange={(e) => pickLang(e.target.value as PenaLang)} aria-label={t.langLabel}
-            style={{ padding: "4px 8px", border: "1px solid var(--border)", borderRadius: 6, fontSize: "0.72rem", background: "#fff", color: "var(--ink-3)" }}>
+            style={{ padding: "4px 8px", border: "1px solid var(--border)", borderRadius: 6, fontSize: "0.72rem", background: "var(--surface-white)", color: "var(--ink-3)" }}>
             {PENA_LANGS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
           </select>
         </div>
@@ -345,7 +345,7 @@ export default function PenaPublicForm() {
   );
 
   const card = (children: React.ReactNode) => (
-    <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "3rem 2rem", textAlign: "center" }}>{children}</div>
+    <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "3rem 2rem", textAlign: "center" }}>{children}</div>
   );
 
   if (loadFailed) return shell(card(<>
@@ -409,7 +409,7 @@ export default function PenaPublicForm() {
       <div id="error-summary-anchor"><ErrorSummary errors={fieldErrors} /></div>
 
       {/* Title card */}
-      <div style={{ background: "#fff", border: "1px solid var(--border)", borderTop: "4px solid var(--green)", borderRadius: "var(--r-lg)", padding: "1.75rem 1.75rem 1.5rem", marginBottom: "0.875rem" }}>
+      <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "4px solid var(--green)", borderRadius: "var(--r-lg)", padding: "1.75rem 1.75rem 1.5rem", marginBottom: "0.875rem" }}>
         <h1 style={{ fontSize: "1.45rem", fontWeight: 700, color: "var(--ink)", margin: 0, lineHeight: 1.25 }}>{def.title}</h1>
         {def.description && <p style={{ fontSize: "0.85rem", color: "var(--ink-3)", marginTop: "0.625rem", lineHeight: 1.6 }}>{def.description}</p>}
         <p style={{ fontSize: "0.72rem", color: "var(--ink-5)", marginTop: "0.75rem", marginBottom: 0 }}>{t.requiredNote}</p>
@@ -429,7 +429,7 @@ export default function PenaPublicForm() {
 
       {/* Questions */}
       {(def.questions ?? []).map((q) => (
-        <div key={q.id} id={`q-${q.slug}`} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem 1.75rem", marginBottom: "0.875rem", position: "relative" }}>
+        <div key={q.id} id={`q-${q.slug}`} style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem 1.75rem", marginBottom: "0.875rem", position: "relative" }}>
           <label style={{ display: "block", fontSize: "0.88rem", fontWeight: 600, color: "var(--ink)", marginBottom: "0.7rem" }}>
             {qLabel(q)} {q.is_required && <span style={{ color: "var(--red)" }}>*</span>}
             {q.unit && <span style={{ fontSize: "0.72rem", fontWeight: 400, color: "var(--ink-5)", marginLeft: 6 }}>({q.unit})</span>}
@@ -516,7 +516,7 @@ export default function PenaPublicForm() {
               />
               {geo && <div style={{ fontSize: "0.7rem", color: "var(--green)", marginTop: 6, fontWeight: 600 }}>✓ {t.pinned}</div>}
               {geoOpenFor === q.slug && geoHits.length > 0 && (
-                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 12px 32px rgba(0,0,0,0.12)", zIndex: 20, overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 12px 32px rgba(0,0,0,0.12)", zIndex: 20, overflow: "hidden" }}>
                   {geoHits.map((h, i) => (
                     <button
                       key={i}
@@ -552,7 +552,7 @@ export default function PenaPublicForm() {
       ))}
 
       {/* Consent + submit */}
-      <div id="consent-box" style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem 1.75rem" }}>
+      <div id="consent-box" style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem 1.75rem" }}>
         <label style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", cursor: "pointer" }}>
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 3, width: 16, height: 16, accentColor: "var(--green)" }} />
           <span style={{ fontSize: "0.76rem", color: "var(--ink-3)", lineHeight: 1.6 }}>{def.consent_text}</span>

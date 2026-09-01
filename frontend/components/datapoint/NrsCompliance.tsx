@@ -110,7 +110,7 @@ export default function NrsCompliance({ year }: { year: number }) {
           <span className="panel-title">Reconciliation</span>
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
             <select value={period} onChange={(e) => setPeriod(e.target.value)}
-              style={{ padding: "4px 8px", fontSize: "0.74rem", border: "1px solid var(--border)", borderRadius: 2, background: "#fff", color: "var(--ink-2)" }}>
+              style={{ padding: "4px 8px", fontSize: "0.74rem", border: "1px solid var(--border)", borderRadius: 2, background: "var(--surface-white)", color: "var(--ink-2)" }}>
               {months.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
             {data?.fxRate && (

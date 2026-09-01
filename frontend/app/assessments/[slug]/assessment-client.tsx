@@ -43,7 +43,7 @@ function Kicker({ children }: { children: React.ReactNode }) {
 
 function Tile({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.1rem 1.3rem", flex: "1 1 175px", minWidth: 175, boxShadow: "0 1px 3px rgba(16,24,16,0.05)" }}>
+    <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.1rem 1.3rem", flex: "1 1 175px", minWidth: 175, boxShadow: "0 1px 3px rgba(16,24,16,0.05)" }}>
       <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>{label}</div>
       <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--ink)", fontFamily: "var(--font-mono)", lineHeight: 1, letterSpacing: "-0.01em" }}>{value}</div>
       <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 6, lineHeight: 1.45 }}>{sub}</div>
@@ -121,13 +121,13 @@ export default function PublicAssessmentPage() {
                 Fill This Assessment
               </Link>
             )}
-            <button onClick={() => window.print()} style={{ padding: "0.6rem 1.25rem", background: "#fff", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={() => window.print()} style={{ padding: "0.6rem 1.25rem", background: "var(--surface-white)", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
               Download PDF
             </button>
-            <button onClick={downloadCSV} style={{ padding: "0.6rem 1.25rem", background: "#fff", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={downloadCSV} style={{ padding: "0.6rem 1.25rem", background: "var(--surface-white)", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
               Download CSV
             </button>
-            <button onClick={downloadJSON} style={{ padding: "0.6rem 1.25rem", background: "#fff", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={downloadJSON} style={{ padding: "0.6rem 1.25rem", background: "var(--surface-white)", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
               Download JSON
             </button>
           </div>
@@ -135,7 +135,7 @@ export default function PublicAssessmentPage() {
 
         {collecting ? (
           /* ── Below the privacy floor: progress, not empty panels ─────────── */
-          <div style={{ background: "#fff", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", borderRadius: "var(--r-lg)", padding: "2.5rem 2rem", textAlign: "center", boxShadow: "0 1px 3px rgba(16,24,16,0.05)" }}>
+          <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", borderRadius: "var(--r-lg)", padding: "2.5rem 2rem", textAlign: "center", boxShadow: "0 1px 3px rgba(16,24,16,0.05)" }}>
             <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.11em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.75rem" }}>Data collection in progress</div>
             {/* lineHeight 1 on a 2.2rem face cropped the digits top and bottom. */}
             <div style={{ fontSize: "2.2rem", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--ink)", lineHeight: 1.15 }}>
@@ -258,7 +258,7 @@ export default function PublicAssessmentPage() {
             {/* About this data — the methodology block that separates a
                 statistical publication from a dashboard demo */}
             <Kicker>About This Data</Kicker>
-            <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.5rem 1.75rem", marginTop: "0.25rem" }}>
+            <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.5rem 1.75rem", marginTop: "0.25rem" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.25rem", fontSize: "0.8rem", color: "var(--ink-3)", lineHeight: 1.65 }}>
                 <div>
                   <div style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--ink-4)", marginBottom: 4 }}>How the data is collected</div>

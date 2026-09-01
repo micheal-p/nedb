@@ -91,7 +91,125 @@
   --shadow-1: none;
   --shadow-2: none;
   --shadow-3: 0 2px 8px rgba(0,0,0,0.14);
+
+  /* Deliberately-dark panels (heroes, tags, the user chat bubble) sit on this,
+     NOT on --ink: --ink is a text colour and flips in dark mode, and a hero
+     whose background flipped to near-white under white text would vanish. */
+  --ink-surface:    #14181B;
+
+  color-scheme: light;
 }
+
+/* ── Appearance: dark ────────────────────────────────────────────────────────
+   Same structure, inverted ground. Set via data-theme on <html> before first
+   paint (see layout.tsx) so there is no white flash. Deliberate dark chrome
+   (admin rail, heroes) keeps its literal colours and simply reads as part of
+   the page instead of a block against it. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --green:          #3FA968;
+  --green-deep:     #6CC393;
+  --green-mid:      #34A85F;
+  --green-tint:     #142B1C;
+  --green-line:     #2A5C3E;
+  --green-strong:   #1C3A28;
+
+  --surface:        #101314;
+  --surface-white:  #181D1F;
+  --surface-muted:  #1E2426;
+  --surface-sunken: #0B0E0F;
+  --surface-rule:   #262C2F;
+
+  --ink:            #EDF1F2;
+  --ink-2:          #D8DEE1;
+  --ink-3:          #AEB8BD;
+  --ink-4:          #85929A;
+  --ink-5:          #64717A;
+
+  --border:         #333B3F;
+  --border-soft:    #272E31;
+  --border-strong:  #4B565C;
+
+  --red:            #E57373;
+  --red-tint:       #341917;
+  --amber:          #D9A23D;
+  --amber-tint:     #2E2410;
+  --blue:           #7AA2F7;
+  --blue-tint:      #16213B;
+
+  --ink-surface:    #1B2124;
+  --shadow-3: 0 2px 10px rgba(0,0,0,0.55);
+}
+
+/* ── Appearance: high contrast ───────────────────────────────────────────────
+   Pure blacks on pure white, hard borders, underlined links. A statement of
+   conformance is worthless if this mode is an afterthought, so it shares the
+   token system rather than a bolt-on filter. */
+:root[data-theme="contrast"] {
+  color-scheme: light;
+
+  --green:          #005A22;
+  --green-deep:     #00340F;
+  --green-mid:      #005A22;
+  --green-tint:     #FFFFFF;
+  --green-line:     #005A22;
+  --green-strong:   #DBEAE1;
+
+  --surface:        #FFFFFF;
+  --surface-white:  #FFFFFF;
+  --surface-muted:  #F2F2F2;
+  --surface-sunken: #EDEDED;
+  --surface-rule:   #000000;
+
+  --ink:            #000000;
+  --ink-2:          #000000;
+  --ink-3:          #1A1A1A;
+  --ink-4:          #333333;
+  --ink-5:          #444444;
+
+  --border:         #000000;
+  --border-soft:    #6B6B6B;
+  --border-strong:  #000000;
+
+  --red:            #A50E0E;
+  --red-tint:       #FFFFFF;
+  --amber:          #6B4400;
+  --amber-tint:     #FFFFFF;
+  --blue:           #0B2E9F;
+  --blue-tint:      #FFFFFF;
+
+  --ink-surface:    #000000;
+  --shadow-3: none;
+}
+:root[data-theme="contrast"] a { text-decoration: underline; }
+:root[data-theme="contrast"] button,
+:root[data-theme="contrast"] input,
+:root[data-theme="contrast"] select,
+:root[data-theme="contrast"] textarea { border-width: 2px !important; }
+
+/* Keyboard focus must be unmissable in every theme — WCAG 2.4.7 / 2.4.11 */
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+:root[data-theme="dark"] :focus-visible { outline-color: #9DB9FA; }
+:root[data-theme="contrast"] :focus-visible { outline: 3px solid #000; outline-offset: 2px; }
+
+/* Skip link — first tab stop on every page */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 200;
+  background: var(--ink-surface);
+  color: #fff;
+  padding: 10px 18px;
+  font-size: var(--t-sm);
+  font-weight: 700;
+}
+.skip-link:focus { left: 0; }
 
 
 /* ── Responsive grid utilities ────────────────────────────────────────────
@@ -176,7 +294,10 @@ input, select, textarea { font-family: inherit; }
 
 /* ── Government Top Banner ────────────────────────────────────── */
 .gov-banner {
-  background: var(--green-deep);
+  /* Deliberate chrome: the federal strip keeps its deep green in every theme.
+     --green-deep flips to a light text-green in dark mode and would wash the
+     masthead out. */
+  background: #0A5C2D;
   color: rgba(255,255,255,0.88);
   font-size: var(--t-2xs);
   font-weight: 500;
@@ -190,7 +311,7 @@ input, select, textarea { font-family: inherit; }
   position: sticky;
   top: 0;
   z-index: 200;
-  background: var(--ink);
+  background: var(--ink-surface);
   height: var(--nav-h);
   display: flex;
   align-items: center;
@@ -318,7 +439,7 @@ input, select, textarea { font-family: inherit; }
 
 /* ── Institutional Hero ───────────────────────────────────────── */
 .inst-hero {
-  background: var(--ink);
+  background: var(--ink-surface);
   color: #fff;
   padding: 2.75rem 2rem 2.5rem;
   border-bottom: 3px solid var(--green);
@@ -546,7 +667,7 @@ input, select, textarea { font-family: inherit; }
 .tag-green  { background: var(--green-strong); color: var(--green-deep); border: 1px solid var(--green-line); }
 .tag-amber  { background: var(--amber-tint); color: var(--amber); border: 1px solid rgba(180,83,9,0.2); }
 .tag-red    { background: var(--red-tint); color: var(--red); border: 1px solid rgba(192,57,43,0.18); }
-.tag-ink    { background: var(--ink); color: #fff; }
+.tag-ink    { background: var(--ink-surface); color: #fff; }
 .tag-muted  { background: var(--surface-muted); color: var(--ink-4); border: 1px solid var(--border); }
 
 .live-dot {
@@ -578,7 +699,7 @@ input, select, textarea { font-family: inherit; }
 .btn-primary:hover { background: var(--green-deep); border-color: var(--green-deep); }
 .btn-secondary { background: var(--surface-white); color: var(--ink); border-color: var(--border-strong); }
 .btn-secondary:hover { background: var(--surface-muted); border-color: var(--ink-5); }
-.btn-dark      { background: var(--ink); color: #fff; border-color: var(--ink); }
+.btn-dark      { background: var(--ink-surface); color: #fff; border-color: var(--ink-surface); }
 .btn-dark:hover { background: var(--ink-2); }
 .btn-ghost     { background: transparent; color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.2); }
 .btn-ghost:hover { background: rgba(255,255,255,0.08); color: #fff; }
@@ -1168,7 +1289,7 @@ input, select, textarea { font-family: inherit; }
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background: var(--ink);
+  background: var(--ink-surface);
 }
 .login-panel {
   display: flex;
@@ -1233,7 +1354,7 @@ input, select, textarea { font-family: inherit; }
 
 /* ── Footer ───────────────────────────────────────────────────── */
 .site-footer {
-  background: var(--ink);
+  background: var(--ink-surface);
   color: rgba(255,255,255,0.5);
   padding: 3rem 2rem 2rem;
   border-top: 3px solid var(--green);
@@ -1299,7 +1420,7 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   position: fixed;
   top: calc(var(--nav-h) + 28px);
   left: 0; right: 0;
-  background: var(--ink);
+  background: var(--ink-surface);
   border-bottom: 3px solid var(--green);
   z-index: 190;
   box-shadow: var(--shadow-3);
@@ -1386,7 +1507,7 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
 .admin-header-actions-desktop { display: flex; }
 .admin-header-hamburger       { display: none !important; }
 .admin-header-dropdown {
-  background: var(--ink);
+  background: var(--ink-surface);
   border-top: 1px solid rgba(255,255,255,0.08);
   padding: 0.5rem 0;
 }
@@ -2056,7 +2177,7 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
 }
 .viz-view:last-child { border-right: none; }
 .viz-view:hover { background: var(--surface-muted); color: var(--ink); }
-.viz-view.is-active { background: var(--ink); color: #fff; }
+.viz-view.is-active { background: var(--ink-surface); color: #fff; }
 
 .viz-export {
   padding: 3px 10px;
@@ -2148,3 +2269,48 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
 }
 .viz-empty-title { font-size: var(--t-base); font-weight: 600; color: var(--ink-3); }
 .viz-empty-note  { font-size: var(--t-xs); color: var(--ink-5); max-width: 42ch; line-height: 1.6; }
+
+/* ── Skeleton loading ──────────────────────────────────────────────────────── */
+.nedb-skeleton {
+  background: linear-gradient(90deg, var(--surface-muted) 25%, var(--surface-sunken) 42%, var(--surface-muted) 58%);
+  background-size: 220% 100%;
+  animation: nedb-sheen 1.6s ease-in-out infinite;
+}
+@keyframes nedb-sheen { from { background-position: 130% 0; } to { background-position: -90% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .nedb-skeleton { animation: none; background: var(--surface-muted); }
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ── Print ───────────────────────────────────────────────────────────────────
+   A page printed from NEDB should read as a government document, not a
+   webpage with the chrome baked in. The chrome disappears; the content keeps
+   its ink-on-white typography. Pages that need a bespoke print layout (the
+   NECAL report, working papers) build on top of this reset. */
+@media print {
+  .gov-banner, .primary-nav, .official-notice, .site-footer, .skip-link,
+  .no-print { display: none !important; }
+  body { background: #fff !important; color: #000 !important; }
+  a { color: #000 !important; text-decoration: none; }
+  /* Never print in dark or contrast palettes — paper is white */
+  :root[data-theme="dark"], :root[data-theme="contrast"] { --surface:#fff; --surface-white:#fff; --surface-muted:#f2f2f2; --ink:#000; --ink-2:#111; --ink-3:#222; --ink-4:#444; --ink-5:#555; --border:#bbb; --border-soft:#ddd; --green:#0E7A3C; --green-tint:#fff; }
+
+  /* Working paper manuscript: fill the sheet, keep sections whole */
+  .wp-page { background: #fff !important; padding: 0 !important; min-height: 0 !important; }
+  .wp-doc {
+    max-width: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+  .wp-doc table { page-break-inside: avoid; }
+  .wp-doc h1 { page-break-after: avoid; }
+}
+@page { margin: 18mm 16mm; }
+
+/* Dark theme: --green-deep is a light text-green there, unusable as a hover
+   fill under white button text. Hover to the mid green instead. */
+:root[data-theme="dark"] .btn-primary:hover { background: var(--green-mid); border-color: var(--green-mid); }
+:root[data-theme="dark"] .mobile-auth-btn--login:hover { background: var(--green-mid); }

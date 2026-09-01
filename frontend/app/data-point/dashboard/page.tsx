@@ -168,10 +168,10 @@ function PeriodNav({ year, setYear, availYears, loading }: { year: number; setYe
 // ── Fiscal "coming soon" panels ───────────────────────────────
 const FISCAL_PANELS = [
   { id: "upstream",  title: "Upstream Revenue Intelligence",  caption: "Royalties, PPT, profit oil splits and signature bonuses per OML block.", agencies: ["NUPRC","NRS","NNPC"],  color: "var(--green)" },
-  { id: "midstream", title: "Midstream Throughput & Tariff",  caption: "Pipeline tariff revenue, GDSO shortfall cost recovery, refinery throughput.", agencies: ["NGC","NMDPRA"],          color: "#1D4ED8" },
-  { id: "power",     title: "Power Sector Settlement",        caption: "GenCo invoices vs payments, market shortfall deficit, ATC&C losses in ₦.", agencies: ["NERC","NBET","TCN"],    color: "#B45309" },
+  { id: "midstream", title: "Midstream Throughput & Tariff",  caption: "Pipeline tariff revenue, GDSO shortfall cost recovery, refinery throughput.", agencies: ["NGC","NMDPRA"],          color: "var(--blue)" },
+  { id: "power",     title: "Power Sector Settlement",        caption: "GenCo invoices vs payments, market shortfall deficit, ATC&C losses in ₦.", agencies: ["NERC","NBET","TCN"],    color: "var(--amber)" },
   { id: "renewable", title: "Renewable Energy Investment",    caption: "Solar/wind capacity trends, FiT obligations vs actual payments, mini-grid capex.", agencies: ["REA","NERC"],     color: "var(--green)" },
-  { id: "bioenergy", title: "Bioenergy & Solid Fuels",        caption: "Biomass consumption by state, coal export earnings, fuelwood displacement by LPG.", agencies: ["ECN","MMSD"],  color: "#78350F" },
+  { id: "bioenergy", title: "Bioenergy & Solid Fuels",        caption: "Biomass consumption by state, coal export earnings, fuelwood displacement by LPG.", agencies: ["ECN","MMSD"],  color: "var(--amber)" },
   { id: "faac",      title: "FAAC Energy Contribution",       caption: "Monthly oil revenue share of FAAC pool vs Federal budget projection.", agencies: ["RMAFC","DMO","CBN"],        color: "#C0392B" },
 ];
 
@@ -320,7 +320,7 @@ export default function Dashboard() {
             {(hasCapability(profile, "necal") || isAdminRole(staffRole)) && (
               <Link href="/data-point/scenario" className="sb-link">
                 <span className="sb-label">National Energy Calculator</span>
-                <span style={{ fontSize: "0.6rem", background: "var(--ink)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>NECAL2050</span>
+                <span style={{ fontSize: "0.6rem", background: "var(--ink-surface)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>NECAL2050</span>
               </Link>
             )}
             <Link href="/data-point/pena" className="sb-link">
@@ -330,13 +330,13 @@ export default function Dashboard() {
             {isAdminRole(staffRole) && (
               <Link href="/admin/vintages" className="sb-link">
                 <span className="sb-label">Data Vintages</span>
-                <span style={{ fontSize: "0.6rem", background: "var(--ink)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>EDITIONS</span>
+                <span style={{ fontSize: "0.6rem", background: "var(--ink-surface)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>EDITIONS</span>
               </Link>
             )}
             {isAdminRole(staffRole) && (
               <Link href="/admin/papers" className="sb-link">
                 <span className="sb-label">Working Papers</span>
-                <span style={{ fontSize: "0.6rem", background: "var(--ink)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>RESEARCH</span>
+                <span style={{ fontSize: "0.6rem", background: "var(--ink-surface)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>RESEARCH</span>
               </Link>
             )}
             <Link href="/" className="sb-link"><span className="sb-label">Public Data Bank</span></Link>
@@ -433,8 +433,8 @@ export default function Dashboard() {
                   </>)})()}
                 </div>
               </div>
-              <NigeriaMap stateData={stateMap["electricity_generation"] ?? {}} id="electricity-access" title="Electricity Generation by State" unit="GWh" colorLow="#FEF3C7" colorHigh="#0E7A3C" higherIsBetter={true} source="NERC / ECN" />
-              {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Multi-series" subtitle={`PMS · AGO · LPG monthly volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS", color: "var(--green)" }, { key: "ago", label: "AGO", color: "#1D4ED8" }, { key: "lpg", label: "LPG", color: "#B45309" }]} unit="M Litres" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
+              <NigeriaMap stateData={stateMap["electricity_generation"] ?? {}} id="electricity-access" title="Electricity Generation by State" unit="GWh" colorLow="var(--amber-tint)" colorHigh="var(--green)" higherIsBetter={true} source="NERC / ECN" />
+              {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Multi-series" subtitle={`PMS · AGO · LPG monthly volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS", color: "var(--green)" }, { key: "ago", label: "AGO", color: "var(--blue)" }, { key: "lpg", label: "LPG", color: "var(--amber)" }]} unit="M Litres" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
               <div>
                 <div className="sec-hd" style={{ marginBottom: "1rem" }}>
                   <h2>Fiscal Panels</h2>
@@ -453,7 +453,7 @@ export default function Dashboard() {
           {view === "downstream" && inScope("downstream") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
-              {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Monthly Trend" subtitle={`PMS · AGO · LPG volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS (M L)", color: "var(--green)" }, { key: "ago", label: "AGO (M L)", color: "#1D4ED8" }, { key: "lpg", label: "LPG (MT)", color: "#B45309" }]} unit="" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
+              {(s("pms_sales").length || s("ago_sales").length || s("lpg_sales").length) ? <SectorChart title="Downstream Products — Monthly Trend" subtitle={`PMS · AGO · LPG volumes · ${selectedYear}`} source="NMDPRA / NNPCL" data={mergeSeries([{ data: s("pms_sales"), key: "pms" }, { data: s("ago_sales"), key: "ago" }, { data: s("lpg_sales"), key: "lpg" }])} series={[{ key: "pms", label: "PMS (M L)", color: "var(--green)" }, { key: "ago", label: "AGO (M L)", color: "var(--blue)" }, { key: "lpg", label: "LPG (MT)", color: "var(--amber)" }]} unit="" filename="downstream-products" /> : <EmptyChart seriesName="Downstream Products" />}
               <div className="panel">
                 <div className="panel-header">
                   <span className="panel-title">Distribution Companies — ATC&amp;C Performance</span>
@@ -473,10 +473,10 @@ export default function Dashboard() {
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div className="grid-2" style={{ gap: "1.25rem" }}>
-                {s("crude_oil_production").length ? <SectorChart title="Crude Oil Production" subtitle={`Monthly barrels · ${selectedYear}`} source="NUPRC" data={s("crude_oil_production")} series={[{ key: "value", label: "Production", color: "#78350F" }]} unit="M Barrels" filename="crude-oil-production" /> : <EmptyChart seriesName="Crude Oil Production" />}
+                {s("crude_oil_production").length ? <SectorChart title="Crude Oil Production" subtitle={`Monthly barrels · ${selectedYear}`} source="NUPRC" data={s("crude_oil_production")} series={[{ key: "value", label: "Production", color: "var(--amber)" }]} unit="M Barrels" filename="crude-oil-production" /> : <EmptyChart seriesName="Crude Oil Production" />}
                 {s("natural_gas_production").length ? <SectorChart title="Natural Gas Production" subtitle={`Monthly volumes · ${selectedYear}`} source="NUPRC / NNPCL" data={s("natural_gas_production")} series={[{ key: "value", label: "Gas", color: "var(--green)" }]} unit="Bcf" filename="natural-gas-production" /> : <EmptyChart seriesName="Natural Gas Production" />}
               </div>
-              <NigeriaMap stateData={stateMap["crude_oil_production"] ?? {}} id="crude-production" title="Crude Oil Production by State" unit="M Barrels" colorLow="#FEF3C7" colorHigh="#78350F" higherIsBetter={true} source="NUPRC" />
+              <NigeriaMap stateData={stateMap["crude_oil_production"] ?? {}} id="crude-production" title="Crude Oil Production by State" unit="M Barrels" colorLow="var(--amber-tint)" colorHigh="var(--amber)" higherIsBetter={true} source="NUPRC" />
               <div className="panel">
                 <div className="panel-header">
                   <span className="panel-title">OML Block Performance Summary</span>
@@ -495,8 +495,8 @@ export default function Dashboard() {
           {view === "power" && inScope("power") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
-              {(s("electricity_generation").length || s("electricity_sent_out").length) ? <SectorChart title="Electricity Generation vs. Sent Out" subtitle={`Monthly GWh · ${selectedYear}`} source="NERC / TCN" data={mergeSeries([{ data: s("electricity_generation"), key: "generation" }, { data: s("electricity_sent_out"), key: "sent_out" }])} series={[{ key: "generation", label: "Generation (GWh)", color: "#1D4ED8" }, { key: "sent_out", label: "Sent Out (GWh)", color: "var(--green)" }]} unit="GWh" filename="electricity-generation" /> : <EmptyChart seriesName="Electricity Generation" />}
-              <NigeriaMap stateData={stateMap["electricity_sent_out"] ?? {}} id="atc-loss" title="Electricity Sent Out by State" unit="GWh" colorLow="#DCFCE7" colorHigh="#1D4ED8" higherIsBetter={true} source="TCN / NERC" />
+              {(s("electricity_generation").length || s("electricity_sent_out").length) ? <SectorChart title="Electricity Generation vs. Sent Out" subtitle={`Monthly GWh · ${selectedYear}`} source="NERC / TCN" data={mergeSeries([{ data: s("electricity_generation"), key: "generation" }, { data: s("electricity_sent_out"), key: "sent_out" }])} series={[{ key: "generation", label: "Generation (GWh)", color: "var(--blue)" }, { key: "sent_out", label: "Sent Out (GWh)", color: "var(--green)" }]} unit="GWh" filename="electricity-generation" /> : <EmptyChart seriesName="Electricity Generation" />}
+              <NigeriaMap stateData={stateMap["electricity_sent_out"] ?? {}} id="atc-loss" title="Electricity Sent Out by State" unit="GWh" colorLow="#DCFCE7" colorHigh="var(--blue)" higherIsBetter={true} source="TCN / NERC" />
               <div className="panel">
                 <div className="panel-header">
                   <span className="panel-title">Distribution Companies — ATC&amp;C Performance</span>
@@ -517,7 +517,7 @@ export default function Dashboard() {
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div className="grid-2" style={{ gap: "1.25rem" }}>
                 {s("renewable_energy").length ? <SectorChart title="Renewable Energy Capacity" subtitle={`Quarterly installed MW · ${selectedYear}`} source="REA / NERC" data={s("renewable_energy")} series={[{ key: "value", label: "Capacity (MW)", color: "#059669" }]} unit="MW" filename="renewable-capacity" /> : <EmptyChart seriesName="Renewable Energy" />}
-                {s("fuelwood_consumption").length ? <SectorChart title="Fuelwood Consumption" subtitle={`Quarterly volumes · ${selectedYear}`} source="ECN / NBS" data={s("fuelwood_consumption")} series={[{ key: "value", label: "Fuelwood (M m³)", color: "#78350F" }]} unit="M m³" filename="fuelwood-consumption" /> : <EmptyChart seriesName="Fuelwood Consumption" />}
+                {s("fuelwood_consumption").length ? <SectorChart title="Fuelwood Consumption" subtitle={`Quarterly volumes · ${selectedYear}`} source="ECN / NBS" data={s("fuelwood_consumption")} series={[{ key: "value", label: "Fuelwood (M m³)", color: "var(--amber)" }]} unit="M m³" filename="fuelwood-consumption" /> : <EmptyChart seriesName="Fuelwood Consumption" />}
               </div>
               <NigeriaMap stateData={stateMap["renewable_energy"] ?? {}} id="renewable-capacity" title="Renewable Energy Capacity by State" unit="MW" colorLow="#D1FAE5" colorHigh="#065F46" higherIsBetter={true} source="REA / ECN" />
               <div className="panel" style={{ padding: "1.25rem 1.5rem" }}>
@@ -576,7 +576,7 @@ export default function Dashboard() {
               <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
               <div className="grid-2" style={{ gap: "1.25rem" }}>
                 {s("fuelwood_consumption").length
-                  ? <SectorChart title="Fuelwood Consumption" subtitle={`Household biomass use · ${selectedYear}`} source="ECN / NBS" data={s("fuelwood_consumption")} series={[{ key: "value", label: "Fuelwood (M m³)", color: "#78350F" }]} unit="M m³" filename="fuelwood-consumption" />
+                  ? <SectorChart title="Fuelwood Consumption" subtitle={`Household biomass use · ${selectedYear}`} source="ECN / NBS" data={s("fuelwood_consumption")} series={[{ key: "value", label: "Fuelwood (M m³)", color: "var(--amber)" }]} unit="M m³" filename="fuelwood-consumption" />
                   : <EmptyChart seriesName="Fuelwood Consumption" />}
                 {s("charcoal_consumption").length
                   ? <SectorChart title="Charcoal Consumption" subtitle={`Commercial charcoal · ${selectedYear}`} source="ECN / NBS" data={s("charcoal_consumption")} series={[{ key: "value", label: "Charcoal", color: "#57534E" }]} unit="" filename="charcoal-consumption" />
@@ -587,10 +587,10 @@ export default function Dashboard() {
                   ? <SectorChart title="Coal Consumption" subtitle={`Domestic coal use · ${selectedYear}`} source="MMSD" data={s("coal_consumption")} series={[{ key: "value", label: "Coal", color: "#292524" }]} unit="" filename="coal-consumption" />
                   : <EmptyChart seriesName="Coal Consumption" />}
                 {s("coal_export").length
-                  ? <SectorChart title="Coal Export" subtitle={`Export volumes · ${selectedYear}`} source="MMSD / Customs" data={s("coal_export")} series={[{ key: "value", label: "Coal export", color: "#78350F" }]} unit="" filename="coal-export" />
+                  ? <SectorChart title="Coal Export" subtitle={`Export volumes · ${selectedYear}`} source="MMSD / Customs" data={s("coal_export")} series={[{ key: "value", label: "Coal export", color: "var(--amber)" }]} unit="" filename="coal-export" />
                   : <EmptyChart seriesName="Coal Export" />}
               </div>
-              <NigeriaMap stateData={stateMap["fuelwood_consumption"] ?? {}} id="fuelwood-state" title="Fuelwood Consumption by State" unit="M m³" colorLow="#F5F5F4" colorHigh="#78350F" higherIsBetter={false} source="ECN / NBS" />
+              <NigeriaMap stateData={stateMap["fuelwood_consumption"] ?? {}} id="fuelwood-state" title="Fuelwood Consumption by State" unit="M m³" colorLow="#F5F5F4" colorHigh="var(--amber)" higherIsBetter={false} source="ECN / NBS" />
             </div>
           )}
 
@@ -724,17 +724,17 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       {/* Controls toolbar — screen only */}
-      <div className="no-print" style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1rem", background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)" }}>
+      <div className="no-print" style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)" }}>
         <div style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "var(--ink)" }}>Energy Brief — Print-Ready Report</div>
         <PeriodNav year={selectedYear} setYear={setSelectedYear} availYears={availYears} loading={dataLoading} />
-        <button onClick={printBrief} style={{ padding: "6px 16px", fontSize: "0.78rem", fontWeight: 700, background: "var(--ink)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        <button onClick={printBrief} style={{ padding: "6px 16px", fontSize: "0.78rem", fontWeight: 700, background: "var(--ink-surface)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           Print / Save PDF
         </button>
       </div>
 
       {/* The printable brief */}
-      <div id="energy-brief" style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
+      <div id="energy-brief" style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
 
         {/* Header */}
         <div style={{ background: "#1B2A4A", color: "#fff", padding: "2rem 2.5rem" }} className="brief-header">
@@ -817,7 +817,7 @@ function PresidencyBrief({ staffName, profileLabel, roleTitle, kpis, alerts, sel
           <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#9F1239", textTransform: "uppercase", letterSpacing: "0.1em", borderBottom: "2px solid #9F1239", paddingBottom: "0.4rem", marginBottom: "0.875rem" }}>Priority Advisories</div>
           {alerts.map((a, i) => (
             <div key={i} style={{ display: "flex", gap: "0.75rem", alignItems: "baseline", padding: "0.5rem 0", borderBottom: i < alerts.length - 1 ? "1px solid var(--border)" : "none" }}>
-              <span style={{ fontSize: "0.65rem", fontWeight: 700, minWidth: 60, color: a.level === "high" ? "#9F1239" : a.level === "medium" ? "#B45309" : "var(--ink-4)", textTransform: "uppercase" }}>{a.level}</span>
+              <span style={{ fontSize: "0.65rem", fontWeight: 700, minWidth: 60, color: a.level === "high" ? "#9F1239" : a.level === "medium" ? "var(--amber)" : "var(--ink-4)", textTransform: "uppercase" }}>{a.level}</span>
               <span style={{ fontSize: "0.78rem", color: "var(--ink)", flex: 1 }}>{a.msg}</span>
               <span style={{ fontSize: "0.65rem", color: "var(--ink-5)", flexShrink: 0 }}>{a.time}</span>
             </div>

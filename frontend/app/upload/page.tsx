@@ -472,11 +472,11 @@ export default function UploadPage() {
                   )}
                   {state === "submitted" && (
                     <div style={{ padding: "1rem 1.25rem", background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: "var(--r-md)" }}>
-                      <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1a56a4", marginBottom: "0.25rem" }}>Submitted for review</div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--blue)", marginBottom: "0.25rem" }}>Submitted for review</div>
                       <div style={{ fontSize: "0.78rem", color: "var(--ink-3)" }}>
                         Your dataset has been queued for admin review. You will be notified once it is approved and committed to the database.
                       </div>
-                      <button onClick={reset} style={{ marginTop: "0.5rem", fontSize: "0.72rem", color: "#1a56a4", background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>Upload another dataset</button>
+                      <button onClick={reset} style={{ marginTop: "0.5rem", fontSize: "0.72rem", color: "var(--blue)", background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>Upload another dataset</button>
                     </div>
                   )}
                   <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
@@ -498,7 +498,7 @@ export default function UploadPage() {
                         </span>
                       ) : (
                         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                          <button className="btn btn-dark" onClick={submitForReview} disabled={state === "submitting"} style={{ background: "#1a56a4", borderColor: "#1a56a4" }}>
+                          <button className="btn btn-dark" onClick={submitForReview} disabled={state === "submitting"} style={{ background: "var(--blue)", borderColor: "var(--blue)" }}>
                             {state === "submitting" ? "Submitting…" : "Submit for Review"}
                           </button>
                           <InfoTip text="Sends the validated dataset to an administrator for approval before it is committed. You will receive an email notification once a decision is made." width={240} position="top" />

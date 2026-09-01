@@ -89,10 +89,10 @@ const ENDPOINTS: Endpoint[] = [
 ];
 
 const METHOD_COLOR: Record<string, string> = {
-  GET: "#0E7A3C", POST: "#1a56a4", PATCH: "#92400e", DELETE: "#991b1b",
+  GET: "var(--green)", POST: "var(--blue)", PATCH: "var(--amber)", DELETE: "var(--red)",
 };
 const METHOD_BG: Record<string, string> = {
-  GET: "#F0FDF4", POST: "#EFF6FF", PATCH: "#FFFBEB", DELETE: "#FEF2F2",
+  GET: "#F0FDF4", POST: "#EFF6FF", PATCH: "var(--amber-tint)", DELETE: "#FEF2F2",
 };
 
 async function publishedSeries(): Promise<{ id: string; name: string }[]> {
@@ -116,7 +116,7 @@ export default async function ApiDocsPage() {
   return (
     <>
       <Navbar />
-      <div style={{ background: "var(--ink)", borderBottom: "3px solid var(--green)", padding: "3rem 0 2.5rem" }}>
+      <div style={{ background: "var(--ink-surface)", borderBottom: "3px solid var(--green)", padding: "3rem 0 2.5rem" }}>
         <div className="page-wrap">
           <div style={{ display: "inline-block", fontSize: "0.68rem", fontWeight: 700, color: "var(--green)", textTransform: "uppercase", letterSpacing: "0.1em", background: "rgba(14,122,60,0.15)", padding: "3px 10px", borderRadius: 4, marginBottom: "0.875rem" }}>REST API · v1</div>
           <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.75rem,4vw,2.5rem)", color: "#fff", fontWeight: 400, lineHeight: 1.1, marginBottom: "0.75rem" }}>
@@ -159,7 +159,7 @@ export default async function ApiDocsPage() {
                     <div style={{ fontSize: "0.82rem", color: "var(--ink-4)", lineHeight: 1.5 }}>{ep.description}</div>
                   </div>
                   {ep.auth && (
-                    <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#92400e", background: "#FFFBEB", padding: "2px 8px", borderRadius: 4, border: "1px solid #FDE68A" }}>X-API-Key required</span>
+                    <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--amber)", background: "var(--amber-tint)", padding: "2px 8px", borderRadius: 4, border: "1px solid #FDE68A" }}>X-API-Key required</span>
                   )}
                 </div>
 

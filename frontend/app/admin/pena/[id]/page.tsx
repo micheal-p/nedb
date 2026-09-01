@@ -133,17 +133,17 @@ export default function PenaBuilderPage() {
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
             <Link href="/admin/pena" style={{ fontSize: "0.78rem", color: "var(--ink-4)", textDecoration: "none" }}>← Assessments</Link>
             <a href={`/f/${form.share_token}?preview=1`} target="_blank" rel="noopener noreferrer"
-              style={{ padding: "0.5rem 1rem", background: "#fff", border: "1px solid var(--border)", color: "var(--ink-3)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, textDecoration: "none" }}>
+              style={{ padding: "0.5rem 1rem", background: "var(--surface-white)", border: "1px solid var(--border)", color: "var(--ink-3)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, textDecoration: "none" }}>
               Preview Form
             </a>
-            <Link href={`/data-point/pena/${form.id}`} style={{ padding: "0.5rem 1rem", background: "#fff", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, textDecoration: "none" }}>
+            <Link href={`/data-point/pena/${form.id}`} style={{ padding: "0.5rem 1rem", background: "var(--surface-white)", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, textDecoration: "none" }}>
               View Insights →
             </Link>
           </div>
         </div>
 
         {/* Status + share */}
-        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.1rem 1.25rem", marginBottom: "1rem", display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+        <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.1rem 1.25rem", marginBottom: "1rem", display: "flex", flexDirection: "column", gap: "0.875rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
             <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Status</span>
             {(["draft", "open", "closed"] as const).map((s) => (
@@ -199,7 +199,7 @@ export default function PenaBuilderPage() {
         </div>
 
         {/* Questions */}
-        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.25rem", marginBottom: "1rem" }}>
+        <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.25rem", marginBottom: "1rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>Questions</h2>
             <span style={{ fontSize: "0.7rem", color: "var(--ink-5)" }}>Respondents answer in this order</span>
@@ -316,7 +316,7 @@ export default function PenaBuilderPage() {
         </div>
 
         {/* Tier thresholds */}
-        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.25rem", marginBottom: "1rem" }}>
+        <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.25rem", marginBottom: "1rem" }}>
           <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--ink)", margin: "0 0 0.375rem" }}>Tier Thresholds</h2>
           <p style={{ fontSize: "0.72rem", color: "var(--ink-4)", margin: "0 0 1rem", lineHeight: 1.5 }}>
             A response earns a tier when it has at least the light hours AND at most the energy burden
@@ -358,7 +358,7 @@ export default function PenaBuilderPage() {
         </div>
 
         {/* Consent */}
-        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.25rem", marginBottom: "1rem" }}>
+        <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.25rem", marginBottom: "1rem" }}>
           <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--ink)", margin: "0 0 0.5rem" }}>Consent Statement</h2>
           <p style={{ fontSize: "0.72rem", color: "var(--ink-4)", margin: "0 0 0.75rem" }}>Respondents must tick this before submitting (NDPA 2023 lawful basis: consent).</p>
           <textarea value={consent} onChange={(e) => setConsent(e.target.value)} rows={4} style={{ ...inputStyle, resize: "vertical", fontSize: "0.8rem", lineHeight: 1.5 }} />
@@ -369,7 +369,7 @@ export default function PenaBuilderPage() {
         </div>
 
         {(msg || error) && (
-          <div style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", padding: "0.75rem 1.25rem", borderRadius: 6, fontSize: "0.8rem", fontWeight: 600, background: error ? "#FEE2E2" : "var(--green)", color: error ? "var(--red)" : "#fff", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", zIndex: 50 }}>
+          <div style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", padding: "0.75rem 1.25rem", borderRadius: 6, fontSize: "0.8rem", fontWeight: 600, background: error ? "var(--red-tint)" : "var(--green)", color: error ? "var(--red)" : "#fff", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", zIndex: 50 }}>
             {error || msg}
           </div>
         )}
@@ -382,7 +382,7 @@ export default function PenaBuilderPage() {
                 <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--red)" }}>Delete this assessment</div>
                 <div style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>Removes the form, its questions and all responses permanently.</div>
               </div>
-              <button onClick={() => setConfirmDelete(true)} style={{ padding: "0.5rem 1.25rem", background: "#fff", border: "1px solid var(--red)", color: "var(--red)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
+              <button onClick={() => setConfirmDelete(true)} style={{ padding: "0.5rem 1.25rem", background: "var(--surface-white)", border: "1px solid var(--red)", color: "var(--red)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
                 Delete…
               </button>
             </div>

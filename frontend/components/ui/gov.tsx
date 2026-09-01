@@ -167,7 +167,7 @@ export function ErrorSummary({ errors }: { errors: { anchor?: string; message: s
 export function OfficialBanner() {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ background: "var(--surface-muted)", borderBottom: "1px solid var(--border)", fontSize: "0.72rem", color: "var(--ink-2)" }}>
+    <div className="official-notice" style={{ background: "var(--surface-muted)", borderBottom: "1px solid var(--border)", fontSize: "0.72rem", color: "var(--ink-2)" }}>
       <div style={{ maxWidth: "var(--max-w)", margin: "0 auto", padding: "4px 2rem" }}>
         <span>An official service of the Energy Commission of Nigeria.</span>{" "}
         <button onClick={() => setOpen((o) => !o)} aria-expanded={open}

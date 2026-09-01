@@ -96,11 +96,11 @@ export default function SubscribersAdmin() {
         ) : (
           <>
             {/* Cycle card */}
-            <div className="panel" style={{ marginBottom: "1.5rem", borderTop: `3px solid ${c.due ? "#DC2626" : "var(--green)"}` }}>
+            <div className="panel" style={{ marginBottom: "1.5rem", borderTop: `3px solid ${c.due ? "var(--red)" : "var(--green)"}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", padding: "1.25rem 1.5rem" }}>
                 <div>
                   <div style={{ fontSize: "0.62rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--ink-5)" }}>Report cycle</div>
-                  <div style={{ fontSize: "1.25rem", fontWeight: 700, color: c.due ? "#DC2626" : "var(--ink)", margin: "0.25rem 0" }}>
+                  <div style={{ fontSize: "1.25rem", fontWeight: 700, color: c.due ? "var(--red)" : "var(--ink)", margin: "0.25rem 0" }}>
                     {c.due
                       ? "Due now — will send on the next daily run"
                       : <>Still collecting — sends in <span style={{ fontFamily: "var(--font-mono)" }}>{c.days_left}</span> day{c.days_left === 1 ? "" : "s"}</>}
@@ -111,7 +111,7 @@ export default function SubscribersAdmin() {
                   </div>
                   {/* Progress through the 31 days */}
                   <div style={{ width: 260, height: 6, borderRadius: 3, background: "var(--surface-muted)", overflow: "hidden", marginTop: 10 }}>
-                    <div style={{ width: `${Math.min(100, Math.round(((31 - c.days_left) / 31) * 100))}%`, height: "100%", background: c.due ? "#DC2626" : "var(--green)" }} />
+                    <div style={{ width: `${Math.min(100, Math.round(((31 - c.days_left) / 31) * 100))}%`, height: "100%", background: c.due ? "var(--red)" : "var(--green)" }} />
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
@@ -127,11 +127,11 @@ export default function SubscribersAdmin() {
 
             {/* Early-push confirmation — the exact timeline-preserving warning */}
             {confirm && (
-              <div style={{ marginBottom: "1.5rem", padding: "1.1rem 1.25rem", background: "#FEF3C7", border: "1px solid #FCD34D", borderRadius: "var(--r-md)" }}>
-                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#92400E", marginBottom: 6 }}>Push before the scheduled date?</div>
-                <p style={{ fontSize: "0.78rem", color: "#78350F", lineHeight: 1.6, margin: "0 0 0.75rem" }}>{confirm}</p>
+              <div style={{ marginBottom: "1.5rem", padding: "1.1rem 1.25rem", background: "var(--amber-tint)", border: "1px solid #FCD34D", borderRadius: "var(--r-md)" }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--amber)", marginBottom: 6 }}>Push before the scheduled date?</div>
+                <p style={{ fontSize: "0.78rem", color: "var(--amber)", lineHeight: 1.6, margin: "0 0 0.75rem" }}>{confirm}</p>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => push(true)} disabled={pushing} className="btn btn-primary btn-sm" style={{ background: "#92400E", borderColor: "#92400E" }}>
+                  <button onClick={() => push(true)} disabled={pushing} className="btn btn-primary btn-sm" style={{ background: "var(--amber)", borderColor: "var(--amber)" }}>
                     {pushing ? "Sending…" : "Yes, push now — keep the timeline"}
                   </button>
                   <button onClick={() => setConfirm(null)} className="btn btn-secondary btn-sm">Cancel</button>
@@ -163,7 +163,7 @@ export default function SubscribersAdmin() {
                           <td className="td-primary" style={{ fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{s.email}</td>
                           <td style={{ fontSize: "0.7rem", color: "var(--ink-5)" }}>{new Date(s.subscribed_at).toLocaleDateString("en-NG")}</td>
                           <td>
-                            <span style={{ fontSize: "0.62rem", fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: s.is_active ? "var(--green-tint)" : "#FEE2E2", color: s.is_active ? "var(--green)" : "#991B1B" }}>
+                            <span style={{ fontSize: "0.62rem", fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: s.is_active ? "var(--green-tint)" : "var(--red-tint)", color: s.is_active ? "var(--green)" : "var(--red)" }}>
                               {s.is_active ? "active" : "unsubscribed"}
                             </span>
                           </td>

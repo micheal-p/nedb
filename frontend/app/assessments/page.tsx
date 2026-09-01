@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
+import { SkeletonCards, EmptyState } from "@/components/ui/Loading";
 import Footer from "@/components/layout/Footer";
 
 type PubForm = {
@@ -41,16 +42,16 @@ export default function AssessmentsIndexPage() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)", fontSize: "0.82rem" }}>Loading…</div>
+          <SkeletonCards rows={3} />
         ) : forms.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "4rem 2rem", background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", color: "var(--ink-4)", fontSize: "0.82rem" }}>
-            No published assessments yet.
-          </div>
+          <EmptyState
+            title="No published assessments yet"
+            body="Assessments appear here when the Data Point team publishes their open data. Each one shows anonymised aggregates only, under the Nigeria Data Protection Act 2023." />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {forms.map((f) => (
               <Link key={f.slug} href={`/assessments/${f.slug}`} style={{ textDecoration: "none" }}>
-                <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", cursor: "pointer", transition: "border-color 0.15s" }}
+                <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", cursor: "pointer", transition: "border-color 0.15s" }}
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}>
                   <div style={{ flex: 1, minWidth: 0 }}>

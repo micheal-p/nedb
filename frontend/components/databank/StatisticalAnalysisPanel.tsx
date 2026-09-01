@@ -178,7 +178,7 @@ export default function StatisticalAnalysisPanel({ records, unit, seriesName }: 
       {/* min(380px,100%) prevents horizontal overflow on phones narrower than 380px */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(380px, 100%), 1fr))", gap: "1.25rem" }}>
         {(expanded ? cards : cards.slice(0, INITIAL_VISIBLE)).map((c) => (
-          <div key={c.key} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <div key={c.key} style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "0.875rem 1.1rem 0.5rem" }}>
               <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--ink)" }}>{c.title}</div>
             </div>

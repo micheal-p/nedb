@@ -277,36 +277,36 @@ export default async function SeriesDetail({ params }: Props) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
 
                 {series.what_is && (
-                  <div style={{ padding: "1.1rem 1.25rem", background: "#fff", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", borderRadius: "var(--r-md)" }}>
+                  <div style={{ padding: "1.1rem 1.25rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", borderRadius: "var(--r-md)" }}>
                     <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.5rem" }}>What Is This?</div>
                     <p style={{ fontSize: "0.78rem", color: "var(--ink-3)", lineHeight: 1.65, margin: 0 }}>{series.what_is}</p>
                   </div>
                 )}
 
                 {series.how_to_read && (
-                  <div style={{ padding: "1.1rem 1.25rem", background: "#fff", border: "1px solid var(--border)", borderTop: "3px solid #1D4ED8", borderRadius: "var(--r-md)" }}>
-                    <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#1D4ED8", marginBottom: "0.5rem" }}>How to Read</div>
+                  <div style={{ padding: "1.1rem 1.25rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "3px solid #1D4ED8", borderRadius: "var(--r-md)" }}>
+                    <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--blue)", marginBottom: "0.5rem" }}>How to Read</div>
                     <p style={{ fontSize: "0.78rem", color: "var(--ink-3)", lineHeight: 1.65, margin: 0 }}>{series.how_to_read}</p>
                   </div>
                 )}
 
                 {series.why_it_matters && (
-                  <div style={{ padding: "1.1rem 1.25rem", background: "#fff", border: "1px solid var(--border)", borderTop: "3px solid #B45309", borderRadius: "var(--r-md)" }}>
-                    <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#B45309", marginBottom: "0.5rem" }}>Why It Matters</div>
+                  <div style={{ padding: "1.1rem 1.25rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "3px solid #B45309", borderRadius: "var(--r-md)" }}>
+                    <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--amber)", marginBottom: "0.5rem" }}>Why It Matters</div>
                     <p style={{ fontSize: "0.78rem", color: "var(--ink-3)", lineHeight: 1.65, margin: 0 }}>{series.why_it_matters}</p>
                   </div>
                 )}
 
                 {currentSignal && (
                   <div style={{
-                    padding: "1.1rem 1.25rem", background: "#fff",
-                    border: `1px solid ${currentSignal.level === "critical" ? "#FEE2E2" : currentSignal.level === "warn" ? "#FEF3C7" : currentSignal.level === "above" ? "#DCFCE7" : "var(--border)"}`,
-                    borderTop: `3px solid ${currentSignal.level === "critical" ? "#DC2626" : currentSignal.level === "warn" ? "#D97706" : currentSignal.level === "above" ? "var(--green)" : "var(--ink-5)"}`,
+                    padding: "1.1rem 1.25rem", background: "var(--surface-white)",
+                    border: `1px solid ${currentSignal.level === "critical" ? "var(--red-tint)" : currentSignal.level === "warn" ? "var(--amber-tint)" : currentSignal.level === "above" ? "#DCFCE7" : "var(--border)"}`,
+                    borderTop: `3px solid ${currentSignal.level === "critical" ? "var(--red)" : currentSignal.level === "warn" ? "var(--amber)" : currentSignal.level === "above" ? "var(--green)" : "var(--ink-5)"}`,
                     borderRadius: "var(--r-md)",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: "0.5rem" }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: currentSignal.level === "critical" ? "#DC2626" : currentSignal.level === "warn" ? "#D97706" : currentSignal.level === "above" ? "var(--green)" : "var(--ink-5)", flexShrink: 0 }} />
-                      <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: currentSignal.level === "critical" ? "#DC2626" : currentSignal.level === "warn" ? "#D97706" : currentSignal.level === "above" ? "var(--green)" : "var(--ink-4)" }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: currentSignal.level === "critical" ? "var(--red)" : currentSignal.level === "warn" ? "var(--amber)" : currentSignal.level === "above" ? "var(--green)" : "var(--ink-5)", flexShrink: 0 }} />
+                      <div style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: currentSignal.level === "critical" ? "var(--red)" : currentSignal.level === "warn" ? "var(--amber)" : currentSignal.level === "above" ? "var(--green)" : "var(--ink-4)" }}>
                         Current Signal
                       </div>
                     </div>

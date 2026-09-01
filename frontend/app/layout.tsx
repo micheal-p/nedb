@@ -24,10 +24,15 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+// Applied before first paint so a dark-mode user never sees a white flash.
+// Reads the saved appearance; "system" (the default) follows the OS setting.
+const THEME_BOOT = `(function(){try{var t=localStorage.getItem("nedb_theme");if(t==="dark"||t==="contrast"){document.documentElement.dataset.theme=t}else if(!t&&window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.dataset.theme="dark"}}catch(e){}})()`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${publicSans.variable} h-full`}>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -35,8 +40,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="h-full" style={{ fontFamily: "var(--font-sans)" }}>
-        {children}
+      <body className="h-full" style={{ fontFamily: "var(--font-sans)", background: "var(--surface)", color: "var(--ink)" }}>
+        {/* First tab stop on every page — WCAG 2.4.1 */}
+        <a href="#main" className="skip-link">Skip to main content</a>
+        <div id="main">{children}</div>
       </body>
     </html>
   );

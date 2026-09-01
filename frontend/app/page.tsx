@@ -135,6 +135,16 @@ const ACTS = [
 export default async function Home() {
   const [series, customSeries, trendRows] = await Promise.all([getSeries(), getCustomSeries(), getTrendRows()]);
 
+  // The newest committed period across every national series — the "as at"
+  // date a statistics office prints under its headline figures. Derived from
+  // the records themselves, never typed.
+  const newestPeriod = trendRows.length ? trendRows[trendRows.length - 1].period : null;
+  const asAt = newestPeriod
+    ? /^\d{4}-\d{2}$/.test(newestPeriod)
+      ? new Date(newestPeriod + "-01").toLocaleDateString("en-NG", { month: "long", year: "numeric" })
+      : newestPeriod
+    : null;
+
   // Build per-series trend (last 24 points) + YoY, and the public signals strip
   const rowsBySeries = new Map<string, { period: string; value: number }[]>();
   for (const r of trendRows) {
@@ -163,7 +173,7 @@ export default async function Home() {
       }
     }
   }
-  const LEVEL_DOT: Record<SignalLevel, string> = { above: "#0E7A3C", neutral: "#8E867B", warn: "#D97706", critical: "#DC2626" };
+  const LEVEL_DOT: Record<SignalLevel, string> = { above: "var(--green)", neutral: "var(--ink-5)", warn: "var(--amber)", critical: "var(--red)" };
   const order: SignalLevel[] = ["critical", "warn", "above", "neutral"];
   signals.sort((a, b) => order.indexOf(a.level) - order.indexOf(b.level));
   const bySector = series.reduce((acc, s) => {
@@ -194,6 +204,11 @@ export default async function Home() {
               <div className="stat"><div className="num">36 + FCT</div><div className="lbl">State Coverage</div></div>
               <div className="stat"><div className="num">Monthly</div><div className="lbl">Update Frequency</div></div>
             </div>
+            {asAt && (
+              <div style={{ marginTop: "0.6rem", fontSize: "var(--t-2xs)", letterSpacing: "0.05em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>
+                Figures as at {asAt} · every record carries its source and revision history
+              </div>
+            )}
           </div>
           {/* One real photograph, not stock: the household these statistics
               exist for. Softens the hero without costing it authority; the
@@ -323,7 +338,7 @@ export default async function Home() {
           </section>
 
           {/* ── STAFF UPLOAD CTA ── */}
-          <div style={{ background: "var(--ink)", borderRadius: "var(--r-lg)", padding: "2.5rem", marginTop: "3rem", display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: "2rem" }}>
+          <div style={{ background: "var(--ink-surface)", borderRadius: "var(--r-lg)", padding: "2.5rem", marginTop: "3rem", display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: "2rem" }}>
             <div>
               <div style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green-mid)", marginBottom: "0.5rem" }}>Staff Upload Portal</div>
               <h3 style={{ fontSize: "1.125rem", fontWeight: 700, color: "#fff", marginBottom: "0.5rem" }}>Authorised ECN / agency staff</h3>

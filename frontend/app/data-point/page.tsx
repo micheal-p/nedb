@@ -58,7 +58,7 @@ export default function DataPointLanding() {
       <Navbar active="datapoint" />
 
       {/* Hero */}
-      <div style={{ background: "var(--ink)", color: "#fff", padding: "5rem 2rem 4rem", borderBottom: "3px solid var(--green)" }}>
+      <div style={{ background: "var(--ink-surface)", color: "#fff", padding: "5rem 2rem 4rem", borderBottom: "3px solid var(--green)" }}>
         <div style={{ maxWidth: "var(--max-w)", margin: "0 auto" }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green-mid)", border: "1px solid rgba(14,122,60,0.35)", padding: "4px 12px", borderRadius: "var(--r-sm)", marginBottom: "1.25rem" }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green-mid)", display: "inline-block" }} />

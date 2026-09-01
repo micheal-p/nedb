@@ -87,8 +87,8 @@ export default function DashboardWidget({ widget, dashData, stateMap, year }: {
         id={`w-${primary}`}
         title={title || `${meta?.label ?? "Series"} by State`}
         unit={unit}
-        colorLow="#FEF3C7"
-        colorHigh="#0E7A3C"
+        colorLow="var(--amber-tint)"
+        colorHigh="var(--green)"
         higherIsBetter={config.higherIsBetter ?? meta?.higherIsBetter ?? true}
         source={meta?.source ?? "NEDB"}
       />

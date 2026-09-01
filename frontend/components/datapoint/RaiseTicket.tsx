@@ -75,7 +75,7 @@ export default function RaiseTicket({ seriesId, period, compact }: { seriesId?: 
       <div onClick={() => !busy && setOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
       <div className="sheet-on-mobile" style={{ position: "relative", background: "var(--surface-white)", border: "1px solid var(--border)", width: "100%", maxWidth: 520, maxHeight: "88vh", overflowY: "auto", boxShadow: "var(--shadow-3)" }}>
 
-        <div style={{ background: "var(--ink)", color: "#fff", padding: "1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
+        <div style={{ background: "var(--ink-surface)", color: "#fff", padding: "1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
           <div>
             <div style={{ fontSize: "var(--t-2xs)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)" }}>Support</div>
             <div style={{ fontSize: "var(--t-md)", fontWeight: 700 }}>{done ? "Ticket raised" : "Report a problem"}</div>

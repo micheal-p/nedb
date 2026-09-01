@@ -148,7 +148,7 @@ export default function DataBankPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface)" }}>
       {/* Header */}
-      <div style={{ background: "var(--ink)", borderBottom: "3px solid var(--green)" }}>
+      <div style={{ background: "var(--ink-surface)", borderBottom: "3px solid var(--green)" }}>
         <div style={{ maxWidth: "var(--max-w)", margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 1.25rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <CoatOfArms size={32} />
@@ -164,9 +164,9 @@ export default function DataBankPage() {
           </div>
           <button className="admin-header-hamburger" onClick={() => setHeaderOpen(o => !o)} aria-label="Menu"
             style={{ display: "none", flexDirection: "column", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 8 }}>
-            <span style={{ display: "block", width: 20, height: 2, background: "#fff" }} />
-            <span style={{ display: "block", width: 20, height: 2, background: "#fff" }} />
-            <span style={{ display: "block", width: 20, height: 2, background: "#fff" }} />
+            <span style={{ display: "block", width: 20, height: 2, background: "var(--surface-white)" }} />
+            <span style={{ display: "block", width: 20, height: 2, background: "var(--surface-white)" }} />
+            <span style={{ display: "block", width: 20, height: 2, background: "var(--surface-white)" }} />
           </button>
         </div>
         {headerOpen && (
@@ -198,7 +198,7 @@ export default function DataBankPage() {
         {msg && (
           <div style={{ padding: "0.75rem 1rem", borderRadius: 6, marginBottom: "1rem", background: msg.type === "ok" ? "var(--green-tint)" : "rgba(192,57,43,0.08)", border: `1px solid ${msg.type === "ok" ? "var(--green-line)" : "rgba(192,57,43,0.2)"}`, color: msg.type === "ok" ? "var(--green-deep)" : "#C0392B", fontSize: "0.82rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span>{msg.text}</span>
-            <button onClick={() => setMsg(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", color: "inherit", opacity: 0.5, lineHeight: 1 }}>×</button>
+            <button aria-label="Close" onClick={() => setMsg(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", color: "inherit", opacity: 0.5, lineHeight: 1 }}>×</button>
           </div>
         )}
 
@@ -373,7 +373,7 @@ export default function DataBankPage() {
       {historyRec && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
           onClick={() => setHistoryRec(null)}>
-          <div style={{ background: "#fff", borderRadius: "var(--r-lg)", width: "100%", maxWidth: 640, maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}
+          <div style={{ background: "var(--surface-white)", borderRadius: "var(--r-lg)", width: "100%", maxWidth: 640, maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}
             onClick={e => e.stopPropagation()}>
             {/* Modal header */}
             <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -388,7 +388,7 @@ export default function DataBankPage() {
                   Current value: <strong>{historyRec.value != null ? Number(historyRec.value).toLocaleString() : "—"} {historyRec.unit}</strong>
                 </div>
               </div>
-              <button onClick={() => setHistoryRec(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem", color: "var(--ink-4)", lineHeight: 1 }}>×</button>
+              <button aria-label="Close" onClick={() => setHistoryRec(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem", color: "var(--ink-4)", lineHeight: 1 }}>×</button>
             </div>
             {/* Modal body */}
             <div style={{ overflowY: "auto", flex: 1 }}>
@@ -419,7 +419,7 @@ export default function DataBankPage() {
                         <td style={{ padding: "0.625rem 0.75rem" }}>
                           <span style={{ fontSize: "0.62rem", fontWeight: 700, padding: "2px 6px", borderRadius: 3,
                             background: e.action === "DELETE" ? "var(--red-tint)" : "rgba(230,152,0,0.1)",
-                            color: e.action === "DELETE" ? "var(--red)" : "#92400e" }}>
+                            color: e.action === "DELETE" ? "var(--red)" : "var(--amber)" }}>
                             {e.action}
                           </span>
                         </td>

@@ -44,7 +44,7 @@ function Sparkline({ points }: { points: number[] }) {
   const rising = points[points.length - 1] >= points[0];
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden style={{ display: "block" }}>
-      <polyline points={d} fill="none" stroke={rising ? "#0E7A3C" : "#C0392B"} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={d} fill="none" stroke={rising ? "var(--green)" : "#C0392B"} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
@@ -63,7 +63,7 @@ function QualityDots({ count, freq }: { count: number; freq: string }) {
   const expected = expectedCount(freq);
   const score = qualityScore(count, freq);
   const filled = Math.max(0, Math.min(5, Math.ceil(score / 20)));
-  const color = score >= 76 ? "#0E7A3C" : score >= 51 ? "#7CB342" : score >= 26 ? "#F9A825" : "#E04F39";
+  const color = score >= 76 ? "var(--green)" : score >= 51 ? "#7CB342" : score >= 26 ? "#F9A825" : "#E04F39";
   const label = score >= 76 ? "Good" : score >= 51 ? "Moderate" : score >= 26 ? "Sparse" : score > 0 ? "Minimal" : "Empty";
   const why = count === 0
     ? "No records in the bank yet"

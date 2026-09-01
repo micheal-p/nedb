@@ -1,4 +1,5 @@
 "use client";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
@@ -102,7 +103,7 @@ export default function Navbar({ active }: NavbarProps) {
               </svg>
             </button>
             {exploreOpen && (
-              <div style={{ position: "absolute", top: "100%", left: 0, minWidth: 220, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 16px 40px rgba(0,0,0,0.16)", padding: "0.4rem 0", zIndex: 60 }}>
+              <div style={{ position: "absolute", top: "100%", left: 0, minWidth: 220, background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 16px 40px rgba(0,0,0,0.16)", padding: "0.4rem 0", zIndex: 60 }}>
                 {[
                   { href: "/knowledge-graph", label: "Knowledge Graph",     sub: "Supply-chain network & SPOF analysis" },
                   { href: "/assessments",     label: "PENA Assessments",    sub: "Energy needs surveys — open data" },
@@ -128,13 +129,12 @@ export default function Navbar({ active }: NavbarProps) {
           <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer" className="nav-link-main">ECN Website</a>
         </div>
 
-        {loggedIn && (
-          <div className="nav-actions nav-desktop" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
-            <Link href={portalHref} className="btn btn-ghost btn-sm">{portalLabel}</Link>
-            <button onClick={logout} className="btn btn-ghost btn-sm">Log Out</button>
-          </div>
-        )}
+        <div className="nav-actions nav-desktop" style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "rgba(255,255,255,0.75)" }}>
+          {loggedIn && <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>}
+          <ThemeToggle compact />
+          {loggedIn && <Link href={portalHref} className="btn btn-ghost btn-sm">{portalLabel}</Link>}
+          {loggedIn && <button onClick={logout} className="btn btn-ghost btn-sm">Log Out</button>}
+        </div>
 
         <button
           ref={hamburgerRef}
@@ -162,6 +162,7 @@ export default function Navbar({ active }: NavbarProps) {
           <Link href="/about" className={`mobile-link${active === "about" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>About NEDB</Link>
           <Link href="/api-docs" className="mobile-link" onClick={() => setMenuOpen(false)}>API Docs</Link>
           <a href="https://energy.gov.ng" target="_blank" rel="noopener noreferrer" className="mobile-link" onClick={() => setMenuOpen(false)}>ECN Website</a>
+          <div style={{ padding: "0.75rem 0 0.25rem" }}><ThemeToggle /></div>
 
           {loggedIn && (
             <div className="mobile-auth-section">

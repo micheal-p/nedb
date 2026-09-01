@@ -115,7 +115,7 @@ function AddRecordPanel({ series, onAdded }: { series: SeriesDetail; onAdded: ()
               </div>
             ))}
           </div>
-          {error && <div style={{ marginBottom: "0.75rem", fontSize: "0.78rem", color: "var(--red)", background: "#FEE2E2", padding: "0.5rem 0.75rem", borderRadius: 4 }}>{error}</div>}
+          {error && <div style={{ marginBottom: "0.75rem", fontSize: "0.78rem", color: "var(--red)", background: "var(--red-tint)", padding: "0.5rem 0.75rem", borderRadius: 4 }}>{error}</div>}
           {success && <div style={{ marginBottom: "0.75rem", fontSize: "0.78rem", color: "var(--green)", background: "var(--green-tint)", padding: "0.5rem 0.75rem", borderRadius: 4 }}>{success}</div>}
           <button type="submit" disabled={saving} style={{ padding: "0.6rem 1.5rem", background: saving ? "var(--ink-5)" : "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.82rem", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer" }}>
             {saving ? "Saving…" : "Save Record"}
@@ -188,20 +188,20 @@ export default function CustomTableDetail({ params }: { params: Promise<{ slug: 
         {(series.what_is || series.how_to_read || series.why_it_matters) && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "0.875rem", marginBottom: "1.5rem" }}>
             {series.what_is && (
-              <div style={{ padding: "1rem", background: "#fff", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", borderRadius: "var(--r-md)" }}>
+              <div style={{ padding: "1rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", borderRadius: "var(--r-md)" }}>
                 <div style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.4rem" }}>What Is This?</div>
                 <p style={{ fontSize: "0.78rem", color: "var(--ink-3)", lineHeight: 1.6, margin: 0 }}>{series.what_is}</p>
               </div>
             )}
             {series.how_to_read && (
-              <div style={{ padding: "1rem", background: "#fff", border: "1px solid var(--border)", borderTop: "3px solid #1D4ED8", borderRadius: "var(--r-md)" }}>
-                <div style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#1D4ED8", marginBottom: "0.4rem" }}>How to Read</div>
+              <div style={{ padding: "1rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "3px solid #1D4ED8", borderRadius: "var(--r-md)" }}>
+                <div style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--blue)", marginBottom: "0.4rem" }}>How to Read</div>
                 <p style={{ fontSize: "0.78rem", color: "var(--ink-3)", lineHeight: 1.6, margin: 0 }}>{series.how_to_read}</p>
               </div>
             )}
             {series.why_it_matters && (
-              <div style={{ padding: "1rem", background: "#fff", border: "1px solid var(--border)", borderTop: "3px solid #B45309", borderRadius: "var(--r-md)" }}>
-                <div style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#B45309", marginBottom: "0.4rem" }}>Why It Matters</div>
+              <div style={{ padding: "1rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "3px solid #B45309", borderRadius: "var(--r-md)" }}>
+                <div style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--amber)", marginBottom: "0.4rem" }}>Why It Matters</div>
                 <p style={{ fontSize: "0.78rem", color: "var(--ink-3)", lineHeight: 1.6, margin: 0 }}>{series.why_it_matters}</p>
               </div>
             )}

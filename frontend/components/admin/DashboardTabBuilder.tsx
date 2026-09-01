@@ -17,7 +17,7 @@ const CHART_TYPES: ChartType[] = ["line", "bar", "area", "column"];
 const KINDS: { v: WidgetKind; label: string }[] = [
   { v: "chart", label: "Chart" }, { v: "kpi", label: "KPI tiles" }, { v: "map", label: "Nigeria map" },
 ];
-const sel: React.CSSProperties = { padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 5, fontSize: "0.76rem", background: "#fff" };
+const sel: React.CSSProperties = { padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 5, fontSize: "0.76rem", background: "var(--surface-white)" };
 const inp: React.CSSProperties = { padding: "7px 9px", border: "1px solid var(--border)", borderRadius: 5, fontSize: "0.8rem", width: "100%", boxSizing: "border-box" };
 
 const emptyWidget = (): BuilderWidget => ({ kind: "chart", title: "", config: { series: [], chartType: "line" }, display_order: 0 });
@@ -113,7 +113,7 @@ export default function DashboardTabBuilder() {
       </div>
 
       {tabs.length === 0 ? (
-        <div style={{ background: "#fff", border: "1px dashed var(--border)", borderRadius: "var(--r-md)", padding: "1.25rem", fontSize: "0.78rem", color: "var(--ink-5)" }}>
+        <div style={{ background: "var(--surface-white)", border: "1px dashed var(--border)", borderRadius: "var(--r-md)", padding: "1.25rem", fontSize: "0.78rem", color: "var(--ink-5)" }}>
           No custom tabs yet. Click <strong>New Tab</strong> to compose one from energy series.
         </div>
       ) : (
@@ -122,14 +122,14 @@ export default function DashboardTabBuilder() {
             style={{ ...inp, marginBottom: "0.25rem" }} />
           {visibleTabs.length === 0 && <div style={{ fontSize: "0.75rem", color: "var(--ink-5)", padding: "0.5rem" }}>No custom tabs match “{tabSearch}”.</div>}
           {visibleTabs.map((t) => (
-            <div key={t.id} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "0.875rem 1.1rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+            <div key={t.id} style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "0.875rem 1.1rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>{t.label}</div>
                 <div style={{ fontSize: "0.7rem", color: "var(--ink-4)" }}>{targetLabel(t)} · {t.widgets.length} widget{t.widgets.length === 1 ? "" : "s"}</div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => setEditing({ ...t, widgets: t.widgets.length ? t.widgets : [emptyWidget()] })} style={{ padding: "5px 12px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-tint)", color: "var(--green)", cursor: "pointer" }}>Edit</button>
-                <button onClick={() => remove(t.id)} style={{ padding: "5px 12px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid var(--red)", borderRadius: 4, background: "#fff", color: "var(--red)", cursor: "pointer" }}>Delete</button>
+                <button onClick={() => remove(t.id)} style={{ padding: "5px 12px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid var(--red)", borderRadius: 4, background: "var(--surface-white)", color: "var(--red)", cursor: "pointer" }}>Delete</button>
               </div>
             </div>
           ))}
@@ -138,10 +138,10 @@ export default function DashboardTabBuilder() {
 
       {editing && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "2rem 1rem", overflowY: "auto" }} onClick={() => setEditing(null)}>
-          <div style={{ background: "#fff", borderRadius: "var(--r-lg)", width: "100%", maxWidth: 640, boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ background: "var(--surface-white)", borderRadius: "var(--r-lg)", width: "100%", maxWidth: 640, boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: "1.1rem 1.4rem", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ fontSize: "1rem", fontWeight: 700, margin: 0 }}>{editing.id ? "Edit Tab" : "New Custom Tab"}</h3>
-              <button onClick={() => setEditing(null)} style={{ background: "none", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "var(--ink-4)" }}>×</button>
+              <button aria-label="Close" onClick={() => setEditing(null)} style={{ background: "none", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "var(--ink-4)" }}>×</button>
             </div>
 
             <div style={{ padding: "1.4rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -176,7 +176,7 @@ export default function DashboardTabBuilder() {
                       {agencies.map((a) => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </div>
-                  <div style={{ maxHeight: 180, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 5, background: "#fff" }}>
+                  <div style={{ maxHeight: 180, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 5, background: "var(--surface-white)" }}>
                     {filteredStaff.length === 0 && <div style={{ fontSize: "0.74rem", color: "var(--ink-5)", padding: "0.6rem 0.75rem" }}>No staff match.</div>}
                     {filteredStaff.map((u) => {
                       const on = editing.owner_username === u.username;

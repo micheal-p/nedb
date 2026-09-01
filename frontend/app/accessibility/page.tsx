@@ -22,13 +22,20 @@ export default function AccessibilityPage() {
               Charts and maps never rely on colour alone: direction of change is always shown with a signed number and a marker alongside the colour.
             </p>
             <p style={{ marginBottom: "1rem" }}>
+              The service offers four appearance settings — system, light, dark, and a high-contrast mode with pure
+              blacks, hard borders and underlined links — switchable from the navigation bar on every page and applied
+              before the page first paints. A &quot;skip to main content&quot; link is the first control reached by
+              keyboard on every page, keyboard focus is marked with a visible ring in all themes, and animation is
+              disabled entirely for readers whose systems request reduced motion.
+            </p>
+            <p style={{ marginBottom: "1rem" }}>
               Some interactive maps may be difficult to use with a keyboard alone. The same figures are always available in the accompanying tables on the same page.
             </p>
             <p>
               If you find part of this service inaccessible, contact the Energy Commission of Nigeria through energy.gov.ng and we will provide the information in an accessible format.
             </p>
           </div>
-          <p style={{ fontSize: "0.72rem", color: "var(--ink-5)", marginTop: "1.75rem" }}>Last updated: 24 August 2026.</p>
+          <p style={{ fontSize: "0.72rem", color: "var(--ink-5)", marginTop: "1.75rem" }}>Last updated: 1 September 2026.</p>
         </div>
       </main>
       <Footer />

@@ -90,7 +90,7 @@ export default function PenaPanel() {
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
           {forms.length > 0 && (
             <select value={formId ?? ""} onChange={(e) => setFormId(Number(e.target.value))}
-              style={{ padding: "5px 8px", border: "1px solid var(--border)", borderRadius: 5, fontSize: "0.72rem", background: "#fff", color: "var(--ink-2)", maxWidth: 220 }}>
+              style={{ padding: "5px 8px", border: "1px solid var(--border)", borderRadius: 5, fontSize: "0.72rem", background: "var(--surface-white)", color: "var(--ink-2)", maxWidth: 220 }}>
               {forms.map((f) => <option key={f.id} value={f.id}>{f.title}</option>)}
             </select>
           )}

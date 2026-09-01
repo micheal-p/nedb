@@ -13,7 +13,7 @@ import { type NbsRow } from "@/lib/nbs-benchmarks";
 
 type EditRow = { state_name: string; lga_name: string; population: string; poverty_rate: string; source: string };
 
-const cell: React.CSSProperties = { padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 4, fontSize: "0.78rem", fontFamily: "var(--font-mono)", width: "100%", boxSizing: "border-box", background: "#fff" };
+const cell: React.CSSProperties = { padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 4, fontSize: "0.78rem", fontFamily: "var(--font-mono)", width: "100%", boxSizing: "border-box", background: "var(--surface-white)" };
 
 export default function NbsBenchmarksPage() {
   const router = useRouter();
@@ -107,7 +107,7 @@ export default function NbsBenchmarksPage() {
         ) : (
           <>
             {national && (
-              <div style={{ background: "#fff", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", borderRadius: "var(--r-md)", padding: "1rem 1.25rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+              <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "3px solid var(--green)", borderRadius: "var(--r-md)", padding: "1rem 1.25rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
                 <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--ink)", minWidth: 160 }}>NIGERIA (national)</div>
                 <div style={{ flex: "1 1 200px" }}>
                   <label style={{ fontSize: "0.65rem", fontWeight: 600, color: "var(--ink-4)", display: "block", marginBottom: 2 }}>Population</label>
@@ -150,7 +150,7 @@ export default function NbsBenchmarksPage() {
         )}
 
         {(msg || error) && (
-          <div style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", padding: "0.75rem 1.25rem", borderRadius: 6, fontSize: "0.8rem", fontWeight: 600, background: error ? "#FEE2E2" : "var(--green)", color: error ? "var(--red)" : "#fff", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", zIndex: 50 }}>
+          <div style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", padding: "0.75rem 1.25rem", borderRadius: 6, fontSize: "0.8rem", fontWeight: 600, background: error ? "var(--red-tint)" : "var(--green)", color: error ? "var(--red)" : "#fff", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", zIndex: 50 }}>
             {error || msg}
           </div>
         )}

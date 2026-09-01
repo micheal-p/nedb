@@ -36,7 +36,7 @@ export default function VerifyResponsePage() {
         <div style={{ textAlign: "center", marginBottom: "1.25rem", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--green)" }}>
           Nigeria Energy Data Bank · PENA
         </div>
-        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "2.5rem 2rem", textAlign: "center" }}>
+        <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "2.5rem 2rem", textAlign: "center" }}>
           {!result ? (
             <>
               <h1 style={{ fontSize: "1.15rem", fontWeight: 700, color: "var(--ink)", margin: "0 0 0.5rem" }}>Confirm your response</h1>

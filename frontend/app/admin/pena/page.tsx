@@ -53,13 +53,13 @@ function NewAssessmentModal({ onClose, onCreated }: { onClose: () => void; onCre
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }} onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "var(--r-lg)", width: "100%", maxWidth: 560, maxHeight: "90vh", overflow: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ background: "var(--surface-white)", borderRadius: "var(--r-lg)", width: "100%", maxWidth: 560, maxHeight: "90vh", overflow: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)" }}>PENA</div>
             <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>New Energy Assessment</h2>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-4)", fontSize: "1.2rem" }}>×</button>
+          <button aria-label="Close" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-4)", fontSize: "1.2rem" }}>×</button>
         </div>
 
         <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -86,7 +86,7 @@ function NewAssessmentModal({ onClose, onCreated }: { onClose: () => void; onCre
             The form starts with the standard PENA question set — name, email (one response each), phone, state, LGA, address/landmark, income, light hours, energy expense, energy source, household size. You can edit questions before opening it. Personal details never appear in public data — only k-anonymised aggregates.
           </div>
 
-          {error && <div style={{ fontSize: "0.78rem", color: "var(--red)", background: "#FEE2E2", padding: "0.5rem 0.75rem", borderRadius: 4 }}>{error}</div>}
+          {error && <div style={{ fontSize: "0.78rem", color: "var(--red)", background: "var(--red-tint)", padding: "0.5rem 0.75rem", borderRadius: 4 }}>{error}</div>}
 
           <button onClick={save} disabled={saving} style={{ padding: "0.65rem 1.5rem", background: saving ? "var(--ink-5)" : "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.82rem", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", alignSelf: "flex-end" }}>
             {saving ? "Creating…" : "Create Assessment"}
@@ -153,7 +153,7 @@ export default function PenaAdminPage() {
           </div>
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
             <Link href="/admin" style={{ fontSize: "0.78rem", color: "var(--ink-4)", textDecoration: "none" }}>← Admin</Link>
-            <Link href="/admin/pena/benchmarks" style={{ padding: "0.6rem 1.1rem", background: "#fff", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, textDecoration: "none" }}>
+            <Link href="/admin/pena/benchmarks" style={{ padding: "0.6rem 1.1rem", background: "var(--surface-white)", border: "1px solid var(--green-line)", color: "var(--green)", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, textDecoration: "none" }}>
               NBS Benchmarks
             </Link>
             <button onClick={() => setShowNew(true)} style={{ padding: "0.6rem 1.25rem", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
@@ -165,7 +165,7 @@ export default function PenaAdminPage() {
         {loading ? (
           <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)", fontSize: "0.82rem" }}>Loading…</div>
         ) : forms.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "4rem 2rem", background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)" }}>
+          <div style={{ textAlign: "center", padding: "4rem 2rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)" }}>
             <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.375rem" }}>No assessments yet</div>
             <div style={{ fontSize: "0.8rem", color: "var(--ink-4)", marginBottom: "1.5rem" }}>Create your first energy assessment — a shareable form that geocodes respondents, classifies them into economic tiers, and feeds the open data bank.</div>
             <button onClick={() => setShowNew(true)} style={{ padding: "0.65rem 1.5rem", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
@@ -178,7 +178,7 @@ export default function PenaAdminPage() {
               const st = STATUS_STYLE[f.status];
               return (
                 <Link key={f.id} href={`/admin/pena/${f.id}`} style={{ textDecoration: "none" }}>
-                  <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", cursor: "pointer", transition: "border-color 0.15s", flexWrap: "wrap" }}
+                  <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", cursor: "pointer", transition: "border-color 0.15s", flexWrap: "wrap" }}
                     onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
                     onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}>
                     <div style={{ flex: 1, minWidth: 0 }}>

@@ -21,9 +21,9 @@ interface ApexData {
 
 const STATUS_STYLE: Record<string, { bg: string; fg: string }> = {
   ok:              { bg: "var(--green-tint)", fg: "var(--green)" },
-  ai_quota:        { bg: "#FEE2E2", fg: "#991B1B" },
-  chat_rate_limit: { bg: "#FEF3C7", fg: "#92400E" },
-  error:           { bg: "#FEE2E2", fg: "#991B1B" },
+  ai_quota:        { bg: "var(--red-tint)", fg: "var(--red)" },
+  chat_rate_limit: { bg: "var(--amber-tint)", fg: "var(--amber)" },
+  error:           { bg: "var(--red-tint)", fg: "var(--red)" },
 };
 
 export default function ApexAdmin() {
@@ -105,7 +105,7 @@ export default function ApexAdmin() {
                   {data.today.used}<span style={{ fontSize: "0.85rem", color: "var(--ink-4)" }}> / {data.today.limit}</span>
                 </div>
                 <div style={{ height: 6, borderRadius: 3, background: "var(--surface-muted)", overflow: "hidden" }}>
-                  <div style={{ width: `${Math.min(100, data.today.pct)}%`, height: "100%", background: data.today.pct >= 90 ? "#DC2626" : data.today.pct >= 70 ? "#D97706" : "var(--green)" }} />
+                  <div style={{ width: `${Math.min(100, data.today.pct)}%`, height: "100%", background: data.today.pct >= 90 ? "var(--red)" : data.today.pct >= 70 ? "var(--amber)" : "var(--green)" }} />
                 </div>
                 <div style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginTop: 6 }}>
                   {data.today.pct}% of the free daily allowance · resets {new Date(data.today.resetsAt).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}
@@ -186,7 +186,7 @@ export default function ApexAdmin() {
                             <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.68rem" }}>{k.key}</td>
                             <td>{k.owner ?? "—"}</td>
                             <td style={{ fontSize: "0.68rem", color: "var(--ink-5)" }}>{new Date(k.created_at).toLocaleDateString("en-NG")}</td>
-                            <td><span style={{ fontSize: "0.62rem", fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: k.is_active ? "var(--green-tint)" : "#FEE2E2", color: k.is_active ? "var(--green)" : "#991B1B" }}>{k.is_active ? "active" : "revoked"}</span></td>
+                            <td><span style={{ fontSize: "0.62rem", fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: k.is_active ? "var(--green-tint)" : "var(--red-tint)", color: k.is_active ? "var(--green)" : "var(--red)" }}>{k.is_active ? "active" : "revoked"}</span></td>
                             <td><button onClick={() => toggleKey(k)} className="btn btn-secondary btn-sm" style={{ fontSize: "0.65rem", padding: "2px 10px" }}>{k.is_active ? "Revoke" : "Restore"}</button></td>
                           </tr>
                         ))}

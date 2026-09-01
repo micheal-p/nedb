@@ -129,7 +129,7 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
     const base: React.CSSProperties = {
       position: "fixed", zIndex: 900,
       width: "min(380px, calc(100vw - 32px))", height: "min(540px, calc(100vh - 120px))",
-      background: "#fff", border: "1px solid var(--border)", borderRadius: 16,
+      background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: 16,
       boxShadow: "0 8px 40px rgba(0,0,0,0.16)", display: "flex", flexDirection: "column", overflow: "hidden",
     };
     if (!pos || typeof window === "undefined") return { ...base, bottom: 84, right: 24 };
@@ -233,7 +233,7 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
 
       {/* Label when closed */}
       {!open && !pos && (
-        <div style={{ position: "fixed", bottom: 30, right: 84, zIndex: 899, background: "var(--ink)", color: "#fff", borderRadius: 6, padding: "4px 10px", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.04em", pointerEvents: "none", opacity: 0.85 }}>
+        <div style={{ position: "fixed", bottom: 30, right: 84, zIndex: 899, background: "var(--ink-surface)", color: "#fff", borderRadius: 6, padding: "4px 10px", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.04em", pointerEvents: "none", opacity: 0.85 }}>
           Apex AI
         </div>
       )}
@@ -297,7 +297,7 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
                 <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--green)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10 10 10 0 0 1-10-10A10 10 0 0 1 12 2z"/><path d="M12 8v4M12 16h.01" strokeLinecap="round"/></svg>
                 </div>
-                <div style={{ padding: "10px 14px", background: "#fff", border: "1px solid var(--border)", borderRadius: "12px 12px 12px 2px", display: "flex", gap: 4, alignItems: "center" }}>
+                <div style={{ padding: "10px 14px", background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "12px 12px 12px 2px", display: "flex", gap: 4, alignItems: "center" }}>
                   {[0, 0.2, 0.4].map((d, i) => (
                     <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--ink-4)", animation: `bounce 1s ${d}s infinite` }} />
                   ))}
@@ -308,7 +308,7 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
           </div>
 
           {/* Suggestions */}
-          <div style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", background: "#fff", display: "flex", gap: 6, overflowX: "auto", flexShrink: 0 }}>
+          <div style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", background: "var(--surface-white)", display: "flex", gap: 6, overflowX: "auto", flexShrink: 0 }}>
             {suggestions.map((s) => (
               <button key={s} onClick={() => send(s)} style={{ padding: "4px 10px", fontSize: "0.68rem", fontWeight: 500, border: "1px solid var(--border)", borderRadius: 20, background: "var(--surface)", color: "var(--ink-4)", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
                 {s}
@@ -318,14 +318,14 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
 
           {/* Usage meter — Claude-style allowance visibility */}
           {usage && usage.pct >= 70 && (
-            <div style={{ padding: "6px 12px", borderTop: "1px solid var(--border)", background: usage.pct >= 100 ? "#FEE2E2" : "#FEF3C7", fontSize: "0.66rem", color: usage.pct >= 100 ? "#991B1B" : "#92400E", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <div style={{ padding: "6px 12px", borderTop: "1px solid var(--border)", background: usage.pct >= 100 ? "var(--red-tint)" : "var(--amber-tint)", fontSize: "0.66rem", color: usage.pct >= 100 ? "var(--red)" : "var(--amber)", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               <div style={{ flex: 1 }}>
                 {usage.pct >= 100
                   ? <>Daily free AI allowance used up — resets {fmtReset(usage.resetsAt)}</>
                   : <>You&apos;ve used <strong>{usage.pct}%</strong> of today&apos;s free AI allowance · resets {fmtReset(usage.resetsAt)}</>}
               </div>
               <div style={{ width: 56, height: 5, borderRadius: 3, background: "rgba(0,0,0,0.1)", overflow: "hidden", flexShrink: 0 }}>
-                <div style={{ width: `${Math.min(100, usage.pct)}%`, height: "100%", background: usage.pct >= 100 ? "#DC2626" : "#D97706" }} />
+                <div style={{ width: `${Math.min(100, usage.pct)}%`, height: "100%", background: usage.pct >= 100 ? "var(--red)" : "var(--amber)" }} />
               </div>
             </div>
           )}
@@ -336,7 +336,7 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
           )}
 
           {/* Input */}
-          <div style={{ padding: "10px 12px", borderTop: "1px solid var(--border)", background: "#fff", display: "flex", gap: 8 }}>
+          <div style={{ padding: "10px 12px", borderTop: "1px solid var(--border)", background: "var(--surface-white)", display: "flex", gap: 8 }}>
             <input
               ref={inputRef}
               value={input}

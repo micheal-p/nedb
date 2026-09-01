@@ -55,7 +55,7 @@ export default async function AboutPage() {
     <>
       <Navbar active="about" />
 
-      <div style={{ background: "var(--ink)", color: "#fff", padding: "4rem 2rem 3rem", borderBottom: "3px solid var(--green)" }}>
+      <div style={{ background: "var(--ink-surface)", color: "#fff", padding: "4rem 2rem 3rem", borderBottom: "3px solid var(--green)" }}>
         <div style={{ maxWidth: "var(--max-w)", margin: "0 auto" }}>
           <div style={{ display: "flex", gap: "3rem", alignItems: "flex-start", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 280 }}>

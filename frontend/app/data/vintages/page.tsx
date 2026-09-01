@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
+import { SkeletonCards, EmptyState } from "@/components/ui/Loading";
 import Footer from "@/components/layout/Footer";
 
 type Vintage = {
@@ -91,7 +92,7 @@ function CatalogueBody() {
           </p>
         </div>
 
-        {verifyMsg && <div style={{ background: "#fff", border: "1px solid var(--border)", borderLeft: "3px solid var(--amber, #B45309)", padding: "0.9rem 1.15rem", marginBottom: "1rem", fontSize: "0.82rem", color: "var(--ink-2)" }}>{verifyMsg}</div>}
+        {verifyMsg && <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderLeft: "3px solid var(--amber, #B45309)", padding: "0.9rem 1.15rem", marginBottom: "1rem", fontSize: "0.82rem", color: "var(--ink-2)" }}>{verifyMsg}</div>}
         {verified && (
           <div style={{ background: "var(--green-tint)", border: "1px solid var(--green-line)", padding: "1rem 1.25rem", marginBottom: "1.25rem" }}>
             <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--green-deep, var(--green))" }}>Payment confirmed — order {verified.reference}</div>
@@ -106,18 +107,18 @@ function CatalogueBody() {
         )}
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: "3rem", color: "var(--ink-5)", fontSize: "0.82rem" }}>Loading…</div>
+          <SkeletonCards rows={2} />
         ) : vintages.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "4rem 2rem", background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", color: "var(--ink-4)", fontSize: "0.82rem" }}>
-            No vintages published yet. The first edition of record is frozen by the Data Point team.
-          </div>
+          <EmptyState
+            title="No editions published yet"
+            body="A vintage is frozen and published by the Data Point team. Once the first edition of record appears here, it never changes, and its checksum lets any download be verified." />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
             {vintages.map((v) => {
               const priced = v.price_ngn != null && Number(v.price_ngn) > 0;
               const m = v.manifest ?? {};
               return (
-                <div key={v.label} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.25rem 1.5rem" }}>
+                <div key={v.label} style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "1.25rem 1.5rem" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", alignItems: "flex-start" }}>
                     <div style={{ minWidth: 260, flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>

@@ -265,7 +265,7 @@ export default function KnowledgeGraphPage() {
                 </div>
 
                 {/* Mode explainer under the graph */}
-                <div style={{ marginTop: "0.75rem", padding: "0.75rem 1rem", background: "#fff", border: "1px solid var(--border)", borderLeft: "3px solid var(--green)", borderRadius: "var(--r-md)", fontSize: "0.76rem", color: "var(--ink-4)", lineHeight: 1.6 }}>
+                <div style={{ marginTop: "0.75rem", padding: "0.75rem 1rem", background: "var(--surface-white)", border: "1px solid var(--border)", borderLeft: "3px solid var(--green)", borderRadius: "var(--r-md)", fontSize: "0.76rem", color: "var(--ink-4)", lineHeight: 1.6 }}>
                   {mode === "explore" && <>Each node is an entity in Nigeria&apos;s energy system; each link is a real relationship (fuel supply, generation, wheeling, distribution, policy). Node size reflects how connected it is.</>}
                   {mode === "spof" && <><strong style={{ color: "var(--ink)" }}>Single points of failure</strong> are nodes whose removal would disconnect part of the network — computed with an articulation-point algorithm. The Transmission Company of Nigeria (TCN) is the clearest example: every generated megawatt must pass through it to reach any DisCo.</>}
                   {mode === "trace" && selected && <>Tracing everything downstream of <strong style={{ color: "var(--ink)" }}>{selected.label}</strong>. Highlighted nodes are directly or indirectly powered by it — this is the kind of &ldquo;ripple&rdquo; query the Neo4j proposal describes, running on our own Postgres.</>}
@@ -286,7 +286,7 @@ export default function KnowledgeGraphPage() {
                       style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", fontSize: "0.78rem", border: "1px solid var(--border)", borderRadius: 6 }}
                     />
                     {matches.length > 0 && (
-                      <div style={{ position: "absolute", left: "1rem", right: "1rem", top: "calc(100% - 4px)", zIndex: 60, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", left: "1rem", right: "1rem", top: "calc(100% - 4px)", zIndex: 60, background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", overflow: "hidden" }}>
                         {matches.map((n) => (
                           <button key={n.key} onClick={() => pickSearchResult(n)}
                             style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", background: "none", border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer", textAlign: "left", fontSize: "0.75rem", color: "var(--ink)" }}>
@@ -445,7 +445,7 @@ export default function KnowledgeGraphPage() {
       <style>{`
         .gbtn { height: 30px; padding: 0 12px; font-size: 0.75rem; font-weight: 600; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--ink-4); cursor: pointer; }
         .gbtn:hover { border-color: var(--green); color: var(--green); }
-        .gbtn-active { background: var(--ink); color: #fff; border-color: var(--ink); }
+        .gbtn-active { background: var(--ink-surface); color: #fff; border-color: var(--ink-surface); }
         .gbtn-clear { background: var(--green-tint); color: var(--green); border-color: var(--green-line); }
         .gcard { background: #fff; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
         .gcard-title { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-4); }
