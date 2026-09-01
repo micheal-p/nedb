@@ -27,6 +27,7 @@ type FormDef = {
   status: "open" | "closed" | "draft";
   preview?: boolean;
   title: string; description?: string | null; consent_text?: string;
+  target_population?: string | null; setting?: string | null;
   questions?: Question[];
   google_client_id?: string | null;
 };
@@ -412,6 +413,12 @@ export default function PenaPublicForm() {
       <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "4px solid var(--green)", borderRadius: "var(--r-lg)", padding: "1.75rem 1.75rem 1.5rem", marginBottom: "0.875rem" }}>
         <h1 style={{ fontSize: "1.45rem", fontWeight: 700, color: "var(--ink)", margin: 0, lineHeight: 1.25 }}>{def.title}</h1>
         {def.description && <p style={{ fontSize: "0.85rem", color: "var(--ink-3)", marginTop: "0.625rem", lineHeight: 1.6 }}>{def.description}</p>}
+        {def.target_population && (
+          <p style={{ fontSize: "0.74rem", color: "var(--ink-4)", marginTop: "0.4rem" }}>
+            This assessment is for: <strong style={{ color: "var(--ink-3)" }}>{def.target_population}</strong>
+            {def.setting ? ` (${def.setting})` : ""}
+          </p>
+        )}
         <p style={{ fontSize: "0.72rem", color: "var(--ink-5)", marginTop: "0.75rem", marginBottom: 0 }}>{t.requiredNote}</p>
         {/* Progress — answered count and a slim bar */}
         {totalQs > 0 && (

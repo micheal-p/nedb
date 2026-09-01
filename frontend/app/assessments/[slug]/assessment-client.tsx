@@ -17,8 +17,10 @@ import { TIERS, TIER_ORDER, K_ANON_MIN, type PenaTier } from "@/lib/pena";
 type Group = { name: string; state?: string | null; count: number; avg_income: number | null; avg_light_hours: number | null; avg_energy_expense: number | null; tiers: number[] };
 
 type PubData = {
-  assessment: { slug: string; title: string; description: string | null; status: string; created_at: string };
+  assessment: { slug: string; title: string; description: string | null; status: string; created_at: string; target_population?: string | null; setting?: string | null };
   share_token?: string | null;
+  target_population?: string | null;
+  setting?: string | null;
   license: string;
   total_responses: number;
   collecting?: boolean;
@@ -108,6 +110,12 @@ export default function PublicAssessmentPage() {
             </div>
             <h1 style={{ fontSize: "1.65rem", fontFamily: "var(--font-serif)", fontWeight: 400, color: "var(--ink)", margin: 0, lineHeight: 1.2 }}>{data.assessment.title}</h1>
             {data.assessment.description && <p style={{ fontSize: "0.85rem", color: "var(--ink-3)", marginTop: "0.55rem", lineHeight: 1.65 }}>{data.assessment.description}</p>}
+            {data.assessment.target_population && (
+              <div style={{ fontSize: "0.74rem", color: "var(--ink-4)", marginTop: "0.45rem" }}>
+                <strong style={{ color: "var(--ink-3)" }}>Population:</strong> {data.assessment.target_population}
+                {data.assessment.setting ? ` · ${data.assessment.setting} setting` : ""}
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: "0.625rem", flexWrap: "wrap" }}>
               {data.assessment.status === "open" && (
                 <span style={{ fontSize: "0.62rem", fontWeight: 700, padding: "2px 8px", borderRadius: 3, background: "var(--green-tint)", color: "var(--green)", border: "1px solid var(--green-line)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Collecting responses</span>

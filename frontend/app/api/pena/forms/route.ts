@@ -69,6 +69,8 @@ export async function POST(req: NextRequest) {
       consent_text: body.consent_text?.trim() || DEFAULT_CONSENT,
       status: "draft",
       is_public_stats: body.is_public_stats !== false,
+      target_population: body.target_population?.trim() || null,
+      setting: ["urban", "peri-urban", "rural", "mixed"].includes(body.setting) ? body.setting : null,
       require_verification: !!body.require_verification,  // direct by default — responses count immediately
       created_by: auth.username,
     })

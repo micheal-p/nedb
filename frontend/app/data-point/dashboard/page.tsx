@@ -14,6 +14,7 @@ const SectorChart = dynamic(() => import("@/components/datapoint/SectorChart"), 
 const NigeriaMap  = dynamic(() => import("@/components/datapoint/NigeriaMap"),  { ssr: false });
 const PenaPanel   = dynamic(() => import("@/components/datapoint/panels/PenaPanel"), { ssr: false });
 const ApexAI      = dynamic(() => import("@/components/datapoint/ApexAI"),      { ssr: false });
+import DashboardTour, { tourSeen } from "@/components/datapoint/DashboardTour";
 const DashboardWidget = dynamic(() => import("@/components/datapoint/DashboardWidget"), { ssr: false });
 const FiscalVarianceTable = dynamic(() => import("@/components/datapoint/FiscalVarianceTable"), { ssr: false });
 const NrsCompliance = dynamic(() => import("@/components/datapoint/NrsCompliance"), { ssr: false });
@@ -184,6 +185,9 @@ export default function Dashboard() {
   const [staffRole, setStaffRole]   = useState("");
   const [profile, setProfile]       = useState<ProfileDef>(PROFILE_MAP.executive);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // First visit gets the tour; afterwards it lives behind the sidebar link.
+  const [tourOpen, setTourOpen] = useState(false);
+  useEffect(() => { if (!tourSeen()) setTourOpen(true); }, []);
   const [selectedYear, setSelectedYear] = useState(2026);
   const [customTabs, setCustomTabs] = useState<BuilderTab[]>([]);
   const [dashData, setDashData]     = useState<DashData>({});
@@ -340,6 +344,7 @@ export default function Dashboard() {
               </Link>
             )}
             <Link href="/" className="sb-link"><span className="sb-label">Public Data Bank</span></Link>
+            <button className="sb-link" onClick={() => setTourOpen(true)}><span className="sb-label">Take the tour</span></button>
             <button className="sb-link" onClick={logout} style={{ color: "rgba(192,57,43,0.8)" }}><span className="sb-label">Sign Out</span></button>
           </div>
         </div>
@@ -646,6 +651,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <DashboardTour open={tourOpen} onClose={() => setTourOpen(false)} />
       <ApexAI
         currentView={view}
         profileLabel={profile.label}

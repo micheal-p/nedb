@@ -40,7 +40,7 @@ type Question = {
 async function loadForm(token: string) {
   const { data } = await db()
     .from("pena_forms")
-    .select("id, title, description, consent_text, status, tier_config, require_verification, slug")
+    .select("id, title, description, consent_text, status, tier_config, require_verification, slug, target_population, setting")
     .eq("share_token", token)
     .single();
   return data;
@@ -169,6 +169,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   if (form.status !== "open") return ok({ status: form.status, title: form.title });
   return ok({
     status: "open", title: form.title, description: form.description,
+    target_population: form.target_population, setting: form.setting,
     consent_text: form.consent_text, questions: await loadQuestions(form.id),
     google_client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? null,
   });

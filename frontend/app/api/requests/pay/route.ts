@@ -35,9 +35,12 @@ export async function POST(req: NextRequest) {
 
   const secret = process.env.PAYSTACK_SECRET_KEY;
   if (!secret) {
+    // Payments have not opened yet. Say so plainly — no invoice promises the
+    // unit is not ready to keep. The quote stands; the button goes live the
+    // day the key does.
     return ok({
-      invoice_requested: true,
-      message: `The processing fee is ₦${price.toLocaleString()}. Online payment is not yet enabled — the data management unit will send payment instructions to ${email}.`,
+      coming_soon: true,
+      message: `The processing fee is ₦${price.toLocaleString()}. Online payment is coming soon — your quote and reference stand, and you will be able to pay right here once payments open.`,
     });
   }
 

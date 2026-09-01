@@ -44,6 +44,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.description !== undefined)   patch.description = body.description?.trim() || null;
   if (body.consent_text?.trim())        patch.consent_text = body.consent_text.trim();
   if (body.is_public_stats !== undefined) patch.is_public_stats = !!body.is_public_stats;
+  if (body.target_population !== undefined) patch.target_population = body.target_population?.trim() || null;
+  if (body.setting !== undefined) patch.setting = ["urban", "peri-urban", "rural", "mixed"].includes(body.setting) ? body.setting : null;
   if (body.require_verification !== undefined) patch.require_verification = !!body.require_verification;
   if (body.status) {
     if (!["draft", "open", "closed"].includes(body.status)) return err("Invalid status");

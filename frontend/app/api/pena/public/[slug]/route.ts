@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
 
   const { data: form } = await db()
     .from("pena_forms")
-    .select("id, slug, share_token, title, description, status, is_public_stats, created_at")
+    .select("id, slug, share_token, title, description, status, is_public_stats, created_at, target_population, setting")
     .eq("slug", slug)
     .single();
   if (!form || !form.is_public_stats || form.status === "draft") return err("Assessment not found", 404);
@@ -36,6 +36,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   const assessment = {
     slug: form.slug, title: form.title, description: form.description,
     status: form.status, created_at: form.created_at,
+    target_population: form.target_population, setting: form.setting,
   };
 
   if (agg.collecting) {

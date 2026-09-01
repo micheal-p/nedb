@@ -59,8 +59,15 @@ export default function Footer() {
         </div>
       </div>
       <div className="ft-bottom">
-        <span>
-          &copy; {new Date().getFullYear()} Energy Commission of Nigeria. All rights reserved. &nbsp;·&nbsp; Powered by Norgroup Ltd
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          &copy; {new Date().getFullYear()} Energy Commission of Nigeria. All rights reserved. &nbsp;·&nbsp;
+          <a href="https://norgroups.com" target="_blank" rel="noopener noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--green-mid)", fontWeight: 600 }}>
+            Powered by Norgroup
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M7 17L17 7M17 7H7M17 7v10" />
+            </svg>
+          </a>
         </span>
         <span>NEDB Platform v1.0 &nbsp;·&nbsp; Data updated monthly</span>
       </div>

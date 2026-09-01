@@ -22,7 +22,7 @@ const TRANSLATE_LANGS = PENA_LANGS.filter((l) => l.value !== "en");
 type FormDetail = {
   id: number; slug: string; share_token: string; title: string; description: string | null;
   consent_text: string; status: "draft" | "open" | "closed"; is_public_stats: boolean;
-  require_verification: boolean;
+  require_verification: boolean; target_population: string | null; setting: string | null;
   tier_config: TierConfig | null;
   questions: Question[]; response_count: number;
 };
@@ -41,6 +41,7 @@ export default function PenaBuilderPage() {
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [targetPop, setTargetPop] = useState("");
 
   const load = useCallback(() => {
     fetch(`/api/pena/forms/${id}`, { credentials: "include" })
@@ -50,6 +51,7 @@ export default function PenaBuilderPage() {
         setForm(f);
         setQuestions(f.questions);
         setConsent(f.consent_text);
+        setTargetPop(f.target_population ?? "");
         setTiers({ ...DEFAULT_TIER_CONFIG, ...(f.tier_config ?? {}) });
       })
       .catch(() => setError("Failed to load"));
@@ -195,6 +197,24 @@ export default function PenaBuilderPage() {
               When on, respondents confirm by tapping a link emailed to them; only confirmed responses count.
               Needs the Resend domain verified to deliver to the public. Google-signed responses skip the link.
             </span>
+          </div>
+
+          {/* Who this assessment is about — travels to the public page, the
+              fill form, and the working papers' methods section. */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Population</span>
+            <input value={targetPop} onChange={(e) => setTargetPop(e.target.value)}
+              onBlur={() => { if (targetPop !== (form.target_population ?? "")) patch({ target_population: targetPop }, "Target population saved"); }}
+              placeholder="Who is this assessment about? e.g. market traders in Kano metropolis"
+              style={{ flex: "1 1 340px", maxWidth: 480, padding: "5px 10px", fontSize: "0.76rem", border: "1px solid var(--border)", borderRadius: 4 }} />
+            <select value={form.setting ?? ""} onChange={(e) => patch({ setting: e.target.value || null }, "Setting saved")}
+              style={{ padding: "5px 10px", fontSize: "0.76rem", border: "1px solid var(--border)", borderRadius: 4 }}>
+              <option value="">Setting…</option>
+              <option value="urban">Urban</option>
+              <option value="peri-urban">Peri-urban</option>
+              <option value="rural">Rural</option>
+              <option value="mixed">Mixed</option>
+            </select>
           </div>
         </div>
 

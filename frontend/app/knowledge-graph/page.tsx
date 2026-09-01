@@ -6,6 +6,7 @@ import Footer from "@/components/layout/Footer";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 import dynamic from "next/dynamic";
 import NetworkGraph, { type NetworkGraphHandle } from "@/components/charts/NetworkGraph";
+import { DARK_NODE, DARK_EDGE } from "@/components/charts/NetworkGraph";
 
 const ApexAI = dynamic(() => import("@/components/datapoint/ApexAI"), { ssr: false });
 import {
@@ -67,7 +68,7 @@ export default function KnowledgeGraphPage() {
     const seen = new Map<string, { label: string; color: string }>();
     for (const e of filteredData?.edges ?? []) {
       const label = EDGE_LABEL[e.type] ?? e.type;
-      if (!seen.has(label)) seen.set(label, { label, color: EDGE_COLOR[e.type] ?? "rgba(0,0,0,0.2)" });
+      if (!seen.has(label)) seen.set(label, { label, color: DARK_EDGE[e.type] ?? EDGE_COLOR[e.type] ?? "rgba(0,0,0,0.2)" });
     }
     return [...seen.values()];
   }, [filteredData]);
@@ -290,7 +291,7 @@ export default function KnowledgeGraphPage() {
                         {matches.map((n) => (
                           <button key={n.key} onClick={() => pickSearchResult(n)}
                             style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", background: "none", border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer", textAlign: "left", fontSize: "0.75rem", color: "var(--ink)" }}>
-                            <span style={{ width: 9, height: 9, borderRadius: "50%", background: NODE_STYLE[n.type].color, flexShrink: 0 }} />
+                            <span style={{ width: 9, height: 9, borderRadius: "50%", background: DARK_NODE[n.type] ?? NODE_STYLE[n.type].color, flexShrink: 0 }} />
                             <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.label}</span>
                             <span style={{ fontSize: "0.6rem", color: "var(--ink-5)" }}>{NODE_STYLE[n.type].label}</span>
                           </button>
@@ -314,7 +315,7 @@ export default function KnowledgeGraphPage() {
                       return (
                         <button key={t} onClick={() => toggleType(t)}
                           style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", background: off ? "transparent" : "var(--surface)", border: "none", borderRadius: 6, cursor: "pointer", fontSize: "0.74rem", color: off ? "var(--ink-5)" : "var(--ink-3)", opacity: off ? 0.55 : 1, textAlign: "left" }}>
-                          <span style={{ width: 12, height: 12, borderRadius: "50%", background: NODE_STYLE[t].color, flexShrink: 0, opacity: off ? 0.35 : 1 }} />
+                          <span style={{ width: 12, height: 12, borderRadius: "50%", background: DARK_NODE[t] ?? NODE_STYLE[t].color, flexShrink: 0, opacity: off ? 0.35 : 1 }} />
                           <span style={{ flex: 1, textDecoration: off ? "line-through" : "none" }}>{NODE_STYLE[t].label}</span>
                           <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.66rem", color: "var(--ink-5)" }}>{typeCounts.get(t)}</span>
                         </button>
@@ -379,7 +380,7 @@ export default function KnowledgeGraphPage() {
                       {Object.entries(traceBreakdown ?? {}).map(([t, n]) => (
                         <div key={t} style={{ display: "flex", justifyContent: "space-between", padding: "0.35rem 0", borderBottom: "1px solid var(--border)", fontSize: "0.76rem" }}>
                           <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--ink-4)" }}>
-                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: NODE_STYLE[t as NodeType].color }} />
+                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: DARK_NODE[t] ?? NODE_STYLE[t as NodeType].color }} />
                             {NODE_STYLE[t as NodeType].label}
                           </span>
                           <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--ink)" }}>{n}</span>

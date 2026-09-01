@@ -23,6 +23,8 @@ function NewAssessmentModal({ onClose, onCreated }: { onClose: () => void; onCre
   const [slug, setSlug] = useState("");
   const [desc, setDesc] = useState("");
   const [pubStats, setPubStats] = useState(true);
+  const [targetPop, setTargetPop] = useState("");
+  const [setting, setSetting] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,7 +37,7 @@ function NewAssessmentModal({ onClose, onCreated }: { onClose: () => void; onCre
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ title: title.trim(), slug: slug.trim(), description: desc, is_public_stats: pubStats }),
+        body: JSON.stringify({ title: title.trim(), slug: slug.trim(), description: desc, is_public_stats: pubStats, target_population: targetPop, setting: setting || undefined }),
       });
       const j = await res.json();
       if (!res.ok) {
@@ -76,6 +78,22 @@ function NewAssessmentModal({ onClose, onCreated }: { onClose: () => void; onCre
             <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} placeholder="Who is being assessed, and where?" style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: "0.82rem", resize: "vertical", fontFamily: "var(--font-sans)", boxSizing: "border-box" }} />
           </div>
           <div>
+          <label style={{ display: "block", marginBottom: "0.75rem" }}>
+            <span className="form-label">Who is this assessment about?</span>
+            <input className="form-input" value={targetPop} onChange={(e) => setTargetPop(e.target.value)}
+              placeholder="e.g. market traders in Kano metropolis" />
+          </label>
+          <label style={{ display: "block", marginBottom: "0.75rem" }}>
+            <span className="form-label">Setting</span>
+            <select className="form-input" value={setting} onChange={(e) => setSetting(e.target.value)}>
+              <option value="">Not specified</option>
+              <option value="urban">Urban</option>
+              <option value="peri-urban">Peri-urban</option>
+              <option value="rural">Rural</option>
+              <option value="mixed">Mixed</option>
+            </select>
+          </label>
+
             <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--ink-3)", display: "block", marginBottom: 4 }}>Open Data</label>
             <select value={pubStats ? "yes" : "no"} onChange={(e) => setPubStats(e.target.value === "yes")} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: "0.82rem" }}>
               <option value="yes">Publish anonymised aggregates to the public data bank</option>

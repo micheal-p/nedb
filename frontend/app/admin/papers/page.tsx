@@ -16,6 +16,7 @@ type Paper = {
 };
 type FormRow = { id: number; title: string; is_public_stats: boolean; status: string; response_count: number };
 type Vintage = { id: number; label: string; title: string; is_published: boolean };
+type SeriesOpt = { id: string; name: string };
 
 const slugOf = (paperNo: string) => {
   const m = paperNo.match(/NEDB\/WP\/(\d{4})\/(\d+)/);
@@ -42,6 +43,9 @@ export default function AdminPapersPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [kind, setKind] = useState<"assessment" | "series">("assessment");
+  const [seriesList, setSeriesList] = useState<SeriesOpt[]>([]);
+  const [pickedSeries, setPickedSeries] = useState<string[]>([]);
   const [formId, setFormId] = useState("");
   const [vintageId, setVintageId] = useState("");
   const [title, setTitle] = useState("");
@@ -54,6 +58,7 @@ export default function AdminPapersPage() {
       authed("/api/vintages").then((r) => (r.ok ? r.json() : [])),
     ]);
     setPapers(p); setForms((f as FormRow[]).filter((x) => x.is_public_stats && x.status !== "draft")); setVintages(v);
+    fetch("/api/series").then((r) => (r.ok ? r.json() : [])).then((j) => setSeriesList((j as SeriesOpt[]) ?? [])).catch(() => {});
     setLoading(false);
   }, []);
 
@@ -65,15 +70,15 @@ export default function AdminPapersPage() {
 
   async function generate() {
     setBusy(true); setMsg("");
-    const r = await authed("/api/papers", {
-      method: "POST",
-      body: JSON.stringify({ pena_form_id: Number(formId), vintage_id: vintageId ? Number(vintageId) : undefined, title: title || undefined, authors: authors || undefined }),
-    });
+    const payload = kind === "series"
+      ? { kind: "series", series_ids: pickedSeries, vintage_id: vintageId ? Number(vintageId) : undefined, title: title || undefined, authors: authors || undefined }
+      : { pena_form_id: Number(formId), vintage_id: vintageId ? Number(vintageId) : undefined, title: title || undefined, authors: authors || undefined };
+    const r = await authed("/api/papers", { method: "POST", body: JSON.stringify(payload) });
     const j = await r.json().catch(() => ({}));
     setBusy(false);
     if (!r.ok) { setMsg(j.error ?? "Generation failed."); return; }
-    setMsg(`Generated ${j.paper_no} as a draft — open it, read it, then publish.`);
-    setTitle(""); setAuthors(""); load();
+    setMsg(`Generated ${j.paper_no} as a draft — open it, read it in full, then publish.${j.unverified_markers?.length ? ` ⚠ ${j.unverified_markers.length} citation(s) could not be verified; they are struck through in the draft.` : ""}`);
+    setTitle(""); setAuthors(""); setPickedSeries([]); load();
   }
 
   async function setStatus(p: Paper, status: "published" | "draft") {
@@ -106,14 +111,39 @@ export default function AdminPapersPage() {
         {/* Generate */}
         <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
           <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.75rem" }}>Generate a paper</div>
+          <div style={{ display: "flex", gap: "0.9rem", marginBottom: "0.75rem" }}>
+            {(["assessment", "series"] as const).map((k) => (
+              <label key={k} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.8rem", fontWeight: 600, color: kind === k ? "var(--ink)" : "var(--ink-4)", cursor: "pointer" }}>
+                <input type="radio" name="paper-kind" checked={kind === k} onChange={() => setKind(k)} />
+                {k === "assessment" ? "From an assessment (deterministic)" : "From data series (AI-written, record-cited)"}
+              </label>
+            ))}
+          </div>
+          {kind === "series" && (
+            <div style={{ marginBottom: "0.75rem" }}>
+              <span className="form-label">Series (up to 8) — the model narrates only what these records show</span>
+              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginTop: 4 }}>
+                {seriesList.map((sr) => {
+                  const on = pickedSeries.includes(sr.id);
+                  return (
+                    <button key={sr.id} type="button"
+                      onClick={() => setPickedSeries(on ? pickedSeries.filter((x) => x !== sr.id) : pickedSeries.length < 8 ? [...pickedSeries, sr.id] : pickedSeries)}
+                      style={{ padding: "4px 10px", fontSize: "0.72rem", fontWeight: 600, borderRadius: 4, cursor: "pointer", border: `1px solid ${on ? "var(--green)" : "var(--border)"}`, background: on ? "var(--green-tint)" : "var(--surface-white)", color: on ? "var(--green)" : "var(--ink-3)" }}>
+                      {sr.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "flex-end" }}>
-            <label style={{ flex: "2 1 240px" }}>
+            {kind === "assessment" && <label style={{ flex: "2 1 240px" }}>
               <span className="form-label">Assessment (published open data only)</span>
               <select className="form-input" value={formId} onChange={(e) => setFormId(e.target.value)}>
                 <option value="">Choose…</option>
                 {forms.map((f) => <option key={f.id} value={f.id}>{f.title} ({f.response_count} verified)</option>)}
               </select>
-            </label>
+            </label>}
             <label style={{ flex: "1 1 200px" }}>
               <span className="form-label">Against vintage (optional)</span>
               <select className="form-input" value={vintageId} onChange={(e) => setVintageId(e.target.value)}>
@@ -121,7 +151,7 @@ export default function AdminPapersPage() {
                 {vintages.map((v) => <option key={v.id} value={v.id}>{v.label} — {v.title}</option>)}
               </select>
             </label>
-            <button className="btn btn-primary btn-sm" disabled={busy || !formId} onClick={generate}>{busy ? "Generating…" : "Generate draft"}</button>
+            <button className="btn btn-primary btn-sm" disabled={busy || (kind === "assessment" ? !formId : pickedSeries.length === 0)} onClick={generate}>{busy ? "Generating…" : "Generate draft"}</button>
           </div>
           <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginTop: "0.6rem" }}>
             <label style={{ flex: "2 1 260px" }}>

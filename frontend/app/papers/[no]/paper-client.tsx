@@ -12,18 +12,27 @@ import Footer from "@/components/layout/Footer";
 import { TIERS, type PenaTier } from "@/lib/pena";
 
 type Finding = { heading: string; body: string; basis: string; weight: "headline" | "supporting" };
+type CitedRec = { id: number; series: string; period: string; value: number; unit: string; source: string | null; status: string | null };
+type SeriesSummary = { id: string; name: string; unit: string; record_count: number; span: string;
+  latest: { period: string; value: number } | null; yoy: { pct: number } | null };
+
 type Paper = {
   paper_no: string; title: string; authors: string | null; status: string;
   published_at: string | null;
   vintage: { label: string; checksum: string } | null;
   body: {
+    kind?: "series";
+    narrative?: string;
+    series?: SeriesSummary[];
+    cited_records?: CitedRec[];
+    unverified_markers?: number[];
     generated_at: string;
-    assessment: { slug: string; title: string };
-    summary: string;
-    findings: Finding[];
-    caveats: string[];
+    assessment?: { slug: string; title: string };
+    summary?: string;
+    findings?: Finding[];
+    caveats?: string[];
     methods: Record<string, string>;
-    aggregates: {
+    aggregates?: {
       total_responses: number;
       stats: { avg_income: number | null; median_income: number | null; avg_light_hours: number | null; avg_energy_expense: number | null; avg_burden_pct: number | null } | null;
       tier_distribution: { tier: string; count: number }[] | null;
@@ -34,6 +43,79 @@ type Paper = {
 };
 
 const naira = (v: number | null | undefined) => (v == null ? "—" : `₦${Math.round(v).toLocaleString()}`);
+
+// [rec N] markers become checkable superscripts, exactly as in Apex AI; a
+// marker matching no evidence record is shown struck through, never hidden.
+function renderCited(text: string, records: CitedRec[]) {
+  const byId = new Map(records.map((r) => [r.id, r]));
+  return text.split(/(\[rec \d+\])/g).map((part, i) => {
+    const m = part.match(/^\[rec (\d+)\]$/);
+    if (!m) return <span key={i}>{part}</span>;
+    const r = byId.get(Number(m[1]));
+    if (!r) return <s key={i} title="No committed record matches this citation" style={{ color: "var(--red)", fontSize: "0.62rem" }}>unverified</s>;
+    return (
+      <sup key={i}
+        title={`Record #${r.id} · ${r.series} · ${r.period} · ${r.value.toLocaleString()} ${r.unit} · ${r.source ?? "source unrecorded"}${r.status && r.status !== "final" ? ` · ${r.status}` : ""}`}
+        style={{ fontSize: "0.6rem", fontWeight: 700, color: "var(--green)", cursor: "help", padding: "0 2px" }}>
+        №{r.id}
+      </sup>
+    );
+  });
+}
+
+function SeriesPaperBody({ b }: { b: NonNullable<Paper["body"]> }) {
+  const recs = b.cited_records ?? [];
+  const sections = (b.narrative ?? "").split(/^## /m).filter(Boolean).map((chunk) => {
+    const nl = chunk.indexOf("\n");
+    return { heading: chunk.slice(0, nl < 0 ? undefined : nl).trim(), text: nl < 0 ? "" : chunk.slice(nl + 1).trim() };
+  });
+  return (
+    <>
+      {sections.map((sec, i) => (
+        <div key={i} style={{ marginBottom: "1.6rem" }}>
+          <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: 6 }}>{sec.heading}</div>
+          {sec.text.split(/\n\n+/).map((para, j) => (
+            <p key={j} style={{ fontSize: "0.86rem", color: "var(--ink-2)", lineHeight: 1.8, margin: "0 0 0.8rem" }}>{renderCited(para, recs)}</p>
+          ))}
+        </div>
+      ))}
+
+      {(b.series?.length ?? 0) > 0 && (
+        <div style={{ margin: "1.75rem 0" }}>
+          <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: 6 }}>Table 1 · Series covered</div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+              <thead><tr style={{ borderBottom: "1.5px solid var(--ink)" }}>
+                <th style={{ textAlign: "left", padding: "6px 8px" }}>Series</th>
+                <th style={{ textAlign: "left", padding: "6px 8px" }}>Span</th>
+                <th style={{ textAlign: "right", padding: "6px 8px" }}>Records</th>
+                <th style={{ textAlign: "right", padding: "6px 8px" }}>Latest</th>
+                <th style={{ textAlign: "right", padding: "6px 8px" }}>YoY</th>
+              </tr></thead>
+              <tbody>
+                {b.series!.map((sr) => (
+                  <tr key={sr.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                    <td style={{ padding: "6px 8px" }}>{sr.name}</td>
+                    <td style={{ padding: "6px 8px", fontFamily: "var(--font-mono)" }}>{sr.span}</td>
+                    <td style={{ textAlign: "right", padding: "6px 8px", fontFamily: "var(--font-mono)" }}>{sr.record_count}</td>
+                    <td style={{ textAlign: "right", padding: "6px 8px", fontFamily: "var(--font-mono)" }}>{sr.latest ? `${sr.latest.value.toLocaleString()} ${sr.unit} (${sr.latest.period})` : "—"}</td>
+                    <td style={{ textAlign: "right", padding: "6px 8px", fontFamily: "var(--font-mono)", color: sr.yoy ? (sr.yoy.pct >= 0 ? "var(--green)" : "var(--red)") : "var(--ink-5)" }}>{sr.yoy ? `${sr.yoy.pct >= 0 ? "+" : ""}${sr.yoy.pct}%` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {(b.unverified_markers?.length ?? 0) > 0 && (
+        <div style={{ margin: "1rem 0", padding: "0.8rem 1rem", background: "var(--red-tint)", border: "1px solid var(--red)", fontSize: "0.76rem", color: "var(--ink-2)", lineHeight: 1.6 }}>
+          {b.unverified_markers!.length} citation marker(s) in this draft matched no committed record and are struck through above. Resolve them before publishing.
+        </div>
+      )}
+    </>
+  );
+}
 
 export default function PaperClient() {
   const { no } = useParams<{ no: string }>();
@@ -79,15 +161,20 @@ export default function PaperClient() {
           </div>
         </div>
 
-        {/* Abstract */}
-        <div style={{ marginBottom: "1.75rem" }}>
-          <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: 6 }}>Abstract</div>
-          <p style={{ fontSize: "0.86rem", color: "var(--ink-2)", lineHeight: 1.75, margin: 0 }}>{b.summary}</p>
-        </div>
+        {/* Abstract (assessment papers; series papers carry theirs in the narrative) */}
+        {b.summary && (
+          <div style={{ marginBottom: "1.75rem" }}>
+            <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: 6 }}>Abstract</div>
+            <p style={{ fontSize: "0.86rem", color: "var(--ink-2)", lineHeight: 1.75, margin: 0 }}>{b.summary}</p>
+          </div>
+        )}
 
-        {/* Findings */}
+        {b.kind === "series" && <SeriesPaperBody b={b} />}
+
+        {/* Findings (assessment papers) */}
+        {b.kind !== "series" && <>
         <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: 6 }}>Findings</div>
-        {b.findings.map((f, i) => (
+        {(b.findings ?? []).map((f, i) => (
           <div key={i} style={{ marginBottom: "1.4rem", paddingLeft: f.weight === "supporting" ? "1rem" : 0, borderLeft: f.weight === "supporting" ? "2px solid var(--border)" : "none" }}>
             <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>{i + 1}. {f.heading}</div>
             <p style={{ fontSize: "0.84rem", color: "var(--ink-2)", lineHeight: 1.75, margin: "0 0 0.4rem" }}>{f.body}</p>
@@ -96,7 +183,7 @@ export default function PaperClient() {
         ))}
 
         {/* Tables */}
-        {b.aggregates.tier_distribution && (
+        {b.aggregates?.tier_distribution && (
           <div style={{ margin: "1.75rem 0" }}>
             <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: 6 }}>Table 1 · Tier distribution</div>
             <div style={{ overflowX: "auto" }}>
@@ -106,7 +193,7 @@ export default function PaperClient() {
                   <th style={{ textAlign: "right", padding: "6px 8px" }}>Responses</th>
                 </tr></thead>
                 <tbody>
-                  {b.aggregates.tier_distribution.map((t) => (
+                  {b.aggregates!.tier_distribution!.map((t) => (
                     <tr key={t.tier} style={{ borderBottom: "1px solid var(--border)" }}>
                       <td style={{ padding: "6px 8px" }}>{t.tier} — {TIERS[t.tier as PenaTier]?.label ?? t.tier}</td>
                       <td style={{ textAlign: "right", padding: "6px 8px", fontFamily: "var(--font-mono)" }}>{t.count}</td>
@@ -118,7 +205,7 @@ export default function PaperClient() {
           </div>
         )}
 
-        {b.aggregates.by_state.length > 0 && (
+        {(b.aggregates?.by_state?.length ?? 0) > 0 && (
           <div style={{ margin: "1.75rem 0" }}>
             <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: 6 }}>Table 2 · States above the reporting floor</div>
             <div style={{ overflowX: "auto" }}>
@@ -131,7 +218,7 @@ export default function PaperClient() {
                   <th style={{ textAlign: "right", padding: "6px 8px" }}>Avg energy spend</th>
                 </tr></thead>
                 <tbody>
-                  {b.aggregates.by_state.map((s) => (
+                  {b.aggregates!.by_state.map((s) => (
                     <tr key={s.name} style={{ borderBottom: "1px solid var(--border)" }}>
                       <td style={{ padding: "6px 8px" }}>{s.name}</td>
                       <td style={{ textAlign: "right", padding: "6px 8px", fontFamily: "var(--font-mono)" }}>{s.count}</td>
@@ -146,6 +233,8 @@ export default function PaperClient() {
           </div>
         )}
 
+        </>}
+
         {/* Method */}
         <div style={{ margin: "1.75rem 0" }}>
           <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: 6 }}>Method</div>
@@ -156,20 +245,26 @@ export default function PaperClient() {
           ))}
         </div>
 
-        {/* Caveats */}
-        <div style={{ margin: "1.75rem 0" }}>
-          <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: 6 }}>Limitations</div>
-          <ul style={{ margin: 0, paddingLeft: "1.1rem" }}>
-            {b.caveats.map((c, i) => <li key={i} style={{ fontSize: "0.8rem", color: "var(--ink-2)", lineHeight: 1.7, marginBottom: 4 }}>{c}</li>)}
-          </ul>
-        </div>
+        {/* Caveats (assessment papers) */}
+        {(b.caveats?.length ?? 0) > 0 && (
+          <div style={{ margin: "1.75rem 0" }}>
+            <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: 6 }}>Limitations</div>
+            <ul style={{ margin: 0, paddingLeft: "1.1rem" }}>
+              {b.caveats!.map((c, i) => <li key={i} style={{ fontSize: "0.8rem", color: "var(--ink-2)", lineHeight: 1.7, marginBottom: 4 }}>{c}</li>)}
+            </ul>
+          </div>
+        )}
 
         {/* Data availability */}
         <div style={{ margin: "1.75rem 0", background: "var(--surface)", border: "1px solid var(--border)", padding: "1rem 1.25rem" }}>
           <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green)", marginBottom: 6 }}>Data availability</div>
           <p style={{ fontSize: "0.78rem", color: "var(--ink-2)", lineHeight: 1.7, margin: 0 }}>
-            The aggregates behind every figure are open data: {" "}
-            <Link href={`/assessments/${b.assessment.slug}`} style={{ color: "var(--green)" }}>{b.assessment.title}</Link>.
+            {b.assessment ? (
+              <>The aggregates behind every figure are open data: {" "}
+              <Link href={`/assessments/${b.assessment.slug}`} style={{ color: "var(--green)" }}>{b.assessment.title}</Link>.</>
+            ) : (
+              <>Every figure is copied from a committed national record of the data bank, named by its [rec N] marker.</>
+            )}
             {paper.vintage ? (
               <> This paper is computed against frozen data vintage {" "}
               <Link href="/data/vintages" style={{ color: "var(--green)" }}>{paper.vintage.label}</Link>{" "}
