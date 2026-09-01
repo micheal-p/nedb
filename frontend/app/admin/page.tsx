@@ -174,7 +174,7 @@ export default function AdminPage() {
   const [anomalyMsg, setAnomalyMsg]         = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // Data requests state
-  interface DataRequest { id: number; full_name: string; organization: string | null; email: string; purpose: string; requested_series: string[]; date_range: string | null; status: string; admin_notes: string | null; created_at: string; }
+  interface DataRequest { id: number; full_name: string; organization: string | null; email: string; purpose: string; requested_series: string[]; date_range: string | null; status: string; admin_notes: string | null; created_at: string; price_ngn: number | null; quote_note: string | null; paid_at: string | null; }
   const [dataReqs, setDataReqs]           = useState<DataRequest[]>([]);
   const [dataReqLoading, setDataReqLoading] = useState(false);
   const [dataReqMsg, setDataReqMsg]         = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -262,8 +262,24 @@ export default function AdminPage() {
   async function updateDataRequest(id: number, status: string) {
     const token = getToken(); if (!token) return;
     const r = await fetch("/api/admin/requests", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ id, status }) });
+    const j = await r.json().catch(() => ({}));
     if (r.ok) { setDataReqMsg({ type: "ok", text: `Request marked ${status}.` }); loadDataRequests(); }
-    else setDataReqMsg({ type: "err", text: "Failed to update." });
+    else setDataReqMsg({ type: "err", text: j.error ?? "Failed to update." });
+  }
+
+  // Quote a request: the price is the decision, so it is typed per request,
+  // never defaulted. ₦0 records a deliberate waiver.
+  const [quoting, setQuoting] = useState<number | null>(null);
+  const [quotePrice, setQuotePrice] = useState("");
+  const [quoteNote, setQuoteNote] = useState("");
+  async function quoteDataRequest(id: number) {
+    const token = getToken(); if (!token) return;
+    const r = await fetch("/api/admin/requests", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ id, price_ngn: Number(quotePrice), quote_note: quoteNote }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) {
+      setDataReqMsg({ type: "ok", text: Number(quotePrice) === 0 ? "Fee waived — the requester can be fulfilled directly." : `Quoted ₦${Number(quotePrice).toLocaleString()} — the requester pays via the tracker on /request-data.` });
+      setQuoting(null); setQuotePrice(""); setQuoteNote(""); loadDataRequests();
+    } else setDataReqMsg({ type: "err", text: j.error ?? "Failed to quote." });
   }
 
   async function freezePeriod(e: React.FormEvent) {
@@ -1644,13 +1660,41 @@ Content-Type: application/json
                         {req.date_range && <div style={{ marginTop: 4, fontSize: "0.72rem", color: "var(--ink-5)" }}>Date range: {req.date_range}</div>}
                         <div style={{ marginTop: 4, fontSize: "0.65rem", color: "var(--ink-5)" }}>Submitted {new Date(req.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</div>
                       </div>
-                      {req.status === "pending" && (
-                        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                      <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", alignItems: "center" }}>
+                        {(req.status === "pending" || req.status === "quoted") && (
+                          <button onClick={() => { setQuoting(quoting === req.id ? null : req.id); setQuotePrice(req.price_ngn != null ? String(req.price_ngn) : ""); setQuoteNote(req.quote_note ?? ""); }}
+                            style={{ padding: "6px 14px", background: "var(--ink-surface)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>
+                            {req.status === "quoted" ? "Re-quote" : "Quote fee"}
+                          </button>
+                        )}
+                        {(req.status === "paid" || (req.status === "quoted" && Number(req.price_ngn) === 0)) && (
                           <button onClick={() => updateDataRequest(req.id, "fulfilled")} style={{ padding: "6px 14px", background: "var(--green)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}>Mark Fulfilled</button>
+                        )}
+                        {req.status !== "fulfilled" && req.status !== "declined" && (
                           <button onClick={() => updateDataRequest(req.id, "declined")} style={{ padding: "6px 12px", background: "transparent", color: "var(--red)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, fontSize: "0.78rem", cursor: "pointer" }}>Decline</button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
+                    {(req.price_ngn != null || req.paid_at) && (
+                      <div style={{ marginTop: 8, fontSize: "0.72rem", color: "var(--ink-4)" }}>
+                        {req.price_ngn != null && <>Fee: <strong style={{ color: Number(req.price_ngn) === 0 ? "var(--ink-3)" : "var(--green)" }}>{Number(req.price_ngn) === 0 ? "waived" : `₦${Number(req.price_ngn).toLocaleString()}`}</strong></>}
+                        {req.quote_note && <> · {req.quote_note}</>}
+                        {req.paid_at && <> · <strong style={{ color: "var(--green)" }}>paid</strong> {new Date(req.paid_at).toLocaleString("en-NG")}</>}
+                      </div>
+                    )}
+                    {quoting === req.id && (
+                      <div style={{ marginTop: 10, display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end", borderTop: "1px solid var(--border-soft)", paddingTop: 10 }}>
+                        <label style={{ flex: "0 1 160px" }}>
+                          <span className="form-label">Processing fee ₦ (0 = waive)</span>
+                          <input className="form-input" inputMode="numeric" value={quotePrice} onChange={(e) => setQuotePrice(e.target.value.replace(/[^0-9.]/g, ""))} />
+                        </label>
+                        <label style={{ flex: "1 1 260px" }}>
+                          <span className="form-label">What the fee covers (shown to the requester)</span>
+                          <input className="form-input" value={quoteNote} onChange={(e) => setQuoteNote(e.target.value)} placeholder="Custom extract of 3 series, 2015–2024, CSV" />
+                        </label>
+                        <button onClick={() => quoteDataRequest(req.id)} disabled={quotePrice === ""} className="btn btn-primary btn-sm">Send quote</button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

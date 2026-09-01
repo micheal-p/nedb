@@ -3,6 +3,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { db } from "@/lib/supabase-server";
 import SeriesCatalogue, { type Trend } from "@/components/databank/SeriesCatalogue";
+import HeroMap from "@/components/layout/HeroMap";
 import { computeSignal, type SignalRules, type SignalLevel } from "@/lib/signals";
 
 
@@ -210,16 +211,14 @@ export default async function Home() {
               </div>
             )}
           </div>
-          {/* One real photograph, not stock: the household these statistics
-              exist for. Softens the hero without costing it authority; the
-              caption keeps it factual and the credit satisfies CC BY-SA. */}
-          <figure className="hero-photo">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/home-village.jpg" alt="A household compound in rural Nigeria at dusk" />
+          {/* The hero's visual is the map, drawn from the bank's own boundary
+              reference data — the picture a statistics institution actually
+              owns. Server-rendered SVG; no photograph, no image request. */}
+          <figure className="hero-photo hero-map">
+            <HeroMap />
             <figcaption>
-              The statistics on this site describe households like this one.
-              Their data enters the bank only with consent.
-              <span className="credit">Photo: BayoCine, CC BY-SA 4.0</span>
+              Thirty-six states and the FCT. Every figure in the bank is placed,
+              sourced, and revised in the open.
             </figcaption>
           </figure>
         </div>

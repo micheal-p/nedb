@@ -9,7 +9,8 @@
 // The series list is the live published catalogue rather than a hardcoded array
 // that drifts the moment a series is published or withdrawn.
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -26,7 +27,7 @@ const PURPOSES = [
   { id: "other",     label: "Something else", hint: "Tell us in the description" },
 ];
 
-export default function RequestDataPage() {
+function RequestDataBody() {
   const [series, setSeries] = useState<Series[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -35,6 +36,53 @@ export default function RequestDataPage() {
   });
   const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
   const [reference, setReference] = useState<string | null>(null);
+
+  // ── Track and pay ─────────────────────────────────────────────────────────
+  // A custom extract is priced work: the unit quotes it, the requester pays
+  // here, fulfilment follows. The tracker is keyed by reference AND email so
+  // a sequential reference alone reveals nothing.
+  const [trkRef, setTrkRef] = useState("");
+  const [trkEmail, setTrkEmail] = useState("");
+  const [trkBusy, setTrkBusy] = useState(false);
+  const [trkMsg, setTrkMsg] = useState<string | null>(null);
+  const [tracked, setTracked] = useState<{ reference: string; status: string; price_ngn: number | null; quote_note: string | null; paid_at: string | null } | null>(null);
+  const sp = useSearchParams();
+  const [payMsg, setPayMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ref = sp.get("ref");
+    if (!ref) return;
+    setPayMsg("Confirming your payment…");
+    fetch(`/api/requests/verify?ref=${encodeURIComponent(ref)}`)
+      .then((r) => r.json())
+      .then((j) => setPayMsg(j.status === "paid"
+        ? `Payment confirmed for ${j.reference}. The data management unit now prepares your extract.`
+        : j.error ?? `Payment not confirmed yet (${j.status ?? "unknown"}). If you completed checkout, reload this page in a moment.`))
+      .catch(() => setPayMsg("Could not reach the verification service — reload to try again."));
+  }, [sp]);
+
+  const track = useCallback(async () => {
+    setTrkBusy(true); setTrkMsg(null); setTracked(null);
+    try {
+      const r = await fetch(`/api/requests/track?ref=${encodeURIComponent(trkRef)}&email=${encodeURIComponent(trkEmail)}`);
+      const j = await r.json();
+      if (!r.ok) { setTrkMsg(j.error ?? "Lookup failed."); return; }
+      setTracked(j);
+    } catch { setTrkMsg("Network error — please try again."); }
+    finally { setTrkBusy(false); }
+  }, [trkRef, trkEmail]);
+
+  const payNow = useCallback(async () => {
+    setTrkBusy(true); setTrkMsg(null);
+    try {
+      const r = await fetch("/api/requests/pay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ref: trkRef, email: trkEmail }) });
+      const j = await r.json();
+      if (!r.ok) { setTrkMsg(j.error ?? "Payment could not start."); return; }
+      if (j.authorization_url) { window.location.href = j.authorization_url; return; }
+      setTrkMsg(j.message ?? "Recorded.");
+    } catch { setTrkMsg("Network error — please try again."); }
+    finally { setTrkBusy(false); }
+  }, [trkRef, trkEmail]);
   const [errors, setErrors] = useState<{ anchor?: string; message: string }[]>([]);
 
   useEffect(() => {
@@ -113,8 +161,10 @@ export default function RequestDataPage() {
             </div>
             <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderTop: "none", padding: "1.6rem 1.85rem", fontSize: "var(--t-base)", color: "var(--ink-3)", lineHeight: 1.75 }}>
               <p style={{ margin: "0 0 1rem" }}>
-                The NEDB data management unit will respond to <strong style={{ color: "var(--ink)" }}>{form.email}</strong> within{" "}
-                <strong style={{ color: "var(--ink)" }}>3 working days</strong>. Larger extracts may take longer to prepare, and you will be told if so.
+                The NEDB data management unit will review the request within{" "}
+                <strong style={{ color: "var(--ink)" }}>3 working days</strong> and quote a processing fee where custom
+                extraction work is involved. Check your quote and pay under <strong style={{ color: "var(--ink)" }}>Track a request</strong> on
+                this page, using this reference and <strong style={{ color: "var(--ink)" }}>{form.email}</strong>. Open data downloads remain free.
               </p>
               <p style={{ margin: "0 0 1.25rem" }}>
                 You asked for {selected.length} series{form.date_range ? `, covering ${form.date_range}` : ""}, preferred as {form.format.toUpperCase()}.
@@ -346,10 +396,43 @@ export default function RequestDataPage() {
                 <div style={{ padding: "0.9rem 1.1rem", fontSize: "var(--t-sm)", color: "var(--ink-3)", lineHeight: 1.7 }}>
                   <ol style={{ margin: 0, paddingLeft: "1.1rem" }}>
                     <li style={{ marginBottom: "0.5rem" }}>You receive a reference number immediately.</li>
-                    <li style={{ marginBottom: "0.5rem" }}>The data management unit reviews the request, normally within <strong style={{ color: "var(--ink)" }}>3 working days</strong>.</li>
-                    <li style={{ marginBottom: "0.5rem" }}>Where the request can be met from published data, you are sent the extract or pointed to the download.</li>
-                    <li>Where it involves withheld or unpublished data, you are told what can and cannot be released, and why.</li>
+                    <li style={{ marginBottom: "0.5rem" }}>The data management unit reviews the request, normally within <strong style={{ color: "var(--ink)" }}>3 working days</strong>, and quotes a processing fee for custom extraction work. The published data itself stays free; the fee prices the work of cutting it to your specification.</li>
+                    <li style={{ marginBottom: "0.5rem" }}>You check the quote and pay under <strong style={{ color: "var(--ink)" }}>Track a request</strong> below, with your reference and email.</li>
+                    <li style={{ marginBottom: "0.5rem" }}>Once paid, the extract is prepared and sent to your email.</li>
+                    <li>Where a request involves withheld or unpublished data, you are told what can and cannot be released, and why. Fees can be waived for academic and public-interest work.</li>
                   </ol>
+                </div>
+              </div>
+              <div className="panel">
+                <div className="panel-header"><span className="panel-title">Track a request</span></div>
+                <div style={{ padding: "0.9rem 1.1rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                  {payMsg && <div style={{ fontSize: "var(--t-sm)", color: "var(--ink-2)", background: "var(--green-tint)", border: "1px solid var(--green-line)", padding: "0.6rem 0.8rem" }}>{payMsg}</div>}
+                  <label>
+                    <span className="form-label">Reference</span>
+                    <input className="form-input" value={trkRef} onChange={(e) => setTrkRef(e.target.value)} placeholder="NEDB/DR/2026/00001" />
+                  </label>
+                  <label>
+                    <span className="form-label">Email used on the request</span>
+                    <input className="form-input" type="email" value={trkEmail} onChange={(e) => setTrkEmail(e.target.value)} />
+                  </label>
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={trkBusy || !trkRef || !trkEmail} onClick={track}>
+                    {trkBusy ? "Checking…" : "Check status"}
+                  </button>
+                  {trkMsg && <div style={{ fontSize: "var(--t-sm)", color: "var(--ink-2)" }}>{trkMsg}</div>}
+                  {tracked && (
+                    <div style={{ fontSize: "var(--t-sm)", color: "var(--ink-2)", lineHeight: 1.7, borderTop: "1px solid var(--border-soft)", paddingTop: "0.6rem" }}>
+                      <div><strong>{tracked.reference}</strong> — {tracked.status === "quoted" ? "quoted, awaiting payment" : tracked.status}</div>
+                      {tracked.price_ngn != null && (
+                        <div>Processing fee: <strong>{Number(tracked.price_ngn) === 0 ? "waived" : `₦${Number(tracked.price_ngn).toLocaleString()}`}</strong>{tracked.quote_note ? ` — ${tracked.quote_note}` : ""}</div>
+                      )}
+                      {tracked.paid_at && <div>Paid {new Date(tracked.paid_at).toLocaleString("en-NG")}.</div>}
+                      {tracked.status === "quoted" && Number(tracked.price_ngn) > 0 && (
+                        <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: "0.5rem" }} disabled={trkBusy} onClick={payNow}>
+                          Pay ₦{Number(tracked.price_ngn).toLocaleString()}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </aside>
@@ -359,5 +442,13 @@ export default function RequestDataPage() {
 
       <Footer />
     </>
+  );
+}
+
+export default function RequestDataPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--surface)" }} />}>
+      <RequestDataBody />
+    </Suspense>
   );
 }
