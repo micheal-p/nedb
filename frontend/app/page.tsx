@@ -193,7 +193,7 @@ export default async function Home() {
         <div className="container hero-grid">
           <div className="hero-copy">
             <div className="mandate-tag"><span className="dot" />ECN / NEDB · National Energy Data Bank</div>
-            <h1>Nigeria&apos;s official<br />energy statistics.</h1>
+            <h1>Nigeria&apos;s official<br />energy statistics<span className="accent-dot">.</span></h1>
             <p className="lead">
               The National Energy Data Bank (NEDB) is an initiative of the Energy Commission of Nigeria (ECN),
               established as the nation&apos;s primary repository and dissemination platform for comprehensive,
@@ -206,7 +206,7 @@ export default async function Home() {
               <div className="stat"><div className="num">Monthly</div><div className="lbl">Update Frequency</div></div>
             </div>
             {asAt && (
-              <div style={{ marginTop: "0.6rem", fontSize: "var(--t-2xs)", letterSpacing: "0.05em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>
+              <div style={{ marginTop: "0.9rem", fontSize: "var(--t-2xs)", letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.42)" }}>
                 Figures as at {asAt} · every record carries its source and revision history
               </div>
             )}

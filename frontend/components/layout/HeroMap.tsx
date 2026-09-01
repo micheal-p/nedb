@@ -48,19 +48,6 @@ function centroid(f: Feature): [number, number] {
   return [px(sx / n), py(sy / n)];
 }
 
-/** A curved thread from a state's light to Abuja: a quadratic arc bowed
-    perpendicular to the straight line, so the mesh reads as threads, not
-    spokes. Drawn state → capital, so animated dashes flow INTO the centre. */
-function thread(from: [number, number], to: [number, number]): string {
-  const [x1, y1] = from, [x2, y2] = to;
-  const dx = x2 - x1, dy = y2 - y1;
-  const dist = Math.hypot(dx, dy) || 1;
-  const bow = Math.min(34, dist * 0.16);
-  const mx = (x1 + x2) / 2 - (dy / dist) * bow;
-  const my = (y1 + y2) / 2 + (dx / dist) * bow;
-  return `M${x1.toFixed(1)} ${y1.toFixed(1)}Q${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
-}
-
 export default function HeroMap() {
   const features = (statesGeo as unknown as { features: Feature[] }).features;
   const fct = features.find((f) => /Capital/i.test(f.properties.shapeName));
@@ -75,19 +62,24 @@ export default function HeroMap() {
       style={{ width: "100%", height: "auto", display: "block", overflow: "visible" }}
     >
       <defs>
-        {/* The light behind the country: a wide green blur under the
-            silhouette, so the map reads as lit from within, not painted on. */}
+        {/* The country as a field of dots, Cloudflare-style: a hex-offset dot
+            pattern used as the LAND FILL, so the shape emerges from dot
+            density alone — no outlines, no borders, tiny markup. */}
+        <pattern id="hm-dots" width="9" height="9" patternUnits="userSpaceOnUse">
+          <circle cx="2.2" cy="2.2" r="1.35" fill="rgba(126,214,164,0.55)" />
+          <circle cx="6.7" cy="6.7" r="1.35" fill="rgba(126,214,164,0.38)" />
+        </pattern>
         <filter id="hm-glow" x="-25%" y="-25%" width="150%" height="150%">
           <feGaussianBlur stdDeviation="10" />
         </filter>
         <filter id="hm-glow-tight" x="-40%" y="-40%" width="180%" height="180%">
           <feGaussianBlur stdDeviation="3" />
         </filter>
-        {/* Land wash: brighter toward the north-west light, never flat */}
+        {/* Depth wash under the dots: brighter toward the north-west light */}
         <radialGradient id="hm-fill" cx="38%" cy="28%" r="90%">
-          <stop offset="0%" stopColor="rgba(111,207,151,0.20)" />
-          <stop offset="45%" stopColor="rgba(111,207,151,0.10)" />
-          <stop offset="100%" stopColor="rgba(111,207,151,0.03)" />
+          <stop offset="0%" stopColor="rgba(111,207,151,0.14)" />
+          <stop offset="50%" stopColor="rgba(111,207,151,0.06)" />
+          <stop offset="100%" stopColor="rgba(111,207,151,0.015)" />
         </radialGradient>
         <radialGradient id="hm-halo" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="rgba(111,207,151,0.55)" />
@@ -95,65 +87,44 @@ export default function HeroMap() {
         </radialGradient>
       </defs>
 
-      {/* 1 · The glow underlay: the whole silhouette, blurred green */}
-      <g filter="url(#hm-glow)" opacity={0.5} aria-hidden="true">
+      {/* 1 · Soft light under the silhouette so the dot-field reads lit */}
+      <g filter="url(#hm-glow)" opacity={0.4} aria-hidden="true">
         {paths.map((p) => (
-          <path key={`g-${p.name}`} d={p.d} fill="rgba(52,168,95,0.35)" stroke="#34A85F" strokeWidth={3} />
+          <path key={`g-${p.name}`} d={p.d} fill="rgba(52,168,95,0.30)" />
         ))}
       </g>
 
-      {/* 2 · The states: gradient land, luminous hairline borders */}
+      {/* 2 · The land: a depth wash, then the dot matrix on top of it */}
+      <g aria-hidden="true">
+        {paths.map((p) => (
+          <path key={`w-${p.name}`} d={p.d} fill="url(#hm-fill)" />
+        ))}
+      </g>
       <g>
         {paths.map((p) => (
-          <path
-            key={p.name}
-            d={p.d}
-            fill="url(#hm-fill)"
-            stroke="rgba(190,232,206,0.55)"
-            strokeWidth={0.9}
-            strokeLinejoin="round"
-          >
+          <path key={p.name} d={p.d} fill="url(#hm-dots)">
             <title>{p.name}</title>
           </path>
         ))}
       </g>
 
-      {/* 3 · The threads: every state's light is sewn to Abuja, and beads of
-             light travel the threads into the centre — the reporting flows
-             the mandate describes, drawn. Motion dies with
-             prefers-reduced-motion (globals.css). */}
-      {fct && (
-        <g aria-hidden="true" fill="none" strokeLinecap="round">
-          {paths.filter((p) => !/Capital/i.test(p.name)).map((p, i) => {
-            const d = thread(p.c, [ax, ay]);
-            return (
-              <g key={`t-${p.name}`}>
-                <path d={d} stroke="rgba(140,214,172,0.34)" strokeWidth={1.1} />
-                <path d={d} className="hm-thread-flow" stroke="rgba(190,240,211,0.95)" strokeWidth={1.7}
-                  style={{ animationDelay: `${(i % 9) * -0.42}s`, animationDuration: `${(3 + (i % 5) * 0.4).toFixed(1)}s` }} />
-              </g>
-            );
-          })}
-        </g>
-      )}
-
-      {/* 4 · Measurement points: one quiet light per state — the coverage the
-             stat band claims, drawn */}
+      {/* 3 · The living points: one brighter light per state, twinkling on
+             long offset cycles over the dot field */}
       <g aria-hidden="true" filter="url(#hm-glow-tight)">
         {paths.map((p, i) => (
-          <circle key={`d-${p.name}`} cx={p.c[0]} cy={p.c[1]} r={2.4}
-            fill="#6FCF97" opacity={0.28 + (i % 4) * 0.09} />
+          <circle key={`d-${p.name}`} cx={p.c[0]} cy={p.c[1]} r={3}
+            fill="#6FCF97" opacity={0.35 + (i % 4) * 0.08} />
         ))}
       </g>
       <g aria-hidden="true">
         {paths.map((p, i) => (
-          <circle key={`c-${p.name}`} cx={p.c[0]} cy={p.c[1]} r={1.2} fill="#CDEFDA"
+          <circle key={`c-${p.name}`} cx={p.c[0]} cy={p.c[1]} r={1.5} fill="#D8F4E4"
             className="hm-twinkle" style={{ animationDelay: `${((i * 0.73) % 5.5).toFixed(2)}s` }} />
         ))}
       </g>
 
-      {/* 5 · Abuja: the one bright light, breathing slowly (stilled entirely
-             under prefers-reduced-motion, see globals.css) */}
+      {/* 4 · Abuja: the one bright light, breathing slowly, with a
+             cartographic leader line to its label */}
       {fct && (
         <g>
           <circle className="hm-pulse" cx={ax} cy={ay} r={26} fill="url(#hm-halo)" />

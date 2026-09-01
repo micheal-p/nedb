@@ -485,18 +485,17 @@ input, select, textarea { font-family: inherit; }
   color: rgba(255, 255, 255, 0.32);
 }
 .inst-hero .mandate-tag {
+  /* Pure type, no chip: the bordered pill was a third boxed label stacked
+     under two banners. An eyebrow is a whisper, not furniture. */
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   font-size: var(--t-2xs);
   font-weight: 700;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: #6FCF97;
-  border: 1px solid rgba(111,207,151,0.3);
-  padding: 4px 11px;
-  border-radius: var(--r-sm);
-  margin-bottom: 1rem;
+  margin-bottom: 1.2rem;
 }
 .inst-hero .mandate-tag .dot {
   width: 6px; height: 6px;
@@ -504,40 +503,47 @@ input, select, textarea { font-family: inherit; }
   background: var(--green-mid);
 }
 .inst-hero h1 {
-  font-size: clamp(1.6rem, 3.2vw, 2.4rem);
+  /* Display scale: the headline has to hold its own against a half-page
+     glowing map. Tighter tracking and leading are what earn the size. */
+  font-size: clamp(2rem, 3.9vw, 3.3rem);
   font-weight: 700;
-  line-height: 1.14;
-  letter-spacing: -0.02em;
-  margin-bottom: 0.85rem;
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.1rem;
   color: #fff;
   max-width: 18ch;
 }
+.inst-hero h1 .accent-dot { color: #6FCF97; }
 .inst-hero h1 em { font-style: italic; color: rgba(255,255,255,0.7); }
 .inst-hero .lead {
   font-size: var(--t-md);
-  color: rgba(255,255,255,0.66);
-  max-width: 62ch;
+  color: rgba(255,255,255,0.7);
+  max-width: 54ch;   /* a shorter measure keeps clean rags beside the map */
   line-height: 1.7;
-  margin-bottom: 1.75rem;
+  margin-bottom: 2.1rem;
 }
 .inst-hero .stat-row {
+  /* Open figures with hairline separators, not four boxes: boxed stats were
+     a second bordered object competing with the map, and figures standing on
+     the ground read more like an official release than tiles. */
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
-  background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: var(--r-md);
-  overflow: hidden;
+  grid-template-columns: repeat(4, auto);
+  justify-content: start;
+  column-gap: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
 }
-.inst-hero .stat-row .stat { background: #1B2023; }
-.inst-hero .stat-row .stat { padding: 0.95rem 1.15rem; }
+.inst-hero .stat-row .stat { padding: 0.15rem 1.75rem 0.15rem 1.5rem; border-left: 1px solid rgba(255,255,255,0.16); }
+.inst-hero .stat-row .stat:first-child { border-left: none; padding-left: 0; }
 .inst-hero .stat-row .stat .num {
-  font-size: 1.5rem;
+  font-size: 1.9rem;
   font-weight: 700;
   color: #fff;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 .inst-hero .stat-row .stat .num.accent { color: var(--green-mid); }
 .inst-hero .stat-row .stat .lbl {
@@ -2334,14 +2340,6 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
 }
 @media (prefers-reduced-motion: reduce) { .hm-pulse { animation: none; opacity: 0.55; } }
 
-/* Hero map threads: beads of light flowing along each thread into Abuja.
-   Slow, sparse, and gone entirely under prefers-reduced-motion. */
-.hm-thread-flow {
-  stroke-dasharray: 4 20;
-  animation: hm-flow 3.4s linear infinite;
-}
-@keyframes hm-flow { to { stroke-dashoffset: -24; } }
-@media (prefers-reduced-motion: reduce) { .hm-thread-flow { animation: none; opacity: 0; } }
 
 /* ── Hero map as part of the ground ─────────────────────────────────────────
    The map stops being a framed figure in a right-hand column and becomes the
