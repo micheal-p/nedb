@@ -439,7 +439,13 @@ input, select, textarea { font-family: inherit; }
 
 /* ── Institutional Hero ───────────────────────────────────────── */
 .inst-hero {
-  background: var(--ink-surface);
+  /* Lit by the map: an ambient green bloom rises from the side the country
+     occupies, so the whole hero shares one light source instead of hosting a
+     bright object on a flat ground. */
+  background:
+    radial-gradient(ellipse 58% 80% at 78% 46%, rgba(21, 64, 38, 0.55), transparent 72%),
+    radial-gradient(ellipse 34% 46% at 71% 42%, rgba(52, 168, 95, 0.12), transparent 75%),
+    var(--ink-surface);
   color: #fff;
   padding: 2.75rem 2rem 2.5rem;
   border-bottom: 3px solid var(--green);
@@ -2362,3 +2368,9 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   /* the sentence lives in the page copy now; the svg carries its own aria label */
   .inst-hero .hero-photo figcaption { display: none; }
 }
+
+/* Hero map: the state lights twinkle on long staggered cycles — a country of
+   live measurement points, not a printed chart. Still under reduced motion. */
+.hm-twinkle { animation: hm-twinkle 5.5s ease-in-out infinite; }
+@keyframes hm-twinkle { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.95; } }
+@media (prefers-reduced-motion: reduce) { .hm-twinkle { animation: none; opacity: 0.8; } }

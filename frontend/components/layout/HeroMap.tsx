@@ -130,7 +130,7 @@ export default function HeroMap() {
               <g key={`t-${p.name}`}>
                 <path d={d} stroke="rgba(140,214,172,0.34)" strokeWidth={1.1} />
                 <path d={d} className="hm-thread-flow" stroke="rgba(190,240,211,0.95)" strokeWidth={1.7}
-                  style={{ animationDelay: `${(i % 9) * -0.42}s` }} />
+                  style={{ animationDelay: `${(i % 9) * -0.42}s`, animationDuration: `${(3 + (i % 5) * 0.4).toFixed(1)}s` }} />
               </g>
             );
           })}
@@ -146,8 +146,9 @@ export default function HeroMap() {
         ))}
       </g>
       <g aria-hidden="true">
-        {paths.map((p) => (
-          <circle key={`c-${p.name}`} cx={p.c[0]} cy={p.c[1]} r={1.1} fill="#CDEFDA" opacity={0.8} />
+        {paths.map((p, i) => (
+          <circle key={`c-${p.name}`} cx={p.c[0]} cy={p.c[1]} r={1.2} fill="#CDEFDA"
+            className="hm-twinkle" style={{ animationDelay: `${((i * 0.73) % 5.5).toFixed(2)}s` }} />
         ))}
       </g>
 
@@ -158,7 +159,9 @@ export default function HeroMap() {
           <circle className="hm-pulse" cx={ax} cy={ay} r={26} fill="url(#hm-halo)" />
           <circle cx={ax} cy={ay} r={8} fill="rgba(111,207,151,0.35)" filter="url(#hm-glow-tight)" />
           <circle cx={ax} cy={ay} r={3.6} fill="#8FE0B0" />
-          <text x={ax + 20} y={ay + 5} fill="rgba(255,255,255,0.62)" fontSize={17} fontFamily="var(--font-sans)" letterSpacing={2} fontWeight={600}>
+          <line x1={ax + 6} y1={ay - 6} x2={ax + 30} y2={ay - 26} stroke="rgba(255,255,255,0.35)" strokeWidth={1} />
+          <line x1={ax + 30} y1={ay - 26} x2={ax + 46} y2={ay - 26} stroke="rgba(255,255,255,0.35)" strokeWidth={1} />
+          <text x={ax + 52} y={ay - 21} fill="rgba(255,255,255,0.72)" fontSize={15.5} fontFamily="var(--font-sans)" letterSpacing={2.5} fontWeight={600}>
             ABUJA · ECN
           </text>
         </g>
