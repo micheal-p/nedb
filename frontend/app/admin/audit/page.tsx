@@ -95,6 +95,33 @@ const fmtWhen = (iso: string) =>
 
 export default function AuditPage() {
   const [filters, setFilters] = useState<Filters>(EMPTY);
+  // Time-boxed access (superadmin): who may read this console, until when.
+  const [grants, setGrants] = useState<{ username: string; expires_at: string; granted_by: string }[]>([]);
+  const [grantUser, setGrantUser] = useState("");
+  const [grantHours, setGrantHours] = useState("336");
+  const [grantMsg, setGrantMsg] = useState("");
+  const isSuper = getRole() === "superadmin";
+  const loadGrants = useCallback(async () => {
+    if (getRole() !== "superadmin") return;
+    const token = await getTokenFresh();
+    const r = await fetch("/api/admin/audit-grants", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (r.ok) setGrants(await r.json());
+  }, []);
+  useEffect(() => { loadGrants(); }, [loadGrants]);
+  const grantAccess = useCallback(async () => {
+    const token = await getTokenFresh();
+    const r = await fetch("/api/admin/audit-grants", { method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ username: grantUser, hours: Number(grantHours) }) });
+    const j = await r.json().catch(() => ({}));
+    setGrantMsg(r.ok ? `${grantUser} holds the audit console until ${new Date(j.expires_at).toLocaleString("en-NG")}.` : (j.error ?? "Grant failed."));
+    if (r.ok) { setGrantUser(""); loadGrants(); }
+  }, [grantUser, grantHours, loadGrants]);
+  const revokeAccess = useCallback(async (username: string) => {
+    const token = await getTokenFresh();
+    await fetch(`/api/admin/audit-grants?username=${encodeURIComponent(username)}`, { method: "DELETE", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    loadGrants();
+  }, [loadGrants]);
   const [applied, setApplied] = useState<Filters>(EMPTY);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [total, setTotal] = useState(0);
@@ -182,6 +209,33 @@ export default function AuditPage() {
             Every consequential act on the data bank, appended and never edited. Filter it, then export exactly what you
             filtered rather than what happens to be on screen.
           </p>
+          {isSuper && (
+            <div style={{ marginTop: "0.9rem", background: "var(--surface-white)", border: "1px solid var(--border)", padding: "0.9rem 1.1rem" }}>
+              <div style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--ink)", marginBottom: "0.4rem" }}>Time-boxed access</div>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+                <label style={{ flex: "1 1 180px" }}>
+                  <span className="form-label">Account</span>
+                  <input className="form-input" value={grantUser} onChange={(e) => setGrantUser(e.target.value)} placeholder="username" />
+                </label>
+                <label style={{ flex: "0 1 120px" }}>
+                  <span className="form-label">Hours</span>
+                  <input className="form-input" inputMode="numeric" value={grantHours} onChange={(e) => setGrantHours(e.target.value.replace(/[^0-9]/g, ""))} />
+                </label>
+                <button className="btn btn-primary btn-sm" disabled={!grantUser || !grantHours} onClick={grantAccess}>Grant</button>
+              </div>
+              {grantMsg && <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-3)", marginTop: 6 }}>{grantMsg}</div>}
+              {grants.length > 0 && (
+                <div style={{ marginTop: "0.6rem", fontSize: "var(--t-xs)", color: "var(--ink-3)" }}>
+                  {grants.map((g) => (
+                    <div key={g.username} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "3px 0", borderTop: "1px solid var(--border-soft)" }}>
+                      <span><strong>{g.username}</strong> until {new Date(g.expires_at).toLocaleString("en-NG")} · by {g.granted_by}</span>
+                      <button onClick={() => revokeAccess(g.username)} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: "var(--t-xs)", fontWeight: 700 }}>Revoke</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
           <button onClick={exportCsv} className="btn btn-secondary btn-sm" disabled={!total}>Export CSV</button>

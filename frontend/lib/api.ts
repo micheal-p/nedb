@@ -80,6 +80,7 @@ export interface TokenPair {
   full_name: string;
   role: string;
   dashboard_profile: string;
+  admin_scope?: string | null;
 }
 
 export interface StaffUser {

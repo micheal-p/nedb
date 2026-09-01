@@ -11,7 +11,7 @@ function deleteCookie(name: string) {
   document.cookie = `${name}=; path=/; max-age=0`;
 }
 
-export function saveTokens(token: string, refreshToken: string, fullName?: string, role?: string, dashboardProfile?: string) {
+export function saveTokens(token: string, refreshToken: string, fullName?: string, role?: string, dashboardProfile?: string, adminScope?: string | null) {
   setCookie(COOKIE_TOKEN, token, 15 * 60);
   // Store refresh token server-side as httpOnly cookie — never readable by JS
   if (refreshToken) {
@@ -25,6 +25,7 @@ export function saveTokens(token: string, refreshToken: string, fullName?: strin
   try {
     if (fullName)          localStorage.setItem("nedb_name", fullName);
     if (role)              localStorage.setItem("nedb_role", role);
+    if (adminScope !== undefined) { if (adminScope) localStorage.setItem("nedb_scope", adminScope); else localStorage.removeItem("nedb_scope"); }
     if (dashboardProfile)  localStorage.setItem("nedb_profile", dashboardProfile);
   } catch {}
 }
@@ -58,6 +59,7 @@ export function clearTokens() {
     localStorage.removeItem("nedb_name");
     localStorage.removeItem("nedb_role");
     localStorage.removeItem("nedb_profile");
+    localStorage.removeItem("nedb_scope");
   } catch {}
 }
 
@@ -71,7 +73,7 @@ export async function tryRefresh(): Promise<boolean> {
     const res = await fetch("/api/auth/refresh", { method: "POST", headers: { "Content-Type": "application/json" } });
     if (!res.ok) return false;
     const data = await res.json();
-    saveTokens(data.token, data.refresh_token ?? "", data.full_name, data.role, data.dashboard_profile);
+    saveTokens(data.token, data.refresh_token ?? "", data.full_name, data.role, data.dashboard_profile, data.admin_scope ?? null);
     return true;
   } catch {
     return false;
@@ -103,4 +105,8 @@ export function isAdminRole(role?: string | null): boolean {
 
 export function isEditorRole(role?: string | null): boolean {
   return role === "editor" || role === "staff" || isAdminRole(role);
+}
+
+export function getAdminScope(): string | null {
+  try { return localStorage.getItem("nedb_scope"); } catch { return null; }
 }

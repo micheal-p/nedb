@@ -11,10 +11,12 @@ export interface AuthClaims extends JWTPayload {
   full_name:         string;
   role:              string;
   dashboard_profile: string;
+  /** Which administration an admin works in; superadmin = software. */
+  admin_scope?:      string | null;
 }
 
-export async function signTokenPair(username: string, fullName: string, role: string, dashboardProfile = "executive") {
-  const payload = { username, full_name: fullName, role, dashboard_profile: dashboardProfile, sub: username };
+export async function signTokenPair(username: string, fullName: string, role: string, dashboardProfile = "executive", adminScope: string | null = null) {
+  const payload = { username, full_name: fullName, role, dashboard_profile: dashboardProfile, admin_scope: adminScope, sub: username };
   const expiresAt = new Date(Date.now() + ACCESS_TTL * 1000);
 
   const token = await new SignJWT(payload)

@@ -126,7 +126,7 @@ export default function AdminPage() {
 
   // Edit user state
   const [editUserId, setEditUserId] = useState<number | null>(null);
-  const [editUserForm, setEditUserForm] = useState({ full_name: "", email: "", agency: "", role: "viewer", dashboard_profile: "executive" });
+  const [editUserForm, setEditUserForm] = useState({ full_name: "", email: "", agency: "", role: "viewer", dashboard_profile: "executive", admin_scope: "" });
 
   // Audit log state
   interface AuditEntry { id: number; action: string; series_type_id: string | null; period: string | null; region: string | null; old_value: number | null; new_value: number | null; performed_by: string; performed_at: string; notes: string | null; }
@@ -472,7 +472,7 @@ export default function AdminPage() {
   }
 
   function startEditUser(u: StaffUser) {
-    setEditUserForm({ full_name: u.full_name, email: u.email ?? "", agency: u.agency ?? "", role: u.role, dashboard_profile: u.dashboard_profile ?? "executive" });
+    setEditUserForm({ full_name: u.full_name, email: u.email ?? "", agency: u.agency ?? "", role: u.role, dashboard_profile: u.dashboard_profile ?? "executive", admin_scope: (u as { admin_scope?: string | null }).admin_scope ?? "" });
     setEditUserId(u.id);
   }
 
@@ -698,6 +698,21 @@ export default function AdminPage() {
                             {PROFILES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                           </select>
                         </div>
+                        {(editUserForm.role === "admin" || editUserForm.role === "superadmin") && (
+                          <div className="form-group" style={{ marginBottom: 0, gridColumn: "1 / -1" }}>
+                            <label className="form-label">Administration (which consoles this admin works in — superadmin decision)</label>
+                            <select className="form-input form-select" value={editUserForm.admin_scope}
+                              onChange={(e) => setEditUserForm({ ...editUserForm, admin_scope: e.target.value })}>
+                              <option value="">All consoles (unscoped)</option>
+                              <option value="business">Business Administration — outreach, publications, dashboards, finance</option>
+                              <option value="technical">Technical Administration — health, plumbing, intelligence</option>
+                              <option value="research">Research &amp; Editorial — assessments, papers, bulletins</option>
+                              <option value="data_entry">Data Entry — records, terminal, uploads</option>
+                              <option value="accounting">Accounting — orders, quotes, payments</option>
+                              <option value="audit">Auditing — the audit log only</option>
+                            </select>
+                          </div>
+                        )}
                       </div>
                       <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
                         <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? "Saving…" : "Save Changes"}</button>

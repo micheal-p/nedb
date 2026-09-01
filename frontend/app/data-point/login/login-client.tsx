@@ -48,7 +48,7 @@ function LoginForm({ map }: { map?: ReactNode }) {
     setErrors([]);
     try {
       const result = await api.login(username, password);
-      saveTokens(result.token, result.refresh_token, result.full_name, result.role, result.dashboard_profile);
+      saveTokens(result.token, result.refresh_token, result.full_name, result.role, result.dashboard_profile, result.admin_scope ?? null);
       router.push(explicitRedirect ?? defaultRedirect(result.role));
     } catch (e) {
       const msg = e instanceof Error && /too many/i.test(e.message)

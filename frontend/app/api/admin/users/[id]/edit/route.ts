@@ -13,7 +13,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const body = await req.json().catch(() => null);
   if (!body) return err("Bad request");
 
-  const allowed = ["full_name", "email", "agency", "role", "dashboard_profile", "is_active"];
+  const allowed = ["full_name", "email", "agency", "role", "dashboard_profile", "is_active", "admin_scope"];
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (body[key] !== undefined) update[key] = body[key];
@@ -22,6 +22,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { data: target } = await db().from("staff_users").select("username, role").eq("id", id).single();
   if (!target) return err("user not found", 404);
+
+  if (update.admin_scope !== undefined) {
+    const scopeVal = update.admin_scope === "" || update.admin_scope === null ? null : String(update.admin_scope);
+    const VALID_SCOPES = new Set(["software", "business", "technical", "research", "data_entry", "accounting", "audit"]);
+    if (scopeVal !== null && !VALID_SCOPES.has(scopeVal)) return err("invalid admin scope", 400);
+    update.admin_scope = scopeVal;
+    // Deciding WHERE an administrator works is the same class of act as
+    // deciding their role: a superadmin decision.
+    if (auth.role !== "superadmin") {
+      return err("Assigning an administration scope requires a super administrator.", 403);
+    }
+  }
 
   if (update.role !== undefined) {
     const newRole = update.role === "staff" ? "editor" : String(update.role);

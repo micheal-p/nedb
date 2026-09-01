@@ -184,6 +184,9 @@ export default function Dashboard() {
   const [staffName, setStaffName]   = useState("");
   const [staffRole, setStaffRole]   = useState("");
   const [profile, setProfile]       = useState<ProfileDef>(PROFILE_MAP.executive);
+  // Guest view: an administrator walking through another profile's dashboard.
+  // Reading only — their own workspace is one click back.
+  const [guestOf, setGuestOf]       = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // First visit gets the tour; afterwards it lives behind the sidebar link.
   const [tourOpen, setTourOpen] = useState(false);
@@ -204,7 +207,7 @@ export default function Dashboard() {
     // Admin preview: /data-point/dashboard?profile=<key> lets an admin open
     // any profile from the Dashboard Directory without switching accounts.
     const previewKey = new URLSearchParams(window.location.search).get("profile");
-    if (previewKey && isAdminRole(role) && PROFILE_MAP[previewKey]) profKey = previewKey;
+    if (previewKey && isAdminRole(role) && PROFILE_MAP[previewKey]) { profKey = previewKey; setGuestOf(PROFILE_MAP[previewKey].label); }
     const prof    = PROFILE_MAP[profKey] ?? PROFILE_MAP.executive;
     setStaffName(name); setStaffRole(role); setProfile(prof); setView(prof.defaultView);
     (async () => {
@@ -352,6 +355,12 @@ export default function Dashboard() {
 
       {/* ── MAIN ── */}
       <div className="dash-main">
+        <>{guestOf && (
+          <div style={{ background: "var(--amber-tint)", borderBottom: "1px solid var(--amber)", padding: "0.45rem 1rem", fontSize: "var(--t-xs)", fontWeight: 600, color: "var(--ink-2)", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+            <span>Guest view: <strong>{guestOf}</strong> — you are seeing this dashboard as its holder sees it. Look, don&apos;t touch.</span>
+            <Link href="/data-point/dashboard" style={{ color: "var(--green)", fontWeight: 700 }}>Back to my workspace</Link>
+          </div>
+        )}</>
         <div className="dash-topbar">
           <button className="mob-sidebar-toggle" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

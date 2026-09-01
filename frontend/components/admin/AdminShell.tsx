@@ -11,8 +11,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 import ThemeToggle from "@/components/ui/ThemeToggle";
-import { getToken, getRole, getFullName, clearTokens } from "@/lib/auth";
+import { getToken, getRole, getFullName, getAdminScope, clearTokens } from "@/lib/auth";
 import { ADMIN_NAV, ADMIN_ICONS, adminSectionTitle } from "@/lib/admin-modules";
+import { scopeAllowsGroup, ADMIN_SCOPES } from "@/lib/admin-scopes";
 
 function Icon({ name }: { name: string }) {
   return (
@@ -59,7 +60,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       </Link>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem 0" }}>
-        {ADMIN_NAV.map((g) => (
+        {ADMIN_NAV.filter((g) => scopeAllowsGroup(getRole(), getAdminScope(), g.group)).map((g) => (
           <div key={g.group} style={{ marginBottom: "0.5rem" }}>
             <div style={{ fontSize: "0.56rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.32)", padding: "0.5rem 1.25rem 0.35rem" }}>{g.group}</div>
             {g.items.map((it) => {
@@ -81,6 +82,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", padding: "0.875rem 1.25rem" }}>
         <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name || "Administrator"}</div>
+        <div style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 2 }}>
+          {getRole() === "superadmin" ? "Software Administration" : (ADMIN_SCOPES.find((x) => x.value === getAdminScope())?.label ?? "Administration")}
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
           <button onClick={logout} style={{ fontSize: "0.7rem", fontWeight: 700, color: "#fca5a5", background: "none", border: "none", padding: 0, cursor: "pointer" }}>Log out →</button>
           <span style={{ color: "rgba(255,255,255,0.75)" }}><ThemeToggle compact /></span>

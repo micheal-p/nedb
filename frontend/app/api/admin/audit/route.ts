@@ -28,9 +28,24 @@ function csvCell(v: unknown): string {
   return `"${safe.replace(/"/g, '""')}"`;
 }
 
+async function auditAllowed(claims: { role?: string; admin_scope?: string | null; username?: string; sub?: string }): Promise<boolean> {
+  if (claims.role === "superadmin") return true;
+  const scope = claims.admin_scope ?? null;
+  if (claims.role === "admin" && (scope === null || scope === "software" || scope === "technical" || scope === "audit")) return true;
+  // Time-boxed grant: any account a superadmin has admitted, until expiry.
+  const username = String(claims.username ?? claims.sub ?? "");
+  if (!username) return false;
+  const { data: g } = await db()
+    .from("audit_access_grants").select("expires_at").eq("username", username).maybeSingle();
+  return !!g && new Date(g.expires_at).getTime() > Date.now();
+}
+
 export async function GET(req: NextRequest) {
   const claims = await requireAdmin(req);
   if (!claims) return err("admin required", 403);
+  if (!(await auditAllowed(claims))) {
+    return err("The audit console is scoped: software, technical and audit administrations hold it, or a time-boxed grant from a super administrator.", 403);
+  }
 
   const p = new URL(req.url).searchParams;
   const series   = p.get("series")?.trim() ?? "";

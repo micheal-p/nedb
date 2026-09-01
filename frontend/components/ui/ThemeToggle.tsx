@@ -52,6 +52,41 @@ export default function ThemeToggle({ compact }: { compact?: boolean }) {
   }, [mode]);
 
   // Render a stable placeholder until mounted so SSR and client agree.
+  // Compact form (the nav bars): a quiet icon-only button — the boxed text
+  // pill shouted louder than links that matter. The current mode lives in the
+  // tooltip and the accessible label, and a two-letter whisper appears only
+  // when a non-default mode is active, so "something is switched on" stays
+  // visible without the furniture.
+  const active = mounted && mode !== "system";
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={cycle}
+        aria-label={mounted ? `${LABEL[mode]} — activate to change` : "Change appearance"}
+        title={mounted ? LABEL[mode] : "Appearance"}
+        style={{
+          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
+          minWidth: 30, height: 30, padding: active ? "0 9px" : 0,
+          background: "transparent",
+          border: "none",
+          borderRadius: 15,
+          color: "inherit",
+          opacity: active ? 0.95 : 0.6,
+          fontSize: "var(--t-2xs)", fontWeight: 700, letterSpacing: "0.08em",
+          textTransform: "uppercase", cursor: "pointer",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.background = "rgba(127,127,127,0.18)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = active ? "0.95" : "0.6"; e.currentTarget.style.background = "transparent"; }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 3 a9 9 0 0 1 0 18 Z" fill="currentColor" stroke="none" />
+        </svg>
+        {active && SHORT[mode]}
+      </button>
+    );
+  }
   return (
     <button
       type="button"
@@ -60,7 +95,7 @@ export default function ThemeToggle({ compact }: { compact?: boolean }) {
       title={mounted ? LABEL[mode] : "Appearance"}
       style={{
         display: "inline-flex", alignItems: "center", gap: 6,
-        padding: compact ? "4px 8px" : "6px 12px",
+        padding: "6px 12px",
         background: "transparent",
         border: "1px solid var(--border)",
         borderRadius: "var(--r-sm)",
@@ -69,7 +104,6 @@ export default function ThemeToggle({ compact }: { compact?: boolean }) {
         textTransform: "uppercase", cursor: "pointer",
       }}
     >
-      {/* Half-moon glyph, theme-neutral */}
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
         <circle cx="12" cy="12" r="9" />
         <path d="M12 3 a9 9 0 0 1 0 18 Z" fill="currentColor" stroke="none" />

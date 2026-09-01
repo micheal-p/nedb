@@ -58,6 +58,12 @@ export const ADMIN_NAV: AdminGroup[] = [
     ],
   },
   {
+    group: "Finance",
+    items: [
+      { href: "/admin/finance", label: "Finance", icon: "scale" },
+    ],
+  },
+  {
     group: "Governance",
     items: [
       { href: "/admin/audit", label: "Audit Log", icon: "scale" },
