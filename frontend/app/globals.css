@@ -2331,8 +2331,34 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
 /* Hero map threads: beads of light flowing along each thread into Abuja.
    Slow, sparse, and gone entirely under prefers-reduced-motion. */
 .hm-thread-flow {
-  stroke-dasharray: 2.5 24;
-  animation: hm-flow 3.8s linear infinite;
+  stroke-dasharray: 4 20;
+  animation: hm-flow 3.4s linear infinite;
 }
-@keyframes hm-flow { to { stroke-dashoffset: -26.5; } }
+@keyframes hm-flow { to { stroke-dashoffset: -24; } }
 @media (prefers-reduced-motion: reduce) { .hm-thread-flow { animation: none; opacity: 0; } }
+
+/* ── Hero map as part of the ground ─────────────────────────────────────────
+   The map stops being a framed figure in a right-hand column and becomes the
+   hero's own atmosphere: larger, absolutely placed, its edges feathered into
+   the ink with a mask so nothing outlines it. The copy sits above it. */
+.inst-hero { position: relative; overflow: hidden; }
+.inst-hero .hero-grid { display: block; }
+.inst-hero .hero-copy { position: relative; z-index: 1; max-width: 660px; }
+.inst-hero .hero-photo { display: none !important; margin: 0; }
+@media (min-width: 1080px) {
+  .inst-hero { padding-top: 3.25rem; padding-bottom: 3rem; }
+  .inst-hero .hero-photo {
+    display: block !important;
+    position: absolute;
+    right: -3%;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 54%;
+    max-width: 880px;
+    pointer-events: none;
+    -webkit-mask-image: radial-gradient(ellipse 60% 66% at 52% 47%, #000 50%, transparent 88%);
+    mask-image: radial-gradient(ellipse 60% 66% at 52% 47%, #000 50%, transparent 88%);
+  }
+  /* the sentence lives in the page copy now; the svg carries its own aria label */
+  .inst-hero .hero-photo figcaption { display: none; }
+}

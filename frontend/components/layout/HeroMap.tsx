@@ -128,8 +128,8 @@ export default function HeroMap() {
             const d = thread(p.c, [ax, ay]);
             return (
               <g key={`t-${p.name}`}>
-                <path d={d} stroke="rgba(111,207,151,0.13)" strokeWidth={0.7} />
-                <path d={d} className="hm-thread-flow" stroke="rgba(160,225,187,0.55)" strokeWidth={1.1}
+                <path d={d} stroke="rgba(140,214,172,0.34)" strokeWidth={1.1} />
+                <path d={d} className="hm-thread-flow" stroke="rgba(190,240,211,0.95)" strokeWidth={1.7}
                   style={{ animationDelay: `${(i % 9) * -0.42}s` }} />
               </g>
             );
