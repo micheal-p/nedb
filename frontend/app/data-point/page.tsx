@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import HeroMap from "@/components/layout/HeroMap";
 
 const CAPABILITIES = [
   {
@@ -57,9 +58,12 @@ export default function DataPointLanding() {
     <>
       <Navbar active="datapoint" />
 
-      {/* Hero */}
-      <div style={{ background: "var(--ink-surface)", color: "#fff", padding: "5rem 2rem 4rem", borderBottom: "3px solid var(--green)" }}>
-        <div style={{ maxWidth: "var(--max-w)", margin: "0 auto" }}>
+      {/* Hero — same lit-map atmosphere as the front page: the workspace and
+          the public bank share one face. The map is a background layer, so it
+          adds presence without adding a pixel of height. */}
+      <div className="inst-hero" style={{ color: "#fff", padding: "5rem 2rem 4rem", borderBottom: "3px solid var(--green)" }}>
+        <figure className="hero-photo hero-map" aria-hidden="true"><HeroMap /></figure>
+        <div style={{ maxWidth: "var(--max-w)", margin: "0 auto", position: "relative", zIndex: 1 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--green-mid)", border: "1px solid rgba(14,122,60,0.35)", padding: "4px 12px", borderRadius: "var(--r-sm)", marginBottom: "1.25rem" }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green-mid)", display: "inline-block" }} />
             NEDB Intelligence Suite

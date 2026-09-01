@@ -140,6 +140,10 @@ function LoginForm({ map }: { map?: ReactNode }) {
           {/* The platform panel: the service you are signing in to, wearing
               the same lit map as the front page — one identity everywhere. */}
           <aside className="login-aside login-aside-dark">
+            {/* The map is the panel's atmosphere — an absolute, masked layer
+                behind the words — so the panel never grows past the form and
+                the whole page holds one viewport before the footer. */}
+            {map && <div className="login-dark-map" aria-hidden="true">{map}</div>}
             <div className="login-dark-head">
               <div className="login-dark-kicker">Data Point · Staff Workspace</div>
               <div className="login-dark-title">One bank. Every figure accountable.</div>
@@ -147,7 +151,6 @@ function LoginForm({ map }: { map?: ReactNode }) {
                 Uploads, commits, assessments and briefings — every action signed by the person who took it.
               </p>
             </div>
-            {map && <div className="login-dark-map" aria-hidden="true">{map}</div>}
 
             <div className="eyebrow" style={{ color: "rgba(255,255,255,0.55)" }}>If you cannot sign in</div>
             <ul className="login-help-list login-help-dark">

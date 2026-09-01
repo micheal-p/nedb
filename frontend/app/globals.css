@@ -2407,11 +2407,23 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   margin: 0.4rem 0 0;
   max-width: 40ch;
 }
+.login-aside-dark { position: relative; }
+.login-aside-dark > * { position: relative; z-index: 1; }
 .login-dark-map {
-  margin: 0.75rem -0.5rem 0.9rem;
-  -webkit-mask-image: radial-gradient(ellipse 62% 62% at 50% 45%, #000 45%, transparent 88%);
-  mask-image: radial-gradient(ellipse 62% 62% at 50% 45%, #000 45%, transparent 88%);
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 0.45;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 40%, transparent 85%);
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 40%, transparent 85%);
 }
+.login-dark-map svg { width: 115% !important; max-width: none; }
+.login-help-dark { margin-top: 0.4rem; }
 .login-help-dark li { color: rgba(255, 255, 255, 0.62); }
 .login-help-dark .login-link { color: #6FCF97; }
 .login-notice-dark {
