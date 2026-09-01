@@ -21,6 +21,7 @@ import CoatOfArms from "@/components/layout/CoatOfArms";
 import NecalGate from "@/components/necal/NecalGate";
 import { getTokenFresh, getFullName } from "@/lib/auth";
 import { PRESETS, TECHNOLOGIES, TECH_ASSUMPTIONS, DEFAULT_DRIVERS } from "@/lib/necal";
+import { buildRoadmap, buildProcurement } from "@/lib/necal-roadmap";
 import { INSTRUMENTS } from "@/lib/necal-policy";
 import {
   deriveScenario, decodeScenario, DEFAULT_SCENARIO, type Scenario,
@@ -118,6 +119,8 @@ function ReportBody() {
   const presetDescription = PRESETS.find((p) => p.id === effectiveScenario.presetId)?.description
     ?? "A pathway built from your own drivers, policy instruments and capacity mix rather than a stock preset.";
   const last = plan.years[plan.years.length - 1];
+  const roadmap = useMemo(() => buildRoadmap(plan), [plan]);
+  const procurement = useMemo(() => buildProcurement(plan), [plan]);
   const reference = `NEDB/NECAL/${today.getFullYear()}/${effectiveScenario.presetId.toUpperCase()}-${horizon}`;
   const measured = inputs.filter((i) => i.status === "measured");
   const assumed = inputs.filter((i) => i.status === "missing" || i.status === "derived");
@@ -126,20 +129,10 @@ function ReportBody() {
 
   // Condense the computed plan for the narration route. All arithmetic stays
   // here, deterministic; the route only phrases what this JSON contains.
-  const draftBriefing = useCallback(async () => {
-    setDrafting(true); setDraftErr(null);
-    try {
-      const token = await getTokenFresh();
-      const r = await fetch("/api/necal/narrate", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        // Every figure is pre-formatted HERE, with its unit in the string.
-        // The narration model does no arithmetic, so a raw float like
-        // 5.332775697040655 would be quoted verbatim into a memo a minister
-        // reads. Formatting is deterministic client work, not AI work.
-        body: JSON.stringify({
-          scenario: {
+  // Every figure is pre-formatted HERE, with its unit in the string. The
+  // narration model does no arithmetic, so formatting is deterministic client
+  // work, not AI work. Shared by the briefing, the comparison, and the save.
+  const buildCondensed = useCallback(() => ({
             name: effectiveScenario.name && effectiveScenario.name !== "Untitled scenario" ? effectiveScenario.name : presetLabel,
             pathway: presetLabel,
             reference,
@@ -175,8 +168,17 @@ function ReportBody() {
               parityProven ? "Anchored to the data bank's committed base-year records."
                            : "Not proven against committed records; the baseline may be nominal.",
             ],
-          },
-        }),
+  }), [effectiveScenario, presetLabel, reference, horizon, shownMix, activeInstruments, plan, econResult, last, parityProven]);
+
+  const draftBriefing = useCallback(async () => {
+    setDrafting(true); setDraftErr(null);
+    try {
+      const token = await getTokenFresh();
+      const r = await fetch("/api/necal/narrate", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ scenario: buildCondensed() }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { setDraftErr(j.message ?? j.error ?? `Drafting failed (${r.status}).`); return; }
@@ -186,7 +188,78 @@ function ReportBody() {
     } finally {
       setDrafting(false);
     }
-  }, [effectiveScenario, presetLabel, reference, horizon, shownMix, activeInstruments, plan, econResult, last, parityProven]);
+  }, [buildCondensed]);
+
+  // ── Planning folder: save this report as a file the owner keeps ──────────
+  const [fileName, setFileName] = useState("");
+  const [withBriefing, setWithBriefing] = useState(true);
+  const [savingFile, setSavingFile] = useState(false);
+  const [fileMsg, setFileMsg] = useState<string | null>(null);
+  const saveToFolder = useCallback(async () => {
+    setSavingFile(true); setFileMsg(null);
+    try {
+      const token = await getTokenFresh();
+      const r = await fetch("/api/necal/files", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          filename: fileName || undefined,
+          scenario: effectiveScenario,
+          base,
+          condensed: withBriefing ? buildCondensed() : undefined,
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setFileMsg(j.error ?? `Saving failed (${r.status}).`); return; }
+      setFileMsg(`Saved as "${j.filename}"${j.briefing_included ? " with its briefing" : ""} — find it in your planning folder.`);
+      setFileName("");
+    } catch { setFileMsg("Network error — please try again."); }
+    finally { setSavingFile(false); }
+  }, [fileName, withBriefing, effectiveScenario, base, buildCondensed]);
+
+  // ── Compare against one of my saved scenarios ────────────────────────────
+  const [mine, setMine] = useState<{ id: number; name: string; scenario: Scenario }[]>([]);
+  const [compareId, setCompareId] = useState("");
+  const [compareDraft, setCompareDraft] = useState<string | null>(null);
+  const [comparing, setComparing] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getTokenFresh();
+        const r = await fetch("/api/necal/scenarios", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        if (r.ok) setMine(await r.json());
+      } catch { /* optional */ }
+    })();
+  }, []);
+  const compareScn = mine.find((m) => String(m.id) === compareId)?.scenario ?? null;
+  const compareDerived = useMemo(() => (compareScn ? deriveScenario(compareScn, base) : null), [compareScn, base]);
+  const draftComparison = useCallback(async () => {
+    if (!compareScn || !compareDerived) return;
+    setComparing(true); setCompareDraft(null);
+    try {
+      const token = await getTokenFresh();
+      const other = {
+        name: mine.find((m) => String(m.id) === compareId)?.name ?? "Comparison",
+        drivers: compareScn.drivers,
+        mix_targets_pct: compareDerived.shownMix,
+        totals: {
+          demand_growth: `${compareDerived.plan.totals.demandGrowthMultiple.toFixed(1)} times the base year`,
+          capacity_to_build: `${fmt(compareDerived.plan.totals.capacityAddedMw)} MW`,
+          total_capital: `$${fmt(compareDerived.econResult.capexUsdBn, 1)} billion`,
+          clean_share: `${fmt(compareDerived.plan.totals.horizonCleanPct, 0)}%`,
+          carbon_budget: `${fmt(compareDerived.plan.totals.cumulativeEmissionsMt, 0)} Mt CO2e over the plan`,
+        },
+        warnings: compareDerived.plan.warnings,
+      };
+      const r = await fetch("/api/necal/narrate", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ scenario: buildCondensed(), compare: other }),
+      });
+      const j = await r.json().catch(() => ({}));
+      setCompareDraft(r.ok ? j.draft : (j.message ?? j.error ?? "Comparison drafting failed."));
+    } finally { setComparing(false); }
+  }, [compareScn, compareDerived, compareId, mine, buildCondensed]);
 
   if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--ink-5)" }}>Preparing the report…</div>;
 
@@ -281,12 +354,13 @@ function ReportBody() {
 
         {/* 1 · What this plan requires */}
         <div className="sec-hd"><h2>1 · What this pathway requires</h2></div>
-        <div className="grid-4 grid-hair" style={{ marginBottom: "1.25rem" }}>
+        <div className="grid-auto grid-hair" style={{ marginBottom: "1.25rem" }}>
           {[
             { l: `Demand ${horizon}`, v: last ? `${fmt(last.demandGwh)} GWh` : "—", s: `${plan.totals.demandGrowthMultiple.toFixed(1)}× the base year` },
             { l: "Capacity required", v: last ? `${fmt(last.capacityMw)} MW` : "—", s: `${fmt(plan.totals.capacityAddedMw)} MW to build` },
             { l: "Capital", v: `$${fmt(econResult.capexUsdBn, 1)}bn`, s: `₦${fmt(econResult.capexNgnTn, 1)}tn` },
-            { l: "Clean generation", v: `${fmt(plan.totals.horizonCleanPct, 0)}%`, s: `emissions ${fmt(plan.totals.horizonEmissionsMt, 1)} Mt` },
+            { l: "Clean generation", v: `${fmt(plan.totals.horizonCleanPct, 0)}%`, s: `emissions ${fmt(plan.totals.horizonEmissionsMt, 1)} Mt at ${horizon}` },
+            { l: "Carbon budget", v: `${fmt(plan.totals.cumulativeEmissionsMt, 0)} Mt`, s: "CO2e summed over the whole plan — the atmosphere counts the area under the curve" },
           ].map((c) => (
             <div key={c.l} className="stat-cell">
               <div className="val">{c.v}</div>
@@ -399,6 +473,70 @@ function ReportBody() {
           <div className="chart-source">
             Employment coefficients are planning assumptions, not Nigerian measurements. They are stated so they can be
             challenged.
+          </div>
+        </div>
+
+        {/* Roadmap: milestone, date, responsible body, measuring series */}
+        <div className="sec-hd print-break"><h2>Roadmap · who delivers what, by when</h2></div>
+        <div className="chart-panel" style={{ marginBottom: "1.25rem" }}>
+          <div className="chart-panel-sub" style={{ marginBottom: "0.75rem" }}>
+            Every milestone ships with its scorecard: the body answerable for it, and the NEDB series that will measure whether it was met.
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--t-sm)" }}>
+              <thead><tr style={{ borderBottom: "1.5px solid var(--ink)", textAlign: "left" }}>
+                <th style={{ padding: "6px 10px" }}>Year</th>
+                <th style={{ padding: "6px 10px" }}>Milestone</th>
+                <th style={{ padding: "6px 10px" }}>Responsible</th>
+                <th style={{ padding: "6px 10px" }}>Measured by</th>
+              </tr></thead>
+              <tbody>
+                {roadmap.map((m) => (
+                  <tr key={m.year} style={{ borderBottom: "1px solid var(--border)" }}>
+                    <td style={{ padding: "8px 10px", fontFamily: "var(--font-mono)", fontWeight: 700 }}>{m.year}</td>
+                    <td style={{ padding: "8px 10px" }}>
+                      <div style={{ fontWeight: 600, color: "var(--ink)" }}>{m.headline}</div>
+                      <div style={{ fontSize: "var(--t-xs)", color: "var(--ink-4)", marginTop: 2 }}>{m.detail}</div>
+                    </td>
+                    <td style={{ padding: "8px 10px", color: "var(--ink-3)" }}>{m.responsible}</td>
+                    <td style={{ padding: "8px 10px", fontFamily: "var(--font-mono)", fontSize: "var(--t-xs)", color: "var(--green)" }}>{m.measured_by}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Procurement: the tender pipeline the model already computed */}
+        <div className="sec-hd"><h2>Procurement schedule · the tender pipeline</h2></div>
+        <div className="chart-panel" style={{ marginBottom: "1.25rem" }}>
+          <div className="chart-panel-sub" style={{ marginBottom: "0.75rem" }}>
+            Capacity additions above 25 MW, by year and technology, with indicative capital at the register&apos;s
+            assumptions — international planning figures, not Nigerian tender outcomes, until the reference price
+            series replaces them.
+          </div>
+          <div style={{ overflowX: "auto", maxHeight: 420, overflowY: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--t-sm)" }}>
+              <thead><tr style={{ borderBottom: "1.5px solid var(--ink)", textAlign: "left", position: "sticky", top: 0, background: "var(--surface-white)" }}>
+                <th style={{ padding: "6px 10px" }}>Tender year</th>
+                <th style={{ padding: "6px 10px" }}>Technology</th>
+                <th style={{ padding: "6px 10px", textAlign: "right" }}>Capacity</th>
+                <th style={{ padding: "6px 10px", textAlign: "right" }}>Indicative capex</th>
+                <th style={{ padding: "6px 10px" }}>Lead</th>
+              </tr></thead>
+              <tbody>
+                {procurement.map((r, i) => (
+                  <tr key={i} style={{ borderBottom: "1px solid var(--border-soft)" }}>
+                    <td style={{ padding: "6px 10px", fontFamily: "var(--font-mono)" }}>{r.year}</td>
+                    <td style={{ padding: "6px 10px" }}>{TECH_ASSUMPTIONS[r.tech].label}</td>
+                    <td style={{ padding: "6px 10px", textAlign: "right", fontFamily: "var(--font-mono)" }}>{r.addMw.toLocaleString()} MW</td>
+                    <td style={{ padding: "6px 10px", textAlign: "right", fontFamily: "var(--font-mono)" }}>${r.capexUsdM.toLocaleString()}m</td>
+                    <td style={{ padding: "6px 10px", fontSize: "var(--t-xs)", color: "var(--ink-4)" }}>{r.responsible}</td>
+                  </tr>
+                ))}
+                {procurement.length === 0 && <tr><td colSpan={5} style={{ padding: "1rem", textAlign: "center", color: "var(--ink-5)" }}>No additions above the 25 MW floor in this pathway.</td></tr>}
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -547,6 +685,91 @@ function ReportBody() {
                   Machine-drafted from the figures above. Verify every number against the report before circulation.
                 </span>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Planning folder — save this exact report, with its memo, to the
+            account's own folder: timestamped by default, renameable and
+            shareable from the folder page. */}
+        <div className="no-print" style={{ background: "var(--surface-white)", border: "1px solid var(--border)", padding: "1.25rem 1.5rem", marginTop: "1.25rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "1rem", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: "var(--t-base)", fontWeight: 700, color: "var(--ink)" }}>Save to my planning folder</div>
+              <div style={{ fontSize: "var(--t-sm)", color: "var(--ink-4)", margin: "0.25rem 0 0.6rem", maxWidth: "var(--measure)" }}>
+                The scenario and its anchor are frozen into the file, under your name. Rename, share or reopen it any time
+                from <Link href="/data-point/scenario/folder" style={{ color: "var(--green)" }}>your folder</Link>; use Print / Save as PDF on the reopened report for the document itself.
+              </div>
+              <input className="form-input" value={fileName} onChange={(e) => setFileName(e.target.value)}
+                placeholder={`NECAL Plan — ${effectiveScenario.name !== "Untitled scenario" ? effectiveScenario.name : presetLabel} — ${new Date().toISOString().slice(0, 10)}`} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "flex-end" }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--t-xs)", color: "var(--ink-3)", cursor: "pointer" }}>
+                <input type="checkbox" checked={withBriefing} onChange={(e) => setWithBriefing(e.target.checked)} />
+                Include the machine-drafted briefing
+              </label>
+              <button className="btn btn-primary btn-sm" disabled={savingFile} onClick={saveToFolder}>
+                {savingFile ? "Saving…" : "Save report"}
+              </button>
+            </div>
+          </div>
+          {fileMsg && <div style={{ marginTop: "0.6rem", fontSize: "var(--t-sm)", color: "var(--ink-2)" }}>{fileMsg}</div>}
+        </div>
+
+        {/* Compare — this pathway against one of the account's saved scenarios */}
+        <div className="no-print" style={{ background: "var(--surface-white)", border: "1px solid var(--border)", padding: "1.25rem 1.5rem", marginTop: "1.25rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "1rem", flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: "var(--t-base)", fontWeight: 700, color: "var(--ink)" }}>Compare against a saved scenario</div>
+              <div style={{ fontSize: "var(--t-sm)", color: "var(--ink-4)", marginTop: "0.25rem" }}>
+                Both pathways are computed against the same anchor, so the differences are the choices, not the data.
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <select className="form-input form-select" value={compareId} onChange={(e) => { setCompareId(e.target.value); setCompareDraft(null); }} style={{ minWidth: 220 }}>
+                <option value="">Choose a saved scenario…</option>
+                {mine.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+              <button className="btn btn-secondary btn-sm" disabled={!compareScn || comparing} onClick={draftComparison}>
+                {comparing ? "Drafting…" : "Draft comparison"}
+              </button>
+            </div>
+          </div>
+
+          {compareDerived && (
+            <div style={{ marginTop: "1rem", overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--t-sm)" }}>
+                <thead><tr style={{ borderBottom: "1.5px solid var(--ink)", textAlign: "left" }}>
+                  <th style={{ padding: "6px 10px" }} />
+                  <th style={{ padding: "6px 10px" }}>This report</th>
+                  <th style={{ padding: "6px 10px" }}>{mine.find((m) => String(m.id) === compareId)?.name}</th>
+                </tr></thead>
+                <tbody>
+                  {[
+                    ["Demand growth", `${plan.totals.demandGrowthMultiple.toFixed(1)}×`, `${compareDerived.plan.totals.demandGrowthMultiple.toFixed(1)}×`],
+                    ["Capacity to build", `${fmt(plan.totals.capacityAddedMw)} MW`, `${fmt(compareDerived.plan.totals.capacityAddedMw)} MW`],
+                    ["Total capital", `$${fmt(econResult.capexUsdBn, 1)}bn`, `$${fmt(compareDerived.econResult.capexUsdBn, 1)}bn`],
+                    ["Clean share at horizon", `${fmt(plan.totals.horizonCleanPct, 0)}%`, `${fmt(compareDerived.plan.totals.horizonCleanPct, 0)}%`],
+                    ["Carbon budget (cumulative)", `${fmt(plan.totals.cumulativeEmissionsMt, 0)} Mt`, `${fmt(compareDerived.plan.totals.cumulativeEmissionsMt, 0)} Mt`],
+                  ].map(([l, a, b]) => (
+                    <tr key={l as string} style={{ borderBottom: "1px solid var(--border-soft)" }}>
+                      <td style={{ padding: "7px 10px", fontWeight: 600, color: "var(--ink-3)" }}>{l}</td>
+                      <td style={{ padding: "7px 10px", fontFamily: "var(--font-mono)" }}>{a}</td>
+                      <td style={{ padding: "7px 10px", fontFamily: "var(--font-mono)" }}>{b}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {compareDraft && (
+            <div style={{ marginTop: "1rem", borderTop: "1px solid var(--border-soft)", paddingTop: "1rem", fontSize: "var(--t-md)", color: "var(--ink-2)", lineHeight: 1.75, whiteSpace: "pre-wrap", maxWidth: "var(--measure)" }}>
+              {compareDraft.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+                part.startsWith("**") && part.endsWith("**")
+                  ? <strong key={i} style={{ color: "var(--ink)" }}>{part.slice(2, -2)}</strong>
+                  : <span key={i}>{part}</span>
+              )}
             </div>
           )}
         </div>

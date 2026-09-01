@@ -108,6 +108,7 @@ export default function Navbar({ active }: NavbarProps) {
                   { href: "/knowledge-graph", label: "Knowledge Graph",     sub: "Supply-chain network & SPOF analysis" },
                   { href: "/assessments",     label: "PENA Assessments",    sub: "Energy needs surveys — open data" },
                   { href: "/data/vintages",   label: "Data Vintages",       sub: "Frozen, checksummed editions of the data bank" },
+                  { href: "/necal",           label: "Pathway Explorer",    sub: "Published NECAL2050 pathways — read-only, checkable" },
                   { href: "/papers",          label: "Working Papers",      sub: "Reproducible findings from the assessments" },
                   { href: "/request-data",    label: "Request Data",        sub: "Bulk datasets and custom extracts" },
                   { href: "/portal",          label: "Dashboard Access",    sub: "Request a role-scoped dashboard" },
@@ -156,6 +157,7 @@ export default function Navbar({ active }: NavbarProps) {
           <Link href="/knowledge-graph" className={`mobile-link${active === "graph" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Knowledge Graph</Link>
           <Link href="/assessments" className={`mobile-link${active === "assessments" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>PENA Assessments</Link>
           <Link href="/data/vintages" className={`mobile-link${active === "vintages" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Data Vintages</Link>
+          <Link href="/necal" className="mobile-link" onClick={() => setMenuOpen(false)}>Pathway Explorer</Link>
           <Link href="/papers" className={`mobile-link${active === "papers" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Working Papers</Link>
           <Link href="/request-data" className="mobile-link" onClick={() => setMenuOpen(false)}>Request Data</Link>
           <Link href="/portal" className="mobile-link" onClick={() => setMenuOpen(false)}>Dashboard Access</Link>

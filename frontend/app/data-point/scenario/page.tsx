@@ -199,6 +199,49 @@ function NecalWorkspace() {
     [name, preset, drivers, mix, policy, econ, goals, base.generationGwh]
   );
 
+  // ── Saved scenarios: name it, keep it, publish it ─────────────────────────
+  type SavedScn = { id: number; name: string; scenario: Scenario; is_published: boolean };
+  const [saved, setSaved] = useState<SavedScn[]>([]);
+  const [savedMsg, setSavedMsg] = useState("");
+  const [loadedId, setLoadedId] = useState("");
+  const authedFetch = useCallback(async (url: string, init?: RequestInit) => {
+    const token = await getTokenFresh();
+    return fetch(url, { ...init, credentials: "include", headers: { ...(init?.headers ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(init?.body ? { "Content-Type": "application/json" } : {}) } });
+  }, []);
+  const loadSaved = useCallback(async () => {
+    const r = await authedFetch("/api/necal/scenarios");
+    if (r.ok) setSaved(await r.json());
+  }, [authedFetch]);
+  useEffect(() => { loadSaved(); }, [loadSaved]);
+
+  const applyScenario = useCallback((scn: Scenario) => {
+    setName(scn.name);
+    setDrivers(scn.drivers);
+    setMix(scn.mix);
+    setPolicy(scn.policy ?? {});
+    setEcon(scn.econ);
+    setGoals(scn.goals ?? {});
+    setTouched(true);
+  }, []);
+
+  const saveScenario = useCallback(async () => {
+    if (!name.trim() || name === "Untitled scenario") { setSavedMsg("Name the scenario first — the name is how you get it back."); return; }
+    const r = await authedFetch("/api/necal/scenarios", { method: "POST", body: JSON.stringify({ name, scenario }) });
+    const j = await r.json().catch(() => ({}));
+    setSavedMsg(r.ok ? `Saved "${name}".` : (j.error ?? "Saving failed."));
+    if (r.ok) loadSaved();
+  }, [name, scenario, authedFetch, loadSaved]);
+
+  const publishScenario = useCallback(async (row: SavedScn, publish: boolean) => {
+    const r = await authedFetch(`/api/necal/scenarios/${row.id}`, {
+      method: "PATCH",
+      body: JSON.stringify(publish ? { is_published: true, base: { generationGwh: scenario.anchorGwh ?? 0 } } : { is_published: false }),
+    });
+    const j = await r.json().catch(() => ({}));
+    setSavedMsg(r.ok ? (publish ? `"${row.name}" is on the public explorer.` : `"${row.name}" withdrawn.`) : (j.error ?? "Failed."));
+    if (r.ok) loadSaved();
+  }, [authedFetch, loadSaved, scenario.anchorGwh]);
+
   const { applied, plan, counterfactual, econResult, commitments, shownMix } =
     useMemo(() => deriveScenario(scenario, base), [scenario, base]);
 
@@ -283,6 +326,34 @@ function NecalWorkspace() {
               To {drivers.horizon} · {activeCount} {activeCount === 1 ? "instrument" : "instruments"} on
               {inputSummary?.anchored ? <> · anchored on {baseYear}</> : null}
             </div>
+          </div>
+
+          {/* Keep, reload, publish. A scenario is the account holder's work,
+              saved under their name; publishing puts it on the public shelf
+              with the anchor frozen so anyone can check it. */}
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap", marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid var(--border-soft)" }}>
+            <button className="btn btn-primary btn-sm" onClick={saveScenario}>Save scenario</button>
+            <select className="form-input form-select" value={loadedId} style={{ maxWidth: 260, padding: "0.35rem 0.6rem", fontSize: "var(--t-sm)" }}
+              onChange={(e) => {
+                setLoadedId(e.target.value);
+                const row = saved.find((x) => String(x.id) === e.target.value);
+                if (row) applyScenario(row.scenario);
+              }}>
+              <option value="">My scenarios ({saved.length})…</option>
+              {saved.map((x) => <option key={x.id} value={x.id}>{x.name}{x.is_published ? " · published" : ""}</option>)}
+            </select>
+            {loadedId && (() => {
+              const row = saved.find((x) => String(x.id) === loadedId);
+              if (!row) return null;
+              return (
+                <button className="btn btn-secondary btn-sm" onClick={() => publishScenario(row, !row.is_published)}>
+                  {row.is_published ? "Withdraw from public explorer" : "Publish to public explorer"}
+                </button>
+              );
+            })()}
+            <Link href="/data-point/scenario/folder" style={{ fontSize: "var(--t-sm)", color: "var(--green)", fontWeight: 600 }}>Planning folder →</Link>
+            <Link href="/data-point/scenario/drivers" style={{ fontSize: "var(--t-sm)", color: "var(--ink-4)" }}>Driver documentation</Link>
+            {savedMsg && <span style={{ fontSize: "var(--t-xs)", color: "var(--ink-3)" }}>{savedMsg}</span>}
           </div>
         </div>
 

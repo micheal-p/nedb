@@ -61,6 +61,7 @@ export const ADMIN_NAV: AdminGroup[] = [
     group: "Governance",
     items: [
       { href: "/admin/audit", label: "Audit Log", icon: "scale" },
+      { href: "/admin/storage", label: "Planning Storage", icon: "database" },
     ],
   },
   {

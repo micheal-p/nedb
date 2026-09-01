@@ -120,6 +120,10 @@ export type PlanResult = {
     capacityAddedMw: number;
     peakEmissionsMt: number;
     horizonEmissionsMt: number;
+    /** Every year's emissions summed over the whole plan, Mt CO2e — the
+        carbon-budget number, and what the UK calculator leads with:
+        the atmosphere counts the area under the curve, not the endpoint. */
+    cumulativeEmissionsMt: number;
     horizonCleanPct: number;
     demandGrowthMultiple: number;
   };
@@ -157,7 +161,7 @@ export function runPlan(
   const years: PlanYear[] = [];
 
   if (drivers.horizon <= drivers.baseYear) {
-    return { years: [], totals: { capexUsdBn: 0, capacityAddedMw: 0, peakEmissionsMt: 0, horizonEmissionsMt: 0, horizonCleanPct: 0, demandGrowthMultiple: 0 }, warnings: ["The horizon must be after the base year."] };
+    return { years: [], totals: { capexUsdBn: 0, capacityAddedMw: 0, peakEmissionsMt: 0, horizonEmissionsMt: 0, cumulativeEmissionsMt: 0, horizonCleanPct: 0, demandGrowthMultiple: 0 }, warnings: ["The horizon must be after the base year."] };
   }
   if (base.generationGwh <= 0) {
     warnings.push("No committed generation data for the base year, so the plan is anchored on a nominal starting point. Commit generation records to anchor it on the real position.");
@@ -276,6 +280,7 @@ export function runPlan(
       capacityAddedMw: totalAdded,
       peakEmissionsMt: Math.max(...years.map((x) => x.emissionsMt)),
       horizonEmissionsMt: last?.emissionsMt ?? 0,
+      cumulativeEmissionsMt: years.reduce((sum, y) => sum + y.emissionsMt, 0),
       horizonCleanPct: last?.cleanSharePct ?? 0,
       demandGrowthMultiple: first && first.demandGwh > 0 ? (last?.demandGwh ?? 0) / first.demandGwh : 0,
     },
