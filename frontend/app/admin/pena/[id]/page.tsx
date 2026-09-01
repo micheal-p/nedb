@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { isLoggedIn, getRole, isAdminRole } from "@/lib/auth";
+import {isLoggedIn, getRole, isAdminRole, getTokenFresh } from "@/lib/auth";
 import { ConfirmPanel } from "@/components/ui/gov";
 import { QTYPES, ANALYTICS_KEYS, penaSlugify, DEFAULT_TIER_CONFIG, TIERS, type TierConfig } from "@/lib/pena";
 import { PENA_LANGS, type PenaLang } from "@/lib/pena-i18n";
@@ -23,6 +23,7 @@ type FormDetail = {
   id: number; slug: string; share_token: string; title: string; description: string | null;
   consent_text: string; status: "draft" | "open" | "closed"; is_public_stats: boolean;
   require_verification: boolean; target_population: string | null; setting: string | null;
+  wave: number; parent_form_id: number | null; target_responses: number | null;
   tier_config: TierConfig | null;
   questions: Question[]; response_count: number;
 };
@@ -215,6 +216,29 @@ export default function PenaBuilderPage() {
               <option value="rural">Rural</option>
               <option value="mixed">Mixed</option>
             </select>
+          </div>
+
+          {/* The panel machinery: wave number, campaign target, next wave,
+              and the outreach list of households that said "ask me again". */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Wave {form.wave ?? 1}</span>
+            <input defaultValue={form.target_responses ?? ""} inputMode="numeric" placeholder="Campaign target (responses)"
+              onBlur={(e) => { const v = e.target.value.replace(/[^0-9]/g, ""); if (String(form.target_responses ?? "") !== v) patch({ target_responses: v ? Number(v) : null }, "Campaign target saved"); }}
+              style={{ width: 210, padding: "5px 10px", fontSize: "0.76rem", border: "1px solid var(--border)", borderRadius: 4 }} />
+            <button onClick={async () => {
+                const token = await getTokenFresh();
+                const r = await fetch(`/api/pena/forms/${form.id}/wave`, { method: "POST", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+                const j = await r.json().catch(() => ({}));
+                if (r.ok) router.push(`/admin/pena/${j.id}`); else setMsg(j.error ?? "Could not start the wave.");
+              }}
+              style={{ padding: "5px 12px", fontSize: "0.72rem", fontWeight: 700, border: "1px solid var(--green-line)", borderRadius: 4, background: "var(--green-tint)", color: "var(--green)", cursor: "pointer" }}>
+              Start wave {(form.wave ?? 1) + 1}
+            </button>
+            <a href={`/api/pena/forms/${form.parent_form_id ?? form.id}/recontact`}
+              style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--ink-3)", textDecoration: "underline", textUnderlineOffset: 2 }}
+              title="CSV of respondents who ticked the follow-up box — identifiable, logged as an export">
+              Outreach list (CSV)
+            </a>
           </div>
         </div>
 

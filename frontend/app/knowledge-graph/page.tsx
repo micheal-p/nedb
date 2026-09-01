@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "@/components/layout/Navbar";
+import { isAdminRole, getRole, getTokenFresh } from "@/lib/auth";
 import Footer from "@/components/layout/Footer";
 import CoatOfArms from "@/components/layout/CoatOfArms";
 import dynamic from "next/dynamic";
@@ -232,6 +233,16 @@ export default function KnowledgeGraphPage() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <button onClick={() => graphRef.current?.fitView()} className="gbtn" title="Fit the whole network in view">Fit view</button>
+                    {isAdminRole(getRole()) && (
+                      <button className="gbtn" title="Rebuild the operator layer from the companies registry"
+                        onClick={async () => {
+                          const token = await getTokenFresh();
+                          const r = await fetch("/api/graph/sync", { method: "POST", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+                          if (r.ok) window.location.reload();
+                        }}>
+                        Sync registry
+                      </button>
+                    )}
                     <span style={{ fontSize: "0.72rem", color: "var(--ink-5)" }}>
                       {visibleCount} of {data.nodes.length} entities shown
                     </span>

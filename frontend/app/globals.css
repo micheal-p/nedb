@@ -28,8 +28,8 @@
   --ink:            #14181B;
   --ink-2:          #242A2E;
   --ink-3:          #434B51;
-  --ink-4:          #667179;
-  --ink-5:          #8C959C;
+  --ink-4:          #5D6870;
+  --ink-5:          #626E77;
 
   /* Borders */
   --border:         #D3D8DC;
@@ -123,9 +123,9 @@
 
   --ink:            #EDF1F2;
   --ink-2:          #D8DEE1;
-  --ink-3:          #AEB8BD;
-  --ink-4:          #85929A;
-  --ink-5:          #64717A;
+  --ink-3:          #B4BEC3;
+  --ink-4:          #93A0A7;
+  --ink-5:          #808D95;
 
   --border:         #333B3F;
   --border-soft:    #272E31;
@@ -1384,7 +1384,7 @@ input, select, textarea { font-family: inherit; }
 .site-footer .ft-brand { }
 .site-footer .ft-brand .ft-name { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
 .site-footer .ft-brand p { font-size: 0.78rem; line-height: 1.6; max-width: 280px; }
-.site-footer .ft-col h4 { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 0.875rem; }
+.site-footer .ft-col h2 { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 0.875rem; }
 .site-footer .ft-col a { display: block; font-size: 0.8rem; margin-bottom: 0.5rem; color: rgba(255,255,255,0.55); transition: color 0.15s; }
 .site-footer .ft-col a:hover { color: #fff; }
 .site-footer .ft-bottom { max-width: var(--max-w); margin: 0 auto; font-size: 0.73rem; display: flex; align-items: center; justify-content: space-between; }

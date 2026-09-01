@@ -24,7 +24,7 @@ export default function NecalExplorerPage() {
   return (
     <>
     <Navbar active="graph" />
-    <div style={{ minHeight: "100vh", background: "var(--surface)", padding: "2.5rem 1.5rem" }}>
+    <main style={{ minHeight: "100vh", background: "var(--surface)", padding: "2.5rem 1.5rem" }}>
       <div style={{ maxWidth: 860, margin: "0 auto" }}>
         <div style={{ marginBottom: "2rem" }}>
           <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.375rem" }}>NECAL2050 · Published Pathways</div>
@@ -62,7 +62,7 @@ export default function NecalExplorerPage() {
           </div>
         )}
       </div>
-    </div>
+    </main>
     <Footer />
     </>
   );

@@ -139,7 +139,7 @@ export default function PaperClient() {
   return (
     <>
     <Navbar active="papers" />
-    <div className="wp-page" style={{ minHeight: "100vh", background: "var(--surface)", padding: "2.5rem 1.5rem" }}>
+    <main className="wp-page" style={{ minHeight: "100vh", background: "var(--surface)", padding: "2.5rem 1.5rem" }}>
       <div className="wp-doc" style={{ maxWidth: 760, margin: "0 auto", background: "var(--surface-white)", border: "1px solid var(--border)", padding: "3rem 3.25rem" }}>
 
         {/* Print — screen only. window.print() with the print reset above
@@ -281,7 +281,7 @@ export default function PaperClient() {
           Cite as: {cite}
         </div>
       </div>
-    </div>
+    </main>
     <Footer />
     </>
   );

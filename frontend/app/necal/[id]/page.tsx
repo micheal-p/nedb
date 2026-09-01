@@ -25,7 +25,7 @@ export default function PublishedPathwayPage() {
   return (
     <>
     <Navbar active="graph" />
-    <div style={{ minHeight: "100vh", background: "var(--surface)", padding: "2.5rem 1.5rem" }}>
+    <main style={{ minHeight: "100vh", background: "var(--surface)", padding: "2.5rem 1.5rem" }}>
       {failed ? (
         <div style={{ textAlign: "center", padding: "4rem", color: "var(--ink-4)", fontSize: "0.85rem" }}>Pathway not found.</div>
       ) : !data ? (
@@ -38,7 +38,7 @@ export default function PublishedPathwayPage() {
           byline={`Published ${new Date(data.published_at).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })} · National Energy Calculator`}
         />
       )}
-    </div>
+    </main>
     <Footer />
     </>
   );

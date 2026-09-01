@@ -65,7 +65,7 @@ export default function Navbar({ active }: NavbarProps) {
   const portalLabel = isAdminRole(role) ? "Admin Panel" : "Upload Data";
 
   return (
-    <>
+    <header>
       <div className="gov-banner">
         FEDERAL REPUBLIC OF NIGERIA &nbsp;&middot;&nbsp; ENERGY COMMISSION OF NIGERIA (ECN)
         &nbsp;&middot;&nbsp; ESTABLISHED UNDER ECN ACT, CAP. E10, LFN 2004
@@ -109,6 +109,8 @@ export default function Navbar({ active }: NavbarProps) {
                   { href: "/assessments",     label: "PENA Assessments",    sub: "Energy needs surveys — open data" },
                   { href: "/data/vintages",   label: "Data Vintages",       sub: "Frozen, checksummed editions of the data bank" },
                   { href: "/necal",           label: "Pathway Explorer",    sub: "Published NECAL2050 pathways — read-only, checkable" },
+                  { href: "/data/reference-prices", label: "Cost Reference", sub: "What households pay per hour of power received" },
+                  { href: "/data/energy-poverty-index", label: "Energy Poverty Index", sub: "Tiers D and E, measured wave over wave" },
                   { href: "/papers",          label: "Working Papers",      sub: "Reproducible findings from the assessments" },
                   { href: "/request-data",    label: "Request Data",        sub: "Bulk datasets and custom extracts" },
                   { href: "/portal",          label: "Dashboard Access",    sub: "Request a role-scoped dashboard" },
@@ -179,6 +181,6 @@ export default function Navbar({ active }: NavbarProps) {
           )}
         </div>
       )}
-    </>
+    </header>
   );
 }

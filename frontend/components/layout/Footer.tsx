@@ -21,7 +21,7 @@ export default function Footer() {
           </a>
         </div>
         <div className="ft-col">
-          <h4>Data Bank</h4>
+          <h2>Data Bank</h2>
           <Link href="/">Series Explorer</Link>
           <Link href="/series/crude_oil_production">Crude Oil Production</Link>
           <Link href="/series/electricity_generation">Electricity Generation</Link>
@@ -29,7 +29,7 @@ export default function Footer() {
           <Link href="/series/natural_gas_production">Natural Gas</Link>
         </div>
         <div className="ft-col">
-          <h4>Platform</h4>
+          <h2>Platform</h2>
           <Link href="/data-point">Data Point</Link>
           <Link href="/about">About NEDB</Link>
           <Link href="/data-point/login">Portal Login</Link>
@@ -37,7 +37,7 @@ export default function Footer() {
           <Link href="/africa">Nigeria in Africa</Link>
         </div>
         <div className="ft-col">
-          <h4>Monthly Report</h4>
+          <h2>Monthly Report</h2>
           <p style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.5, margin: "0 0 0.6rem" }}>
             Get the NEDB Energy Report in your inbox every cycle — latest figures, YoY moves and signals.
           </p>
@@ -45,7 +45,7 @@ export default function Footer() {
         </div>
 
         <div className="ft-col">
-          <h4>Policy &amp; Legal</h4>
+          <h2>Policy &amp; Legal</h2>
           <a href="/documents/ecn_act.pdf" target="_blank" rel="noopener noreferrer">ECN Act, CAP. E10</a>
           <a href="/documents/Petroleum_Industry_Act_2021.pdf" target="_blank" rel="noopener noreferrer">PIA Act 2021</a>
           <a href="/documents/Energy_Policy_Document.pdf" target="_blank" rel="noopener noreferrer">National Energy Policy</a>

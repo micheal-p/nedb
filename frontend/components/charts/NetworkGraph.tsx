@@ -23,7 +23,7 @@ export const DARK_NODE: Record<string, string> = {
   fuel: "#E8A04C", genco: "#4CC97B", transmission: "#F07862", disco: "#7AA2F7",
   state: "#B78AE8", policy: "#C9CFD4", institution: "#A98EEA", terminal: "#5BC8DE",
   refinery: "#F09B5E", gasplant: "#8B93F0", product: "#B9B3AC", export: "#4FC4B4",
-  databank: "#38E08A", platform: "#EFCB6E",
+  databank: "#38E08A", platform: "#EFCB6E", operator: "#D9A876",
 };
 export const DARK_EDGE: Record<string, string> = {
   fuel_supply: "rgba(232,160,76,0.30)", generates: "rgba(76,201,123,0.32)",

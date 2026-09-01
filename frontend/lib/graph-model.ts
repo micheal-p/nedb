@@ -5,7 +5,7 @@
 // (articulation points). No React, no I/O — the same modular contract as
 // analytics.ts and report-model.ts.
 
-export type NodeType = "fuel" | "genco" | "transmission" | "disco" | "state" | "policy" | "institution" | "terminal" | "refinery" | "gasplant" | "product" | "export" | "databank" | "platform";
+export type NodeType = "fuel" | "genco" | "transmission" | "disco" | "state" | "policy" | "institution" | "terminal" | "refinery" | "gasplant" | "product" | "export" | "databank" | "platform" | "operator";
 export type EdgeType = "fuel_supply" | "generates" | "wheels" | "distributes" | "governs" | "regulates" | "supplies" | "produces" | "exports" | "operates" | "tracks" | "finances" | "displaces" | "located_in";
 
 export interface GraphNode {
@@ -42,6 +42,7 @@ export const NODE_STYLE: Record<NodeType, { color: string; label: string; size: 
   export:       { color: "#0F766E", label: "Export Market",           size: 8 },
   databank:     { color: "#1EB06A", label: "NEDB (Data Backbone)",    size: 14 },
   platform:     { color: "#E8B84B", label: "NEIIA Product",           size: 6 },
+  operator:     { color: "#9A6B3F", label: "Licensed Operator",        size: 5 },
 };
 
 /** Link colours, shared by the canvas and the on-page relationship key so the

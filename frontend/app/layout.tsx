@@ -20,7 +20,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // No maximumScale: pinch zoom is an accessibility right (WCAG 1.4.4), and
+  // capping it was flagged critical by the axe audit.
   viewportFit: "cover",
 };
 

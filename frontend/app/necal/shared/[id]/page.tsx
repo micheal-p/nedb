@@ -27,7 +27,7 @@ function SharedBody() {
   }, [id, sp]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--surface)", padding: "2.5rem 1.5rem" }}>
+    <main style={{ minHeight: "100vh", background: "var(--surface)", padding: "2.5rem 1.5rem" }}>
       {failed ? (
         <div style={{ textAlign: "center", padding: "4rem", color: "var(--ink-4)", fontSize: "0.85rem" }}>
           This share link is not valid, or sharing was stopped by the owner.
@@ -43,7 +43,7 @@ function SharedBody() {
           byline={`Shared from ${data.owner}'s planning folder · saved ${new Date(data.created_at).toLocaleString("en-NG")}`}
         />
       )}
-    </div>
+    </main>
   );
 }
 

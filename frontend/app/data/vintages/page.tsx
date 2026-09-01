@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import { SkeletonCards, EmptyState } from "@/components/ui/Loading";
 import Footer from "@/components/layout/Footer";
@@ -78,7 +79,7 @@ function CatalogueBody() {
   return (
     <>
     <Navbar active="vintages" />
-    <div style={{ minHeight: "100vh", background: "var(--surface)", padding: "2.5rem 1.5rem" }}>
+    <main style={{ minHeight: "100vh", background: "var(--surface)", padding: "2.5rem 1.5rem" }}>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
         <div style={{ marginBottom: "2rem" }}>
           <div style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--green)", marginBottom: "0.375rem" }}>Official Statistics · Editions of Record</div>
@@ -139,6 +140,15 @@ function CatalogueBody() {
                       <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.5rem" }}>
                         {priced ? naira(Number(v.price_ngn)) : "Free"}
                       </div>
+                      <button className="btn btn-secondary btn-sm" style={{ marginRight: 6 }}
+                        onClick={() => {
+                          const year = new Date(v.manifest?.frozen_at ?? v.created_at).getFullYear();
+                          const bib = `@misc{nedb_${v.label.replace(/-/g, "_")},\n  title = {${v.title} (data vintage ${v.label})},\n  author = {{Nigeria Energy Data Bank}},\n  organization = {{Energy Commission of Nigeria}},\n  year = {${year}},\n  howpublished = {\\url{https://nedb.vercel.app/data/vintages}},\n  note = {sha256:${v.checksum}}\n}`;
+                          navigator.clipboard.writeText(bib);
+                        }}
+                        title="Copy a BibTeX citation with the checksum embedded">
+                        Cite
+                      </button>
                       {priced ? (
                         <button className="btn btn-primary btn-sm" onClick={() => { setBuying(buying === v.label ? null : v.label); setOrderMsg(null); }}>
                           {buying === v.label ? "Close" : "Purchase"}
@@ -177,13 +187,18 @@ function CatalogueBody() {
           </div>
         )}
 
+        <div style={{ marginTop: "1.5rem", fontSize: "0.78rem" }}>
+          <Link href="/data/vintages/diff" style={{ color: "var(--green)", fontWeight: 600, marginRight: 16 }}>Compare two editions →</Link>
+          <a href="/api/vintages/checksums" style={{ color: "var(--green)", fontWeight: 600 }}>All checksums as plain text →</a>
+          <span style={{ color: "var(--ink-5)", marginLeft: 8 }}>mirror that file anywhere and no edition can ever be silently rewritten.</span>
+        </div>
         <div style={{ marginTop: "2rem", fontSize: "0.72rem", color: "var(--ink-5)", lineHeight: 1.7, maxWidth: 640 }}>
           Cite a vintage as: Nigeria Energy Data Bank, vintage {vintages[0]?.label ?? "v2026-09"} (sha256 prefix),
           Energy Commission of Nigeria. Assessment statistics inside a vintage are k-anonymised aggregates under the
           Nigeria Data Protection Act 2023; no personal data is ever included.
         </div>
       </div>
-    </div>
+    </main>
     <Footer />
     </>
   );
