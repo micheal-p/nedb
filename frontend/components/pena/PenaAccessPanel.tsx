@@ -79,8 +79,8 @@ export default function PenaAccessPanel({ formId }: { formId: number }) {
             <button key={k} onClick={() => setTab(k)}
               style={{
                 fontSize: "var(--t-xs)", fontWeight: 700, padding: "3px 9px", cursor: "pointer",
-                border: `1px solid ${tab === k ? "var(--ink)" : "var(--border)"}`,
-                background: tab === k ? "var(--ink)" : "var(--surface-white)",
+                border: `1px solid ${tab === k ? "var(--ink-surface)" : "var(--border)"}`,
+                background: tab === k ? "var(--ink-surface)" : "var(--surface-white)",
                 color: tab === k ? "#fff" : "var(--ink-3)",
               }}>
               {k === "who" ? "Access" : `Access log (${views.length})`}

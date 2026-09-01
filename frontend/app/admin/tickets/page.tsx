@@ -99,7 +99,7 @@ export default function TicketsPage() {
               style={{
                 fontSize: "var(--t-sm)", fontWeight: 600, padding: "5px 12px", cursor: "pointer",
                 border: `1px solid ${filter === s ? "var(--ink)" : "var(--border)"}`,
-                background: filter === s ? "var(--ink)" : "var(--surface-white)",
+                background: filter === s ? "var(--ink-surface)" : "var(--surface-white)",
                 color: filter === s ? "#fff" : "var(--ink-3)",
                 textTransform: "capitalize",
               }}>

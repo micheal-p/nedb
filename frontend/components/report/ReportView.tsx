@@ -73,7 +73,7 @@ export default function ReportView({ meta, records }: Props) {
   return (
     <div style={{ background: "var(--surface)", minHeight: "100vh" }}>
       {/* ── TOOLBAR (screen only) ── */}
-      <div className="no-print" style={{ position: "sticky", top: 0, zIndex: 10, background: "#fff", borderBottom: "1px solid var(--border)", padding: "0.75rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+      <div className="no-print" style={{ position: "sticky", top: 0, zIndex: 10, background: "var(--surface-white)", borderBottom: "1px solid var(--border)", padding: "0.75rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <Link href={`/series/${meta.seriesId}`} style={{ fontSize: "0.78rem", color: "var(--ink-4)", textDecoration: "none" }}>← Back to series</Link>
           <span style={{ fontSize: "0.78rem", color: "var(--ink-5)" }}>·</span>
@@ -83,14 +83,14 @@ export default function ReportView({ meta, records }: Props) {
           <button onClick={handleExcel} disabled={exporting} style={{ padding: "0.5rem 1rem", fontSize: "0.78rem", fontWeight: 700, background: "var(--green-strong)", color: "var(--green-deep)", border: "1px solid var(--green-line)", borderRadius: 6, cursor: exporting ? "wait" : "pointer" }}>
             {exporting ? "Building…" : "Export Excel (with chart)"}
           </button>
-          <button onClick={() => window.print()} style={{ padding: "0.5rem 1.25rem", fontSize: "0.78rem", fontWeight: 700, background: "var(--ink)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>
+          <button onClick={() => window.print()} style={{ padding: "0.5rem 1.25rem", fontSize: "0.78rem", fontWeight: 700, background: "var(--ink-surface)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>
             Print / Save PDF
           </button>
         </div>
       </div>
 
       {/* ── REPORT DOCUMENT ── */}
-      <div className="report-doc" style={{ maxWidth: 900, margin: "0 auto", background: "#fff", padding: "clamp(1rem, 4vw, 2.5rem)", marginTop: "1.5rem", marginBottom: "3rem", border: "1px solid var(--border)" }}>
+      <div className="report-doc" style={{ maxWidth: 900, margin: "0 auto", background: "var(--surface-white)", padding: "clamp(1rem, 4vw, 2.5rem)", marginTop: "1.5rem", marginBottom: "3rem", border: "1px solid var(--border)" }}>
         {/* Letterhead */}
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", borderBottom: "2px solid var(--green)", paddingBottom: "1rem", marginBottom: "1.5rem" }}>
           <CoatOfArms size={52} />
@@ -113,7 +113,7 @@ export default function ReportView({ meta, records }: Props) {
             { label: "CAGR", value: pct(model.kpis.cagr), sub: "compound annual" },
             { label: "Volatility", value: model.summary ? `${fmt(model.kpis.volatilityPct, 0)}%` : "—", sub: "coeff. of variation" },
           ].map((k) => (
-            <div key={k.label} style={{ background: "#fff", padding: "0.875rem 1rem" }}>
+            <div key={k.label} style={{ background: "var(--surface-white)", padding: "0.875rem 1rem" }}>
               <div style={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ink-5)" }}>{k.label}</div>
               <div style={{ fontSize: "1.35rem", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--ink)", lineHeight: 1.1, marginTop: 4 }}>{k.value}</div>
               <div style={{ fontSize: "0.65rem", color: "var(--ink-5)", marginTop: 2 }}>{k.sub}</div>
@@ -147,7 +147,7 @@ export default function ReportView({ meta, records }: Props) {
         {!isEmpty && (
         <div style={{ marginBottom: "1.5rem" }}>
           <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.5rem" }}>Trend — {meta.name} ({meta.unit})</div>
-          <div ref={mainChartRef} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "0.75rem" }}>
+          <div ref={mainChartRef} style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "0.75rem" }}>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={lineData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
                 <CartesianGrid  stroke="#E7E5E0" />
@@ -239,7 +239,7 @@ export default function ReportView({ meta, records }: Props) {
 
 function ReportOverlayCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden" }}>
+    <div style={{ background: "var(--surface-white)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden" }}>
       <div style={{ padding: "0.6rem 0.875rem", borderBottom: "1px solid var(--border)", fontSize: "0.72rem", fontWeight: 700, color: "var(--ink)" }}>{title}</div>
       {children}
     </div>

@@ -105,7 +105,7 @@ export default function CustomSeriesChartPanel({ seriesName, columns, records }:
             <select
               value={colSlug}
               onChange={(e) => setColSlug(e.target.value)}
-              style={{ height: 30, padding: "0 8px", fontSize: "0.75rem", border: "1px solid var(--border)", borderRadius: 6, background: "#fff", color: "var(--ink)", cursor: "pointer" }}
+              style={{ height: 30, padding: "0 8px", fontSize: "0.75rem", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface-white)", color: "var(--ink)", cursor: "pointer" }}
             >
               {numericCols.map((c) => (
                 <option key={c.slug} value={c.slug}>{c.name}{c.unit ? ` (${c.unit})` : ""}</option>

@@ -182,7 +182,7 @@ export default function DashboardTabBuilder() {
                       const on = editing.owner_username === u.username;
                       return (
                         <button key={u.username} onClick={() => updateTab("owner_username", u.username)}
-                          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "0.5rem 0.75rem", border: "none", borderBottom: "1px solid var(--border)", background: on ? "var(--green-tint)" : "#fff", cursor: "pointer" }}>
+                          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "0.5rem 0.75rem", border: "none", borderBottom: "1px solid var(--border)", background: on ? "var(--green-tint)" : "var(--surface-white)", cursor: "pointer" }}>
                           <span style={{ minWidth: 0 }}>
                             <span style={{ fontSize: "0.8rem", fontWeight: on ? 700 : 500, color: "var(--ink)" }}>{u.full_name}</span>
                             <span style={{ fontSize: "0.68rem", color: "var(--ink-5)", marginLeft: 6, fontFamily: "var(--font-mono)" }}>{u.username}</span>

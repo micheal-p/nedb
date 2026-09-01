@@ -274,7 +274,7 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
                 <div style={{ maxWidth: "78%" }}>
                   <div style={{
                     padding: "8px 12px", borderRadius: msg.role === "user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-                    background: msg.role === "user" ? "var(--ink)" : "#fff",
+                    background: msg.role === "user" ? "var(--ink-surface)" : "var(--surface-white)",
                     color: msg.role === "user" ? "#fff" : "var(--ink)",
                     fontSize: "0.78rem", lineHeight: 1.55,
                     border: msg.role === "assistant" ? "1px solid var(--border)" : "none",
@@ -345,7 +345,7 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
               placeholder="Ask about energy data…"
               style={{ flex: 1, padding: "8px 12px", fontSize: "0.8rem", border: "1px solid var(--border)", borderRadius: 8, outline: "none", background: "var(--surface)", color: "var(--ink)" }}
             />
-            <button onClick={() => send()} disabled={!input.trim() || thinking} style={{ width: 36, height: 36, borderRadius: 8, background: input.trim() && !thinking ? "var(--ink)" : "var(--surface-muted)", border: "none", cursor: input.trim() && !thinking ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <button onClick={() => send()} disabled={!input.trim() || thinking} style={{ width: 36, height: 36, borderRadius: 8, background: input.trim() && !thinking ? "var(--ink-surface)" : "var(--surface-muted)", border: "none", cursor: input.trim() && !thinking ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={input.trim() && !thinking ? "#fff" : "var(--ink-5)"} strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
           </div>
