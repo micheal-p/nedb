@@ -48,6 +48,19 @@ function centroid(f: Feature): [number, number] {
   return [px(sx / n), py(sy / n)];
 }
 
+/** A curved thread from a state's light to Abuja: a quadratic arc bowed
+    perpendicular to the straight line, so the mesh reads as threads, not
+    spokes. Drawn state → capital, so animated dashes flow INTO the centre. */
+function thread(from: [number, number], to: [number, number]): string {
+  const [x1, y1] = from, [x2, y2] = to;
+  const dx = x2 - x1, dy = y2 - y1;
+  const dist = Math.hypot(dx, dy) || 1;
+  const bow = Math.min(34, dist * 0.16);
+  const mx = (x1 + x2) / 2 - (dy / dist) * bow;
+  const my = (y1 + y2) / 2 + (dx / dist) * bow;
+  return `M${x1.toFixed(1)} ${y1.toFixed(1)}Q${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+}
+
 export default function HeroMap() {
   const features = (statesGeo as unknown as { features: Feature[] }).features;
   const fct = features.find((f) => /Capital/i.test(f.properties.shapeName));
@@ -105,7 +118,26 @@ export default function HeroMap() {
         ))}
       </g>
 
-      {/* 3 · Measurement points: one quiet light per state — the coverage the
+      {/* 3 · The threads: every state's light is sewn to Abuja, and beads of
+             light travel the threads into the centre — the reporting flows
+             the mandate describes, drawn. Motion dies with
+             prefers-reduced-motion (globals.css). */}
+      {fct && (
+        <g aria-hidden="true" fill="none" strokeLinecap="round">
+          {paths.filter((p) => !/Capital/i.test(p.name)).map((p, i) => {
+            const d = thread(p.c, [ax, ay]);
+            return (
+              <g key={`t-${p.name}`}>
+                <path d={d} stroke="rgba(111,207,151,0.13)" strokeWidth={0.7} />
+                <path d={d} className="hm-thread-flow" stroke="rgba(160,225,187,0.55)" strokeWidth={1.1}
+                  style={{ animationDelay: `${(i % 9) * -0.42}s` }} />
+              </g>
+            );
+          })}
+        </g>
+      )}
+
+      {/* 4 · Measurement points: one quiet light per state — the coverage the
              stat band claims, drawn */}
       <g aria-hidden="true" filter="url(#hm-glow-tight)">
         {paths.map((p, i) => (
@@ -119,7 +151,7 @@ export default function HeroMap() {
         ))}
       </g>
 
-      {/* 4 · Abuja: the one bright light, breathing slowly (stilled entirely
+      {/* 5 · Abuja: the one bright light, breathing slowly (stilled entirely
              under prefers-reduced-motion, see globals.css) */}
       {fct && (
         <g>

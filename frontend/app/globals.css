@@ -2327,3 +2327,12 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
   50%      { opacity: 0.9;  transform: scale(1.12); }
 }
 @media (prefers-reduced-motion: reduce) { .hm-pulse { animation: none; opacity: 0.55; } }
+
+/* Hero map threads: beads of light flowing along each thread into Abuja.
+   Slow, sparse, and gone entirely under prefers-reduced-motion. */
+.hm-thread-flow {
+  stroke-dasharray: 2.5 24;
+  animation: hm-flow 3.8s linear infinite;
+}
+@keyframes hm-flow { to { stroke-dashoffset: -26.5; } }
+@media (prefers-reduced-motion: reduce) { .hm-thread-flow { animation: none; opacity: 0; } }
