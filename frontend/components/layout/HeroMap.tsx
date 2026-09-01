@@ -52,31 +52,81 @@ export default function HeroMap() {
   const features = (statesGeo as unknown as { features: Feature[] }).features;
   const fct = features.find((f) => /Capital/i.test(f.properties.shapeName));
   const [ax, ay] = fct ? centroid(fct) : [0, 0];
+  const paths = features.map((f) => ({ name: f.properties.shapeName, d: featurePath(f), c: centroid(f) }));
 
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
       role="img"
       aria-label="Map of Nigeria's thirty-six states and the Federal Capital Territory"
-      style={{ width: "100%", height: "auto", display: "block" }}
+      style={{ width: "100%", height: "auto", display: "block", overflow: "visible" }}
     >
-      {features.map((f) => (
-        <path
-          key={f.properties.shapeName}
-          d={featurePath(f)}
-          fill="rgba(255,255,255,0.035)"
-          stroke="rgba(255,255,255,0.28)"
-          strokeWidth={0.8}
-          strokeLinejoin="round"
-        >
-          <title>{f.properties.shapeName}</title>
-        </path>
-      ))}
+      <defs>
+        {/* The light behind the country: a wide green blur under the
+            silhouette, so the map reads as lit from within, not painted on. */}
+        <filter id="hm-glow" x="-25%" y="-25%" width="150%" height="150%">
+          <feGaussianBlur stdDeviation="10" />
+        </filter>
+        <filter id="hm-glow-tight" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="3" />
+        </filter>
+        {/* Land wash: brighter toward the north-west light, never flat */}
+        <radialGradient id="hm-fill" cx="38%" cy="28%" r="90%">
+          <stop offset="0%" stopColor="rgba(111,207,151,0.20)" />
+          <stop offset="45%" stopColor="rgba(111,207,151,0.10)" />
+          <stop offset="100%" stopColor="rgba(111,207,151,0.03)" />
+        </radialGradient>
+        <radialGradient id="hm-halo" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(111,207,151,0.55)" />
+          <stop offset="100%" stopColor="rgba(111,207,151,0)" />
+        </radialGradient>
+      </defs>
+
+      {/* 1 · The glow underlay: the whole silhouette, blurred green */}
+      <g filter="url(#hm-glow)" opacity={0.5} aria-hidden="true">
+        {paths.map((p) => (
+          <path key={`g-${p.name}`} d={p.d} fill="rgba(52,168,95,0.35)" stroke="#34A85F" strokeWidth={3} />
+        ))}
+      </g>
+
+      {/* 2 · The states: gradient land, luminous hairline borders */}
+      <g>
+        {paths.map((p) => (
+          <path
+            key={p.name}
+            d={p.d}
+            fill="url(#hm-fill)"
+            stroke="rgba(190,232,206,0.55)"
+            strokeWidth={0.9}
+            strokeLinejoin="round"
+          >
+            <title>{p.name}</title>
+          </path>
+        ))}
+      </g>
+
+      {/* 3 · Measurement points: one quiet light per state — the coverage the
+             stat band claims, drawn */}
+      <g aria-hidden="true" filter="url(#hm-glow-tight)">
+        {paths.map((p, i) => (
+          <circle key={`d-${p.name}`} cx={p.c[0]} cy={p.c[1]} r={2.4}
+            fill="#6FCF97" opacity={0.28 + (i % 4) * 0.09} />
+        ))}
+      </g>
+      <g aria-hidden="true">
+        {paths.map((p) => (
+          <circle key={`c-${p.name}`} cx={p.c[0]} cy={p.c[1]} r={1.1} fill="#CDEFDA" opacity={0.8} />
+        ))}
+      </g>
+
+      {/* 4 · Abuja: the one bright light, breathing slowly (stilled entirely
+             under prefers-reduced-motion, see globals.css) */}
       {fct && (
         <g>
-          <circle cx={ax} cy={ay} r={10} fill="rgba(111,207,151,0.18)" />
-          <circle cx={ax} cy={ay} r={3.5} fill="#6FCF97" />
-          <text x={ax + 16} y={ay + 4} fill="rgba(255,255,255,0.55)" fontSize={17} fontFamily="var(--font-sans)" letterSpacing={1.5}>
+          <circle className="hm-pulse" cx={ax} cy={ay} r={26} fill="url(#hm-halo)" />
+          <circle cx={ax} cy={ay} r={8} fill="rgba(111,207,151,0.35)" filter="url(#hm-glow-tight)" />
+          <circle cx={ax} cy={ay} r={3.6} fill="#8FE0B0" />
+          <text x={ax + 20} y={ay + 5} fill="rgba(255,255,255,0.62)" fontSize={17} fontFamily="var(--font-sans)" letterSpacing={2} fontWeight={600}>
             ABUJA · ECN
           </text>
         </g>

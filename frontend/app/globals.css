@@ -2314,3 +2314,16 @@ input, select, textarea { font-size: 16px; } /* prevent iOS zoom on focus */
    fill under white button text. Hover to the mid green instead. */
 :root[data-theme="dark"] .btn-primary:hover { background: var(--green-mid); border-color: var(--green-mid); }
 :root[data-theme="dark"] .mobile-auth-btn--login:hover { background: var(--green-mid); }
+
+/* Hero map: Abuja's halo breathes — the only motion on the page, and gone
+   entirely for readers who ask for reduced motion. */
+.hm-pulse {
+  animation: hm-pulse 3.6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes hm-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.82); }
+  50%      { opacity: 0.9;  transform: scale(1.12); }
+}
+@media (prefers-reduced-motion: reduce) { .hm-pulse { animation: none; opacity: 0.55; } }
