@@ -324,6 +324,39 @@ input, select, textarea { font-family: inherit; }
   border-bottom: 3px solid var(--green);
 }
 .inst-hero .container { max-width: var(--max-w); margin: 0 auto; }
+.inst-hero .hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: center;
+}
+@media (min-width: 1020px) {
+  .inst-hero .hero-grid { grid-template-columns: minmax(0, 1fr) 360px; }
+}
+.inst-hero .hero-photo { margin: 0; display: none; }
+@media (min-width: 1020px) { .inst-hero .hero-photo { display: block; } }
+.inst-hero .hero-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  /* quiet the colour so the photograph sits inside the ink hero instead of
+     shouting over it */
+  filter: saturate(0.72) contrast(1.02) brightness(0.96);
+}
+.inst-hero .hero-photo figcaption {
+  margin-top: 0.6rem;
+  font-size: var(--t-2xs);
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.55);
+  max-width: 40ch;
+}
+.inst-hero .hero-photo .credit {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.32);
+}
 .inst-hero .mandate-tag {
   display: inline-flex;
   align-items: center;

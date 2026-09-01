@@ -327,6 +327,18 @@ export default function Dashboard() {
               <span className="sb-label">Energy Assessments</span>
               <span style={{ fontSize: "0.6rem", background: "var(--green)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>PENA</span>
             </Link>
+            {isAdminRole(staffRole) && (
+              <Link href="/admin/vintages" className="sb-link">
+                <span className="sb-label">Data Vintages</span>
+                <span style={{ fontSize: "0.6rem", background: "var(--ink)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>EDITIONS</span>
+              </Link>
+            )}
+            {isAdminRole(staffRole) && (
+              <Link href="/admin/papers" className="sb-link">
+                <span className="sb-label">Working Papers</span>
+                <span style={{ fontSize: "0.6rem", background: "var(--ink)", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>RESEARCH</span>
+              </Link>
+            )}
             <Link href="/" className="sb-link"><span className="sb-label">Public Data Bank</span></Link>
             <button className="sb-link" onClick={logout} style={{ color: "rgba(192,57,43,0.8)" }}><span className="sb-label">Sign Out</span></button>
           </div>

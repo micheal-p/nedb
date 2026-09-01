@@ -370,6 +370,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     // Key only present for enumerator submissions so public submissions keep
     // working even before migration 041 adds the column.
     ...(enumerator ? { collected_by: String(enumerator.username ?? enumerator.sub) } : {}),
+    // Opt-in follow-up permission (058). Same pattern: the column is only
+    // referenced when the box was actually ticked.
+    ...(body.recontact === true ? { recontact_ok: true } : {}),
   };
 
   const { error } = await db().from("pena_responses").insert(row);

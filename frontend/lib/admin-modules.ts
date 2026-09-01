@@ -45,6 +45,8 @@ export const ADMIN_NAV: AdminGroup[] = [
     items: [
       { href: "/admin/bulletins", label: "Bulletin Editions", icon: "clipboard" },
       { href: "/admin/newsroom", label: "Newsroom & Broadcast", icon: "mail" },
+      { href: "/admin/vintages", label: "Data Vintages", icon: "database" },
+      { href: "/admin/papers", label: "Working Papers", icon: "clipboard" },
     ],
   },
   {
@@ -53,6 +55,12 @@ export const ADMIN_NAV: AdminGroup[] = [
       { href: "/admin/apex", label: "Apex AI", icon: "spark" },
       { href: "/admin/api", label: "Public API", icon: "code" },
       { href: "/knowledge-graph", label: "Knowledge Graph", icon: "graph" },
+    ],
+  },
+  {
+    group: "Governance",
+    items: [
+      { href: "/admin/audit", label: "Audit Log", icon: "scale" },
     ],
   },
   {

@@ -14,7 +14,7 @@ type Row = {
   state_name: string | null; lga_name: string | null; lat: number | null; lng: number | null;
   income: number | null; light_hours: number | null; energy_expense: number | null;
   tier: string | null; answers: Record<string, unknown>; created_at: string;
-  verify_status: string;
+  verify_status: string; recontact_ok: boolean | null;
 };
 
 // Income histogram buckets (₦/month)
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db()
       .from("pena_responses")
-      .select("state_name, lga_name, lat, lng, income, light_hours, energy_expense, tier, answers, created_at, verify_status")
+      .select("state_name, lga_name, lat, lng, income, light_hours, energy_expense, tier, answers, created_at, verify_status, recontact_ok")
       .eq("form_id", form.id)
       .order("id")
       .range(from, from + 999);
@@ -188,6 +188,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       avg_income: avg(incomes),          median_income: median(incomes),
       avg_light_hours: avg(lights),      avg_energy_expense: avg(expenses),
       avg_burden_pct: avg(burdens),      geocoded: rows.filter((r) => r.lat != null).length,
+      // The panel-in-waiting: households that ticked the optional follow-up
+      // box. This is the count a longitudinal wave can actually go back to.
+      recontact_ok: rows.filter((r) => r.recontact_ok === true).length,
     },
     tier_distribution: tierDist,
     unclassified,

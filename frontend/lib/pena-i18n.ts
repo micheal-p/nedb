@@ -20,6 +20,7 @@ type Strings = {
   closed: string; notOpen: string; loading: string; already: string;
   offlineSaved: string; offlinePending: string; syncNow: string;
   signedInAs: string; signInHint: string; previewBanner: string; langLabel: string;
+  recontact: string; recontactHint: string;
 };
 
 export const PENA_STRINGS: Record<PenaLang, Strings> = {
@@ -47,6 +48,8 @@ export const PENA_STRINGS: Record<PenaLang, Strings> = {
     signInHint: "Sign in with Google to verify your email",
     previewBanner: "Staff preview — submissions are disabled.",
     langLabel: "Language",
+    recontact: "NEDB may contact me again for a follow-up assessment. (Optional)",
+    recontactHint: "Ticking this lets us measure how your energy situation changes over time. You can withdraw it at any time.",
   },
   pcm: {
     requiredNote: "* You must fill am · One person, one response",
@@ -72,6 +75,8 @@ export const PENA_STRINGS: Record<PenaLang, Strings> = {
     signInHint: "Sign in with Google make we confirm your email",
     previewBanner: "Na staff preview — you no fit submit.",
     langLabel: "Language",
+    recontact: "NEDB fit contact me again for follow-up assessment. (E no compulsory)",
+    recontactHint: "If you tick am, we go fit see how your light matter dey change with time. You fit change your mind anytime.",
   },
   ha: {
     requiredNote: "* Dole a cika · Amsa ɗaya ga kowane mutum",
@@ -97,6 +102,8 @@ export const PENA_STRINGS: Record<PenaLang, Strings> = {
     signInHint: "Shiga da Google don tabbatar da imel ɗin ku",
     previewBanner: "Duban ma'aikata ne kawai — ba za a iya aikawa ba.",
     langLabel: "Harshe",
+    recontact: "NEDB na iya sake tuntuɓata don bincike na gaba. (Ba dole ba)",
+    recontactHint: "Yin alama zai ba mu damar auna yadda yanayin wutar ku ke canzawa. Kuna iya janyewa a kowane lokaci.",
   },
   yo: {
     requiredNote: "* Dandan ni · Ìdáhùn kan ṣoṣo fún ẹnìkọ̀ọ̀kan",
@@ -122,6 +129,8 @@ export const PENA_STRINGS: Record<PenaLang, Strings> = {
     signInHint: "Fi Google wọlé láti jẹ́rìí sí ímeèlì rẹ",
     previewBanner: "Àyẹ̀wò òṣìṣẹ́ ni — kò ṣeé fi ránṣẹ́.",
     langLabel: "Èdè",
+    recontact: "NEDB lè kàn sí mi lẹ́ẹ̀kansí fún àyẹ̀wò àtẹ̀lé. (Kò pọn dandan)",
+    recontactHint: "Ṣíṣàmì sí èyí jẹ́ kí a lè mọ bí ipò iná yín ṣe ń yí padà. Ẹ lè yí ọkàn yín padà nígbàkúgbà.",
   },
   ig: {
     requiredNote: "* A ghaghị ide ya · Otu azịza maka otu onye",
@@ -147,5 +156,7 @@ export const PENA_STRINGS: Record<PenaLang, Strings> = {
     signInHint: "Jiri Google banye iji gosi email gị",
     previewBanner: "Nlele ndị ọrụ — enweghị ike izipu.",
     langLabel: "Asụsụ",
+    recontact: "NEDB nwere ike ịkpọtụrụ m ọzọ maka nyocha ọzọ. (Ọ bụghị iwu)",
+    recontactHint: "Ịkanye akara ga-enyere anyị aka ịmata otú ọnọdụ ọkụ gị si agbanwe. I nwere ike ịkwụsị ya mgbe ọ bụla.",
   },
 };

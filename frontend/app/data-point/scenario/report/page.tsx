@@ -43,6 +43,10 @@ function ReportBody() {
   const [anchorComplete, setAnchorComplete] = useState(true);
   const [anchorOvercounted, setAnchorOvercounted] = useState(false);
   const [author, setAuthor] = useState("");
+  // Machine-drafted briefing — words only; every figure comes from the plan
+  const [draft, setDraft] = useState<string | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const [draftErr, setDraftErr] = useState<string | null>(null);
   const [purpose, setPurpose] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -119,6 +123,70 @@ function ReportBody() {
   const assumed = inputs.filter((i) => i.status === "missing" || i.status === "derived");
   const unreadable = inputs.filter((i) => i.status === "unavailable");
   const activeInstruments = INSTRUMENTS.filter((i) => (effectiveScenario.policy[i.id] ?? 0) > 0);
+
+  // Condense the computed plan for the narration route. All arithmetic stays
+  // here, deterministic; the route only phrases what this JSON contains.
+  const draftBriefing = useCallback(async () => {
+    setDrafting(true); setDraftErr(null);
+    try {
+      const token = await getTokenFresh();
+      const r = await fetch("/api/necal/narrate", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        // Every figure is pre-formatted HERE, with its unit in the string.
+        // The narration model does no arithmetic, so a raw float like
+        // 5.332775697040655 would be quoted verbatim into a memo a minister
+        // reads. Formatting is deterministic client work, not AI work.
+        body: JSON.stringify({
+          scenario: {
+            name: effectiveScenario.name && effectiveScenario.name !== "Untitled scenario" ? effectiveScenario.name : presetLabel,
+            pathway: presetLabel,
+            reference,
+            assumptions: {
+              base_year: effectiveScenario.drivers.baseYear,
+              horizon_year: horizon,
+              population_at_base: `${fmt(effectiveScenario.drivers.population, 0)} million people`,
+              population_growth: `${effectiveScenario.drivers.populationGrowthPct}% a year`,
+              gdp_growth: `${effectiveScenario.drivers.gdpGrowthPct}% a year`,
+              electricity_access_now: `${effectiveScenario.drivers.accessPct}% of the population`,
+              electricity_access_target: `${effectiveScenario.drivers.accessTargetPct}% by ${horizon}`,
+              grid_losses: `${effectiveScenario.drivers.tdLossPct}% now, targeting ${effectiveScenario.drivers.tdLossTargetPct}%`,
+            },
+            mix_targets_pct: shownMix,
+            policy_instruments: activeInstruments.map((i) => i.label),
+            requirements: {
+              demand_at_horizon: last ? `${fmt(last.demandGwh)} GWh in ${last.year}` : null,
+              demand_growth: `${plan.totals.demandGrowthMultiple.toFixed(1)} times the base year`,
+              capacity_at_horizon: last ? `${fmt(last.capacityMw)} MW installed` : null,
+              capacity_to_build: `${fmt(plan.totals.capacityAddedMw)} MW of new capacity`,
+              average_build_rate: `${fmt(plan.totals.capacityAddedMw / Math.max(1, horizon - effectiveScenario.drivers.baseYear))} MW a year`,
+            },
+            cost_and_emissions: {
+              total_capital_requirement: `$${fmt(econResult.capexUsdBn, 1)} billion (₦${fmt(econResult.capexNgnTn, 1)} trillion)`,
+              clean_share_at_horizon: `${fmt(plan.totals.horizonCleanPct, 0)}% of generation`,
+              emissions_at_horizon: last ? `${fmt(last.emissionsMt, 1)} million tonnes CO2e in ${last.year}` : null,
+              peak_annual_emissions: `${fmt(plan.totals.peakEmissionsMt, 1)} million tonnes CO2e in the worst year`,
+              construction_employment: `${fmt(econResult.constructionJobYears)} job-years`,
+            },
+            warnings: plan.warnings,
+            caveats: [
+              "Capital cost assumptions are international planning figures, not Nigerian tender outcomes.",
+              parityProven ? "Anchored to the data bank's committed base-year records."
+                           : "Not proven against committed records; the baseline may be nominal.",
+            ],
+          },
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setDraftErr(j.message ?? j.error ?? `Drafting failed (${r.status}).`); return; }
+      setDraft(j.draft);
+    } catch {
+      setDraftErr("Network error — please try again.");
+    } finally {
+      setDrafting(false);
+    }
+  }, [effectiveScenario, presetLabel, reference, horizon, shownMix, activeInstruments, plan, econResult, last, parityProven]);
 
   if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--ink-5)" }}>Preparing the report…</div>;
 
@@ -447,6 +515,40 @@ function ReportBody() {
             Commission of Nigeria, {today.toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}.
             {author ? ` Prepared by ${author}.` : ""}
           </div>
+        </div>
+
+        {/* Machine-drafted briefing — screen only, never in the printed report.
+            The model computed the figures; this turns them into the memo. */}
+        <div className="no-print" style={{ background: "var(--surface-white)", border: "1px solid var(--border)", padding: "1.25rem 1.5rem", marginTop: "1.25rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: "var(--t-base)", fontWeight: 700, color: "var(--ink)" }}>Ministerial briefing draft</div>
+              <div style={{ fontSize: "var(--t-sm)", color: "var(--ink-4)", maxWidth: "var(--measure)" }}>
+                Turns this report&apos;s computed figures into a four-minute memo. The wording is machine-drafted; every number is the model&apos;s own.
+              </div>
+            </div>
+            <button onClick={draftBriefing} disabled={drafting} className="btn btn-primary btn-sm">
+              {drafting ? "Drafting…" : draft ? "Redraft" : "Draft the briefing"}
+            </button>
+          </div>
+          {draftErr && <div style={{ marginTop: "0.75rem", fontSize: "var(--t-sm)", color: "var(--red)" }}>{draftErr}</div>}
+          {draft && (
+            <div style={{ marginTop: "1rem", borderTop: "1px solid var(--border-soft)", paddingTop: "1rem" }}>
+              <div style={{ fontSize: "var(--t-md)", color: "var(--ink-2)", lineHeight: 1.75, whiteSpace: "pre-wrap", maxWidth: "var(--measure)" }}>
+                {draft.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+                  part.startsWith("**") && part.endsWith("**")
+                    ? <strong key={i} style={{ color: "var(--ink)" }}>{part.slice(2, -2)}</strong>
+                    : <span key={i}>{part}</span>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", marginTop: "0.85rem" }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => navigator.clipboard.writeText(draft.replace(/\*\*/g, ""))}>Copy text</button>
+                <span style={{ fontSize: "var(--t-xs)", color: "var(--ink-5)" }}>
+                  Machine-drafted from the figures above. Verify every number against the report before circulation.
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -8,7 +8,7 @@ import { OfficialBanner } from "@/components/ui/gov";
 import { isLoggedIn, getFullName, getRole, clearTokens, isAdminRole } from "@/lib/auth";
 
 type NavbarProps = {
-  active?: "databank" | "upload" | "datapoint" | "about" | "graph" | "assessments";
+  active?: "databank" | "upload" | "datapoint" | "about" | "graph" | "assessments" | "vintages" | "papers";
 };
 
 export default function Navbar({ active }: NavbarProps) {
@@ -91,7 +91,7 @@ export default function Navbar({ active }: NavbarProps) {
             onPointerEnter={(e) => e.pointerType === "mouse" && setExploreOpen(true)}
             onPointerLeave={(e) => e.pointerType === "mouse" && setExploreOpen(false)}>
             <button
-              className={`nav-link-main${active === "graph" || active === "assessments" ? " active" : ""}`}
+              className={`nav-link-main${active === "graph" || active === "assessments" || active === "vintages" || active === "papers" ? " active" : ""}`}
               onClick={() => setExploreOpen((o) => !o)}
               aria-expanded={exploreOpen}
               style={{ background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5, font: "inherit" }}>
@@ -106,6 +106,8 @@ export default function Navbar({ active }: NavbarProps) {
                 {[
                   { href: "/knowledge-graph", label: "Knowledge Graph",     sub: "Supply-chain network & SPOF analysis" },
                   { href: "/assessments",     label: "PENA Assessments",    sub: "Energy needs surveys — open data" },
+                  { href: "/data/vintages",   label: "Data Vintages",       sub: "Frozen, checksummed editions of the data bank" },
+                  { href: "/papers",          label: "Working Papers",      sub: "Reproducible findings from the assessments" },
                   { href: "/request-data",    label: "Request Data",        sub: "Bulk datasets and custom extracts" },
                   { href: "/portal",          label: "Dashboard Access",    sub: "Request a role-scoped dashboard" },
                   { href: "/api-docs",        label: "API",                 sub: "Programmatic access & docs" },
@@ -153,6 +155,8 @@ export default function Navbar({ active }: NavbarProps) {
           <div style={{ padding: "0.6rem 1rem 0.2rem", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)" }}>Explore</div>
           <Link href="/knowledge-graph" className={`mobile-link${active === "graph" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Knowledge Graph</Link>
           <Link href="/assessments" className={`mobile-link${active === "assessments" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>PENA Assessments</Link>
+          <Link href="/data/vintages" className={`mobile-link${active === "vintages" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Data Vintages</Link>
+          <Link href="/papers" className={`mobile-link${active === "papers" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>Working Papers</Link>
           <Link href="/request-data" className="mobile-link" onClick={() => setMenuOpen(false)}>Request Data</Link>
           <Link href="/portal" className="mobile-link" onClick={() => setMenuOpen(false)}>Dashboard Access</Link>
           <Link href="/about" className={`mobile-link${active === "about" ? " active" : ""}`} onClick={() => setMenuOpen(false)}>About NEDB</Link>

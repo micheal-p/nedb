@@ -3,12 +3,20 @@ import { db } from "@/lib/supabase-server";
 import { ok, err, requireAuth } from "@/lib/api-helpers";
 import { checkRateLimitDurable } from "@/lib/rate-limit";
 import { geminiConfigured, geminiEmbed, geminiGenerate } from "@/lib/gemini";
+import { retrieveRecords, citedRecordIds } from "@/lib/records-ground";
 import { getGeminiUsage, quotaResetISO } from "@/lib/usage";
 
 // POST /api/ask — GraphRAG policy assistant.
 // Grounding = (a) top document chunks by pgvector cosine similarity over the
-// ECN legal/policy PDFs, (b) live facts from the Energy Knowledge Graph.
-// The model is instructed to answer ONLY from that context, with citations.
+// ECN legal/policy PDFs, (b) live facts from the Energy Knowledge Graph,
+// (c) the committed statistical records themselves, retrieved
+// deterministically by series and period (lib/records-ground.ts).
+//
+// The division of labour is strict and deliberate: the data bank supplies
+// every figure, Gemini supplies only the words. A stated statistic must carry
+// its [rec N] marker so the reader can check the number against the exact row
+// it came from — an answer that cannot cite a record says the data bank does
+// not hold the figure, which is worth more than a plausible guess.
 
 export async function POST(req: NextRequest) {
   if (!geminiConfigured()) {
@@ -44,6 +52,11 @@ export async function POST(req: NextRequest) {
   const screen = (body?.context ?? "").toString().trim().slice(0, 700);
 
   try {
+    // 0. Retrieve the committed statistics the question is about. Anonymous
+    // visitors ground only on series the api-exposure console has published —
+    // the assistant must not be a side door around it.
+    const grounded = await retrieveRecords(question, !!auth);
+
     // 1. Retrieve relevant document chunks
     const qEmbedding = await geminiEmbed(question);
     let chunks: { doc_title: string; source_file: string; content: string; similarity: number }[] = [];
@@ -73,6 +86,9 @@ export async function POST(req: NextRequest) {
 
     // 3. Grounded generation
     const context = [
+      grounded.contextLines
+        ? "STATISTICAL RECORDS FROM THE DATA BANK (each line is one committed record, identified by its [rec N] marker):\n" + grounded.contextLines
+        : "",
       chunks.length
         ? "DOCUMENT EXCERPTS:\n" + chunks.map((c, i) => `[${i + 1}] (${c.doc_title})\n${c.content}`).join("\n---\n")
         : "DOCUMENT EXCERPTS: none ingested yet.",
@@ -83,10 +99,11 @@ export async function POST(req: NextRequest) {
 
     const prompt = `You are the NEDB Policy & Research Assistant for the Energy Commission of Nigeria.
 Answer primarily from the context below, in clear plain English.
-Do NOT include bracketed citation markers like [1] or [2] in your answer — the interface lists the source documents separately.
+Do NOT include bracketed document markers like [1] or [2] — the interface lists the source documents separately.
+STATISTICS RULE — this one is absolute: every Nigerian energy figure you state must be copied from a STATISTICAL RECORDS line, followed immediately by that line's [rec N] marker exactly as written. Never round beyond what the record shows, never average or extrapolate records, and never state a figure that has no record — say instead that the data bank does not hold it. You may compare two figures (higher, lower, difference in plain words) only when BOTH carry their markers. If a record's line says provisional or revised, say so beside the figure.
 If the question is a GENERAL definition or concept (an energy term, a statistical method, an acronym) that the context does not cover, you may give a brief standard definition without a citation.
 If the user refers to "this page", "this chart" or "what I'm seeing", use the WHAT THE USER IS CURRENTLY VIEWING section.
-But NEVER invent Nigeria-specific facts: names, appointments, figures, dates, locations or section numbers must come from the context — if they are not there, say so plainly.
+NEVER invent Nigeria-specific facts: names, appointments, figures, dates, locations or section numbers must come from the context — if they are not there, say so plainly.
 Keep the answer under 200 words, in clear plain English.
 
 CONTEXT:
@@ -97,16 +114,23 @@ QUESTION: ${question}`;
     const answer = await geminiGenerate(prompt);
     if (!answer) { log(question, "error"); return err("No answer generated", 502); }
 
+    // Hand back only the records the answer actually cited, so the UI can
+    // render each [rec N] as a checkable chip: series, period, value, source,
+    // status. An id the model invented matches nothing and is exposed as such.
+    const cited = new Set(citedRecordIds(answer));
+    const citedRecords = grounded.records.filter((r) => cited.has(r.id));
+
     log(question, "ok", chunks.length);
     return ok({
       answer,
+      records: citedRecords,
       sources: chunks.map((c, i) => ({
         n: i + 1,
         doc: c.doc_title,
         file: c.source_file,
         similarity: Math.round(c.similarity * 100) / 100,
       })),
-      grounded_on: { chunks: chunks.length, graph_nodes: (nodes ?? []).length },
+      grounded_on: { chunks: chunks.length, graph_nodes: (nodes ?? []).length, records: grounded.records.length },
       usage: {
         chat: { remaining: rl.remaining, resetIn: rl.resetIn },       // our 10/min limit
         ai: await getGeminiUsage(),                                    // self-metered daily Gemini usage

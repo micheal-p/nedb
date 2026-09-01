@@ -30,13 +30,13 @@ import { logAudit } from "@/lib/audit";
 // cap so large surveys are never silently truncated.
 // DELETE ?response_id=N — remove one response (admin only; NDPA removal right).
 
-const SELECT = "id, answers, state_name, lga_id, lga_name, address_text, lat, lng, email, income, light_hours, energy_expense, tier, verify_status, created_at";
+const SELECT = "id, answers, state_name, lga_id, lga_name, address_text, lat, lng, email, income, light_hours, energy_expense, tier, verify_status, recontact_ok, created_at";
 
 type Row = {
   id: number; answers: Record<string, unknown>; state_name: string | null; lga_id: number | null;
   lga_name: string | null; address_text: string | null; lat: number | null; lng: number | null;
   email: string | null; income: number | null; light_hours: number | null; energy_expense: number | null;
-  tier: string | null; verify_status: string; created_at: string;
+  tier: string | null; verify_status: string; recontact_ok: boolean | null; created_at: string;
 };
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -97,12 +97,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       if (/^[=+@\t\r]/.test(s) || (s.startsWith("-") && !/^-\d+(\.\d+)?$/.test(s))) s = "'" + s;
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const head = [...keys, "state", "lga", "lat", "lng", "tier", "verify_status", "submitted_at"];
+    const head = [...keys, "state", "lga", "lat", "lng", "tier", "verify_status", "follow_up_ok", "submitted_at"];
     const lines = [head.join(",")];
     for (const r of all) {
       lines.push([
         ...keys.map((k) => esc((r.answers ?? {})[k])),
-        esc(r.state_name), esc(r.lga_name), esc(r.lat), esc(r.lng), esc(r.tier), esc(r.verify_status), esc(r.created_at),
+        esc(r.state_name), esc(r.lga_name), esc(r.lat), esc(r.lng), esc(r.tier), esc(r.verify_status), esc(r.recontact_ok ? "yes" : "no"), esc(r.created_at),
       ].join(","));
     }
     return new NextResponse(lines.join("\n"), {

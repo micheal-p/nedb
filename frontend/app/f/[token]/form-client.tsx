@@ -73,6 +73,7 @@ export default function PenaPublicForm() {
   const [geoHits, setGeoHits] = useState<GeoHit[]>([]);
   const [geoOpenFor, setGeoOpenFor] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
+  const [recontact, setRecontact] = useState(false);   // opt-in, unticked by default
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [already, setAlready] = useState(false);
@@ -298,6 +299,7 @@ export default function PenaPublicForm() {
       lat: geo?.lat ?? null,
       lng: geo?.lng ?? null,
       consent: true,
+      recontact,
       google_token: googleToken,
       website: "", // honeypot — bots fill it, humans never see it
     };
@@ -554,6 +556,16 @@ export default function PenaPublicForm() {
         <label style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", cursor: "pointer" }}>
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 3, width: 16, height: 16, accentColor: "var(--green)" }} />
           <span style={{ fontSize: "0.76rem", color: "var(--ink-3)", lineHeight: 1.6 }}>{def.consent_text}</span>
+        </label>
+        {/* Follow-up permission is its own decision, not folded into the
+            consent required to submit. Opt-in, unticked, withdrawable — the
+            box a household panel is built on. */}
+        <label style={{ display: "flex", gap: 12, cursor: "pointer", alignItems: "flex-start", marginTop: "0.9rem", paddingTop: "0.9rem", borderTop: "1px solid var(--border)" }}>
+          <input type="checkbox" checked={recontact} onChange={(e) => setRecontact(e.target.checked)} style={{ marginTop: 3, width: 16, height: 16, accentColor: "var(--green)" }} />
+          <span style={{ fontSize: "0.76rem", color: "var(--ink-3)", lineHeight: 1.6 }}>
+            {t.recontact}
+            <span style={{ display: "block", color: "var(--ink-5)", marginTop: 2 }}>{t.recontactHint}</span>
+          </span>
         </label>
 
         {error && <div ref={errorRef} style={{ fontSize: "0.8rem", color: "var(--red)", background: "var(--red-tint)", padding: "0.625rem 0.875rem", borderRadius: 6, marginTop: "0.875rem" }}>{error}</div>}

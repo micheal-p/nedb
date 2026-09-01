@@ -3,7 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import { getToken } from "@/lib/auth";
 
-interface Message { role: "user" | "assistant"; text: string; time: string; sources?: string }
+type CitedRecord = {
+  id: number; series_name: string; period: string; region: string | null;
+  value: number; unit: string | null; source: string | null; status: string | null;
+};
+
+interface Message { role: "user" | "assistant"; text: string; time: string; sources?: string; records?: CitedRecord[] }
 
 const SUGGESTIONS: Record<string, string[]> = {
   overview:   ["What does the Petroleum Industry Act say about royalties?", "What is the mandate of the Energy Commission of Nigeria?", "Which states does Kano DisCo serve?"],
@@ -28,13 +33,28 @@ function fmtReset(iso: string): string {
   } catch { return "soon"; }
 }
 
-// Minimal **bold** renderer — answers use markdown emphasis
-function renderText(text: string) {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**")
-      ? <strong key={i}>{part.slice(2, -2)}</strong>
-      : <span key={i}>{part}</span>
-  );
+// Minimal **bold** renderer — answers use markdown emphasis. [rec N] markers
+// become checkable chips: hover one and it names the exact committed record
+// the figure beside it was copied from. A marker with no matching record is a
+// figure the model invented, and it is shown crossed out rather than hidden.
+function renderText(text: string, records?: CitedRecord[]) {
+  const byId = new Map((records ?? []).map((r) => [r.id, r]));
+  return text.split(/(\*\*[^*]+\*\*|\[rec \d+\])/g).map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) return <strong key={i}>{part.slice(2, -2)}</strong>;
+    const m = part.match(/^\[rec (\d+)\]$/);
+    if (m) {
+      const r = byId.get(Number(m[1]));
+      if (!r) return <s key={i} title="No committed record matches this citation" style={{ color: "var(--red)", fontSize: "0.62rem" }}>unverified</s>;
+      return (
+        <sup key={i}
+          title={`Record #${r.id} · ${r.series_name} · ${r.period}${r.region && r.region !== "NGA" ? ` · ${r.region}` : ""} · ${r.value.toLocaleString()} ${r.unit ?? ""} · ${r.source ?? "source unrecorded"}${r.status && r.status !== "final" ? ` · ${r.status}` : ""}`}
+          style={{ fontSize: "0.58rem", fontWeight: 700, color: "var(--green)", cursor: "help", padding: "0 2px" }}>
+          №{r.id}
+        </sup>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
 }
 
 export default function ApexAI({ currentView, profileLabel, screenContext }: { currentView: string; profileLabel: string; screenContext?: string }) {
@@ -152,11 +172,17 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
       } else {
         const srcs = (j.sources ?? []) as { n: number; doc: string }[];
         const uniqueDocs = [...new Set(srcs.map((s) => s.doc))];
+        const recs = (j.records ?? []) as CitedRecord[];
+        const srcLine = [
+          recs.length ? `${recs.length} committed record${recs.length === 1 ? "" : "s"} cited — hover a №` : "",
+          uniqueDocs.length ? `Sources: ${uniqueDocs.join(" · ")}` : "",
+        ].filter(Boolean).join("  ·  ");
         reply = {
           role: "assistant",
           text: j.answer,
           time: now(),
-          sources: uniqueDocs.length ? `Sources: ${uniqueDocs.join(" · ")}` : undefined,
+          records: recs,
+          sources: srcLine || undefined,
         };
         if (j.usage?.ai) setUsage({ pct: j.usage.ai.pct, resetsAt: j.usage.ai.resetsAt });
         if (j.usage?.chat) setChatLeft(j.usage.chat.remaining);
@@ -255,7 +281,7 @@ export default function ApexAI({ currentView, profileLabel, screenContext }: { c
                     boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
                     whiteSpace: "pre-wrap",
                   }}>
-                    {renderText(msg.text)}
+                    {renderText(msg.text, msg.records)}
                     {msg.sources && (
                       <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid var(--border)", fontSize: "0.64rem", color: "var(--green)", fontWeight: 600 }}>
                         {msg.sources}

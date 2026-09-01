@@ -179,20 +179,34 @@ export default async function Home() {
 
       {/* ── HERO ── */}
       <div className="inst-hero">
-        <div className="container">
-          <div className="mandate-tag"><span className="dot" />ECN / NEDB · National Energy Data Bank</div>
-          <h1>Nigeria&apos;s official<br />energy statistics.</h1>
-          <p className="lead">
-            The National Energy Data Bank (NEDB) is an initiative of the Energy Commission of Nigeria (ECN),
-            established as the nation&apos;s primary repository and dissemination platform for comprehensive,
-            validated energy data across all fuels, sectors and states.
-          </p>
-          <div className="stat-row">
-            <div className="stat"><div className="num">{series.length}</div><div className="lbl">Tracked Series</div></div>
-            <div className="stat"><div className="num accent">{totalRecords.toLocaleString()}</div><div className="lbl">Data Records</div></div>
-            <div className="stat"><div className="num">36 + FCT</div><div className="lbl">State Coverage</div></div>
-            <div className="stat"><div className="num">Monthly</div><div className="lbl">Update Frequency</div></div>
+        <div className="container hero-grid">
+          <div className="hero-copy">
+            <div className="mandate-tag"><span className="dot" />ECN / NEDB · National Energy Data Bank</div>
+            <h1>Nigeria&apos;s official<br />energy statistics.</h1>
+            <p className="lead">
+              The National Energy Data Bank (NEDB) is an initiative of the Energy Commission of Nigeria (ECN),
+              established as the nation&apos;s primary repository and dissemination platform for comprehensive,
+              validated energy data across all fuels, sectors and states.
+            </p>
+            <div className="stat-row">
+              <div className="stat"><div className="num">{series.length}</div><div className="lbl">Tracked Series</div></div>
+              <div className="stat"><div className="num accent">{totalRecords.toLocaleString()}</div><div className="lbl">Data Records</div></div>
+              <div className="stat"><div className="num">36 + FCT</div><div className="lbl">State Coverage</div></div>
+              <div className="stat"><div className="num">Monthly</div><div className="lbl">Update Frequency</div></div>
+            </div>
           </div>
+          {/* One real photograph, not stock: the household these statistics
+              exist for. Softens the hero without costing it authority; the
+              caption keeps it factual and the credit satisfies CC BY-SA. */}
+          <figure className="hero-photo">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/home-village.jpg" alt="A household compound in rural Nigeria at dusk" />
+            <figcaption>
+              The statistics on this site describe households like this one.
+              Their data enters the bank only with consent.
+              <span className="credit">Photo: BayoCine, CC BY-SA 4.0</span>
+            </figcaption>
+          </figure>
         </div>
       </div>
 

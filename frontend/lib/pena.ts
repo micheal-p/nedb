@@ -109,7 +109,8 @@ export const DEFAULT_CONSENT =
   "assessment and planning. I understand that my personal details (name, email, phone, address) will be " +
   "kept confidential in line with the Nigeria Data Protection Act 2023 and Section 37 of the Constitution, " +
   "and that only anonymised, aggregated statistics — never my identity or location — may be published as " +
-  "open data. I may request removal of my data at any time.";
+  "open data. NEDB will contact me again about a follow-up assessment only if I tick the optional box " +
+  "below, and I can withdraw that permission at any time. I may request removal of my data at any time.";
 
 // k-anonymity floor for public aggregates: any state/LGA group with fewer
 // responses than this is suppressed from open-data output.
