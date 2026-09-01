@@ -80,6 +80,23 @@ export async function GET() {
     : unconfigured.length > 0 && inProduction ? "degraded"
     : "ok";
 
+  // The snapshot is the console's memory: written at most once a minute, and
+  // never allowed to break the health answer itself.
+  try {
+    const { data: lastRow } = await db()
+      .from("health_snapshots").select("checked_at").order("checked_at", { ascending: false }).limit(1);
+    const last = lastRow?.[0]?.checked_at ? new Date(lastRow[0].checked_at).getTime() : 0;
+    if (Date.now() - last > 60_000) {
+      await db().from("health_snapshots").insert({
+        status: failed.length > 0 ? "down" : status,
+        db_ok: database.status === "ok",
+        db_ms: database.ms ?? null,
+        cache_status: cache.status,
+        detail: failed.length ? { failed: checks } : null,
+      });
+    }
+  } catch { /* the record must never break the reading */ }
+
   return NextResponse.json(
     {
       status,

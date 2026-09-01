@@ -62,6 +62,7 @@ export const ADMIN_NAV: AdminGroup[] = [
     items: [
       { href: "/admin/audit", label: "Audit Log", icon: "scale" },
       { href: "/admin/storage", label: "Planning Storage", icon: "database" },
+      { href: "/admin/health", label: "Platform Health", icon: "pulse" },
     ],
   },
   {

@@ -1,11 +1,21 @@
 // Rate limiting.
 // checkRateLimit          — in-process sliding window (per serverless instance).
-// checkRateLimitDurable   — Redis-backed fixed window, keyed however the caller
-//                           chooses (typically per IP). Survives redeploys and
-//                           applies across all instances; falls back to the
-//                           in-process limiter when Redis is unavailable.
+// checkRateLimitDurable   — durable fixed window, keyed however the caller
+//                           chooses (typically per IP). Three rails, best
+//                           available wins:
+//                             1. Redis, if UPSTASH_* is ever configured
+//                             2. Postgres — our own rail: one atomic upsert
+//                                per hit against an UNLOGGED counter table
+//                                (migration 063), durable across deploys and
+//                                instances with no cache to rent
+//                             3. in-process, the last resort that fails safe
+//
+// The Postgres rail costs one extra database round trip per limited request.
+// Every limited endpoint here is low-volume by design, and a counted request
+// is worth a round trip; an uncounted one was worth nothing.
 
 import { getRedis } from "@/lib/redis";
+import { db } from "@/lib/supabase-server";
 
 interface Window {
   count: number;
@@ -45,14 +55,40 @@ export function checkRateLimit(
   return { allowed: true, remaining, resetIn };
 }
 
-/** Redis-backed fixed-window limiter — durable across deploys and instances. */
+/** Postgres rail: floor(epoch/window) buckets, window baked into the key so
+ *  differently-windowed limits sharing a name can never collide. */
+async function checkRateLimitPg(
+  key: string,
+  maxRequests: number,
+  windowSec: number
+): Promise<{ allowed: boolean; remaining: number; resetIn: number } | null> {
+  try {
+    const bucket = Math.floor(Date.now() / (windowSec * 1000));
+    const { data, error } = await db().rpc("rl_hit", { p_key: `${key}:${windowSec}`, p_bucket: bucket });
+    if (error || typeof data !== "number") return null;
+    // Hygiene, roughly once in fifty hits: sweep buckets older than an hour.
+    if (data % 50 === 7) {
+      const before = Math.floor((Date.now() - 3_600_000) / (windowSec * 1000));
+      db().rpc("rl_sweep", { p_before: before }).then(() => {}, () => {});
+    }
+    const resetIn = windowSec - Math.floor((Date.now() / 1000) % windowSec);
+    return { allowed: data <= maxRequests, remaining: Math.max(0, maxRequests - data), resetIn };
+  } catch {
+    return null;
+  }
+}
+
+/** Durable fixed-window limiter — Redis, else Postgres, else in-process. */
 export async function checkRateLimitDurable(
   key: string,
   maxRequests: number,
   windowSec: number
 ): Promise<{ allowed: boolean; remaining: number; resetIn: number }> {
   const r = getRedis();
-  if (!r) return checkRateLimit(key, maxRequests, windowSec * 1000);
+  if (!r) {
+    const pg = await checkRateLimitPg(key, maxRequests, windowSec);
+    return pg ?? checkRateLimit(key, maxRequests, windowSec * 1000);
+  }
   try {
     const bucket = Math.floor(Date.now() / (windowSec * 1000));
     const k = `rl:${key}:${bucket}`;
@@ -65,6 +101,7 @@ export async function checkRateLimitDurable(
       resetIn,
     };
   } catch {
-    return checkRateLimit(key, maxRequests, windowSec * 1000);
+    const pg = await checkRateLimitPg(key, maxRequests, windowSec);
+    return pg ?? checkRateLimit(key, maxRequests, windowSec * 1000);
   }
 }
