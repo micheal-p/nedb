@@ -1,0 +1,259 @@
+/* --------------------------------------------------------------------------
+   NEIIA ACCESS GATE — portable stylesheet
+   --------------------------------------------------------------------------
+   Self-contained: defines its own custom properties scoped to .neiia-gate,
+   so it can be dropped into any site or app without pulling in neiia.css.
+
+   The markup and behaviour contract live in gate.js / AccessGate.tsx:
+
+     - shows the gate unless sessionStorage["neiia_authenticated"] === "true"
+     - unlocks with the same credential as the main site gate in neiia.js
+     - exponential lockout (localStorage["neiia_lockout"]), mirrored from
+       neiia.js so a lockout on one app is honoured by the others.
+
+   NOTE: presentation-layer only. Like the main site gate, the credential is
+   readable in page source and the lockout is clearable from devtools. Real
+   gating belongs at the edge (Vercel Password Protection / Cloudflare
+   Access). See the comment block at the top of assets/js/neiia.js.
+   -------------------------------------------------------------------------- */
+
+.neiia-gate {
+  /* Design tokens mirrored from neiia.css (:root) so the gate renders
+     identically outside the main site. */
+  --ng-ink-900: #0b1f24;
+  --ng-green-600: #008751;
+  --ng-n-0: #ffffff;
+  --ng-n-50: #f5f7f7;
+  --ng-n-100: #eaeeef;
+  --ng-n-200: #d9e0e2;
+  --ng-n-300: #b9c4c7;
+  --ng-n-500: #647377;
+  --ng-n-600: #4c5a5e;
+  --ng-n-700: #364447;
+  --ng-s-1: 4px;
+  --ng-s-2: 8px;
+  --ng-s-3: 12px;
+  --ng-s-4: 16px;
+  --ng-s-5: 24px;
+  --ng-s-6: 32px;
+  --ng-s-7: 48px;
+  --ng-r: 6px;
+  --ng-r-lg: 10px;
+  --ng-fs-body: 1rem;
+  --ng-fs-xs: 0.8125rem;
+  --ng-fs-eyebrow: 0.6875rem;
+  --ng-t: 180ms;
+  --ng-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ng-s-5);
+  background: rgba(6, 18, 21, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.neiia-gate[hidden] {
+  display: none;
+}
+
+.neiia-gate__card {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  padding: var(--ng-s-7);
+  background: var(--ng-n-0);
+  color: var(--ng-ink-900); /* the card stays light in dark theme, so must its text */
+  border-radius: var(--ng-r-lg);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+.neiia-gate__card h2 {
+  color: var(--ng-ink-900);
+}
+
+.neiia-gate__flag {
+  display: flex;
+  height: 3px;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: var(--ng-s-6);
+}
+
+.neiia-gate__flag span {
+  flex: 1;
+}
+
+.neiia-gate__flag span:nth-child(odd) {
+  background: var(--ng-green-600);
+}
+
+.neiia-gate__flag span:nth-child(even) {
+  background: var(--ng-n-100);
+}
+
+.neiia-gate__head {
+  text-align: center;
+  margin-bottom: var(--ng-s-6);
+}
+
+.neiia-gate__head img {
+  width: 46px;
+  height: auto;
+  margin: 0 auto var(--ng-s-4);
+}
+
+.neiia-gate__head h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ng-ink-900);
+  margin-bottom: var(--ng-s-2);
+}
+
+.neiia-gate__head p {
+  font-size: var(--ng-fs-xs);
+  color: var(--ng-n-600);
+}
+
+.neiia-gate__field {
+  margin-bottom: var(--ng-s-4);
+}
+
+.neiia-gate__field label {
+  display: block;
+  font-size: var(--ng-fs-eyebrow);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ng-n-700);
+  margin-bottom: var(--ng-s-2);
+}
+
+.neiia-gate__field input {
+  width: 100%;
+  height: 44px;
+  padding-inline: var(--ng-s-4);
+  border: 1px solid var(--ng-n-300);
+  border-radius: var(--ng-r);
+  background: var(--ng-n-0);
+  color: var(--ng-ink-900);
+  font-family: inherit;
+  font-size: var(--ng-fs-body); /* 16px: avoids iOS zoom-on-focus */
+  transition: border-color var(--ng-t) var(--ng-ease), box-shadow var(--ng-t) var(--ng-ease);
+}
+
+.neiia-gate__field input:focus {
+  outline: none;
+  border-color: var(--ng-green-600);
+  box-shadow: 0 0 0 3px rgba(0, 135, 81, 0.16);
+}
+
+.neiia-gate__field input:disabled {
+  background: var(--ng-n-50);
+  cursor: not-allowed;
+}
+
+.neiia-gate__submit {
+  width: 100%;
+  margin-top: var(--ng-s-2);
+  padding: var(--ng-s-3) var(--ng-s-4);
+  border: none;
+  border-radius: var(--ng-r);
+  background: var(--ng-ink-900);
+  color: #fff;
+  font-family: inherit;
+  font-size: var(--ng-fs-body);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--ng-t) var(--ng-ease);
+}
+
+.neiia-gate__submit:hover {
+  background: #12323a;
+}
+
+.neiia-gate__submit:disabled {
+  background: var(--ng-n-300);
+  cursor: not-allowed;
+}
+
+.neiia-gate__msg {
+  padding: var(--ng-s-3);
+  border-radius: var(--ng-r);
+  margin-bottom: var(--ng-s-4);
+  font-size: var(--ng-fs-xs);
+  text-align: center;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b42318;
+}
+
+.neiia-gate__msg[hidden] {
+  display: none;
+}
+
+.neiia-gate__lock {
+  padding: var(--ng-s-5);
+  border-radius: var(--ng-r);
+  margin-bottom: var(--ng-s-4);
+  text-align: center;
+  background: var(--ng-ink-900);
+  color: #fff;
+}
+
+.neiia-gate__lock[hidden] {
+  display: none;
+}
+
+.neiia-gate__lock-title {
+  font-size: var(--ng-fs-eyebrow);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: var(--ng-s-2);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.neiia-gate__lock-timer {
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.neiia-gate__foot {
+  margin-top: var(--ng-s-6);
+  padding-top: var(--ng-s-5);
+  border-top: 1px solid var(--ng-n-200);
+  text-align: center;
+}
+
+.neiia-gate__foot strong {
+  display: block;
+  font-size: var(--ng-fs-eyebrow);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ng-n-600);
+}
+
+.neiia-gate__foot span {
+  display: block;
+  margin-top: var(--ng-s-1);
+  font-size: 0.6875rem;
+  color: var(--ng-n-500);
+}
+
+/* Respect users who prefer reduced motion: the backdrop blur is animation-
+   adjacent cost on low-end GPUs, so drop it. */
+@media (prefers-reduced-motion: reduce) {
+  .neiia-gate {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
